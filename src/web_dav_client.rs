@@ -5,14 +5,16 @@ use chrono::NaiveDateTime;
 use reqwest::blocking::Body;
 use reqwest::Method;
 use roxmltree::{Document, Node};
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub struct WebDavResource {
-    path: String,
-    content_type: String,
-    name: String,
-    content_length: u64,
-    last_modified: NaiveDateTime,
-    e_tag: String,
+    pub path: String,
+    pub content_type: String,
+    pub name: String,
+    pub content_length: u64,
+    pub last_modified: NaiveDateTime,
+    pub e_tag: String,
 }
 
 impl Display for WebDavResource {
@@ -107,7 +109,7 @@ fn parse_resource_node(response_node: Node) -> Option<WebDavResource> {
         content_length: content_length.unwrap().text().unwrap().to_string().parse().unwrap(),
         last_modified: NaiveDateTime::parse_from_str(
             last_modified.unwrap().text().unwrap(),
-            "%a, %d %h %Y %T %Z"
+            "%a, %d %h %Y %T %Z",
         ).unwrap(),
         e_tag: e_tag.unwrap().text().unwrap().to_string(),
     })

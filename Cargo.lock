@@ -455,6 +455,7 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
+ "serde",
  "time 0.1.44",
  "winapi 0.3.9",
 ]
@@ -1073,6 +1074,12 @@ name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
+
+[[package]]
+name = "md5"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "490cc448043f947bae3cbee9c203358d62dbee0db12107a74be5c30ccfd09771"
 
 [[package]]
 name = "memchr"
@@ -1835,8 +1842,11 @@ dependencies = [
  "clokwerk",
  "evmap",
  "lazy_static",
+ "md5",
  "reqwest",
  "roxmltree",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
