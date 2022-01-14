@@ -1,0 +1,35 @@
+* {
+    overflow: hidden;
+    margin: 0;
+    background-color: black;
+}
+
+@font-face {
+    font-family: "Roboto Medium";
+    src: url(Roboto-Medium.ttf);
+}
+
+#slideshow-layout {
+    width: 100vw;
+    height: 100vh;
+    text-align: center;
+}
+
+#slideshow-image {
+    max-width: 100%;
+    height: auto;
+    max-height: 100%;
+}
+
+.label {
+    position: absolute;
+    top: 93vh;
+    color: #FFFFFF;
+    font-family: "Roboto Medium", serif;
+    background: transparent;
+    font-size: 40px;
+    text-align: center;
+    width: 100%;
+    -webkit-text-stroke-width: 1px;
+    -webkit-text-stroke-color: black;
+}
