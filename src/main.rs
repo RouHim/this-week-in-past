@@ -17,7 +17,7 @@ async fn main() -> std::io::Result<()> {
     let web_dav_client = web_dav_client::new(
         "https://photos.himmelstein.info",
         "admin",
-        "hPjCqWh5#P8c*r9XijqE"
+        "hPjCqWh5#P8c*r9XijqE",
     );
 
     // Initialize kv_store reader and writer
@@ -28,13 +28,13 @@ async fn main() -> std::io::Result<()> {
     // Start scheduler to run at midnight
     let scheduler_handle = scheduler::initialize(
         web_dav_client.clone(),
-        kv_writer_mutex.clone()
+        kv_writer_mutex.clone(),
     );
 
     // Fetch resources for the first time
     scheduler::fetch_resources(
         web_dav_client.clone(),
-        kv_writer_mutex.clone()
+        kv_writer_mutex.clone(),
     );
 
     // Run the actual web server and hold the main thread here
@@ -59,8 +59,8 @@ async fn main() -> std::io::Result<()> {
     return http_server_result;
 }
 
-async fn api_resources_handler(kv_reader: web::Data<ReadHandle<String, String>>, web_dav_client: web::Data<WebDavClient>) -> HttpResponse {
-    let keys: Vec<String> = resource_processor::get_this_week_in_past(web_dav_client.as_ref(), kv_reader.as_ref());
+async fn api_resources_handler(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
+    let keys: Vec<String> = resource_processor::get_this_week_in_past(kv_reader.as_ref());
 
     HttpResponse::Ok()
         .content_type("application/json")

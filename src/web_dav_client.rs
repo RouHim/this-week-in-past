@@ -1,11 +1,9 @@
 use std::fmt::{Display, Formatter};
-use std::io::{BufReader, Cursor};
 use std::str::FromStr;
 
 use chrono::NaiveDateTime;
-use exif::Reader;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reqwest::blocking::Body;
+use reqwest::blocking::{Body, Response};
 use reqwest::Method;
 use roxmltree::{Document, Node};
 use serde::{Deserialize, Serialize};
@@ -77,17 +75,11 @@ impl Display for Location {
 }
 
 impl WebDavClient {
-    pub fn build_resource_url(&self, resource_path: &String) -> String {
-        format!("{}{}", self.base_url, resource_path)
-    }
-
-    pub fn request_resource_data(&self, url: String) -> Vec<u8> {
+    pub fn request_resource_data(&self, url: String) -> Response {
         self.http_client.request(Method::GET, url)
             .basic_auth(&self.username, Some(&self.password))
             .send()
             .unwrap()
-            .bytes().unwrap()
-            .to_vec()
     }
 
     pub fn list_all_resources(&self) -> Vec<WebDavResource> {

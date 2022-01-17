@@ -1,11 +1,12 @@
-use std::io::{BufReader, Cursor};
+use std::io::{BufReader, Cursor, Read};
+use std::time::Instant;
 
 use chrono::{NaiveDate, NaiveDateTime};
 use exif::{Exif, In, Reader, Tag};
 
 use crate::{WebDavClient, WebDavResource};
 
-pub fn get_exif_date(exif_data: Exif, path: &String) -> Option<NaiveDateTime> {
+pub fn get_exif_date(exif_data: Exif) -> Option<NaiveDateTime> {
     let mut exif_date: Option<NaiveDateTime> = detect_exif_date(
         vec![Tag::DateTime, Tag::DateTimeOriginal, Tag::DateTimeDigitized],
         &exif_data,
@@ -55,29 +56,46 @@ fn parse_exit_date(date: String) -> Option<NaiveDateTime> {
     return Some(result.unwrap());
 }
 
-pub fn load_exif(resource_data: Vec<u8>) -> Option<Exif> {
-    let cursor = Cursor::new(resource_data);
-    let mut buf_reader = BufReader::new(cursor);
-    let maybe_exif = Reader::new()
-        .read_from_container(&mut buf_reader);
+pub fn load_exif(web_dav_client: &WebDavClient, resource: &WebDavResource) -> Option<Exif> {
+    let s = Instant::now();
+
+    // Build the resource url and request data pointer
+    let resource_url = format!("{}{}", web_dav_client.base_url, &resource.path);
+    let mut response = web_dav_client.request_resource_data(resource_url);
+
+    // If there is no content-length there might be something broken, exit here.
+    let content_length = response.content_length();
+    if content_length.is_none() {
+        return None;
+    }
+
+    // Just read the very first bytes of the resource that very likely contains the exif data
+    let buf_length = content_length.unwrap() as f32 * 0.004;
+    let mut data_buffer = vec![0; buf_length as usize];
+    response.read_exact(&mut data_buffer).unwrap();
+    let mut buf_reader = BufReader::new(
+        Cursor::new(data_buffer)
+    );
+
+    // Read the exif metadata
+    let maybe_exif = Reader::new().read_from_container(&mut buf_reader);
+
+    println!("Done reading exif in {}ms!", s.elapsed().as_millis());
     maybe_exif.ok()
 }
 
 pub fn fill_exif_data(web_dav_client: &WebDavClient, resource: &WebDavResource) -> WebDavResource {
     let mut augmented_resource = resource.clone();
 
-    let resource_url = web_dav_client.build_resource_url(&resource.path);
-    let photo_data = web_dav_client.request_resource_data(resource_url);
-
-    let exif_data = load_exif(photo_data);
+    let exif_data = load_exif(web_dav_client, resource);
 
     let taken_date: Option<NaiveDateTime> = detect_taken_date(exif_data, &resource.path);
-
     if taken_date.is_none() {
-        println!("no date found for: {}", &resource.path)
+        println!("No date found for: {}", &resource.path)
     }
-
     augmented_resource.taken = taken_date;
+
+    // TODO: parse location
 
     return augmented_resource;
 }
@@ -86,7 +104,7 @@ fn detect_taken_date(exif_data: Option<Exif>, resource_path: &String) -> Option<
     let mut taken_date = None;
 
     if exif_data.is_some() {
-        taken_date = get_exif_date(exif_data.unwrap(), resource_path);
+        taken_date = get_exif_date(exif_data.unwrap());
     }
 
     if taken_date.is_none() {

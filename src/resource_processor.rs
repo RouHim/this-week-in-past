@@ -1,12 +1,12 @@
 use evmap::ReadHandle;
 
-use crate::{WebDavClient, WebDavResource};
+use crate::WebDavResource;
 
 pub fn md5(string: &String) -> String {
     format!("{:x}", md5::compute(string.as_bytes()))
 }
 
-pub fn get_this_week_in_past(web_dav_client: &WebDavClient, kv_reader: &ReadHandle<String, String>) -> Vec<String> {
+pub fn get_this_week_in_past(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
     kv_reader
         .read().unwrap()
         .iter()

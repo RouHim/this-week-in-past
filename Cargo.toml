@@ -1,6 +1,3 @@
-# Enable strip feature
-cargo-features = ["strip"]
-
 [package]
 name = "this-week-in-past"
 version = "0.1.0"
