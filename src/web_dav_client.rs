@@ -1,75 +1,146 @@
 use std::fmt::{Display, Formatter};
+use std::io::{BufReader, Cursor};
 use std::str::FromStr;
 
 use chrono::NaiveDateTime;
+use exif::Reader;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reqwest::blocking::Body;
 use reqwest::Method;
 use roxmltree::{Document, Node};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+use crate::{exif_reader, resource_processor};
+
+#[derive(Clone)]
+pub struct WebDavClient {
+    pub username: String,
+    pub password: String,
+    pub base_url: String,
+    pub http_client: reqwest::blocking::Client,
+}
+
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+pub struct Location {
+    pub latitude: f32,
+    pub longitude: f32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WebDavResource {
+    pub id: String,
     pub path: String,
     pub content_type: String,
     pub name: String,
     pub content_length: u64,
     pub last_modified: NaiveDateTime,
-    pub e_tag: String,
+    pub taken: Option<NaiveDateTime>,
+    pub location: Option<Location>,
+}
+
+impl WebDavResource {
+    pub fn is_this_week(&self) -> bool {
+        // build get image stream
+        // read exif metadata
+        // filter for this week
+
+        return true;
+    }
 }
 
 impl Display for WebDavResource {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {} {} {} {} {} ",
+            "{} {} {} {} {} {} {:?} {:?}",
+            self.id,
             self.path,
             self.content_type,
             self.name,
             self.content_length,
             self.last_modified,
-            self.e_tag,
+            self.taken,
+            self.location,
         )
     }
 }
 
-pub fn fetch_all_resources() -> Vec<WebDavResource> {
-    let client = reqwest::blocking::Client::new();
-    let request_body = r#"
-    <?xml version="1.0" encoding="utf-8" ?>
-    <D:propfind xmlns:D="DAV:">
-            <D:allprop/>
-    </D:propfind>
-    "#;
-
-    let response = client.request(
-        Method::from_str("PROPFIND").unwrap(),
-        "https://photos.himmelstein.info/originals",
-    )
-        .basic_auth("admin", Some("hPjCqWh5#P8c*r9XijqE"))
-        .body(Body::from(request_body))
-        .send();
-
-    if response.is_err() {
-        return vec![];
+impl Display for Location {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[lat={} lon={}]",
+            self.latitude,
+            self.longitude,
+        )
     }
-
-    let response_body = response.unwrap()
-        .text().unwrap();
-
-    return parse_propfind_result(response_body);
 }
 
-fn parse_propfind_result(xml: String) -> Vec<WebDavResource> {
+impl WebDavClient {
+    pub fn build_resource_url(&self, resource_path: &String) -> String {
+        format!("{}{}", self.base_url, resource_path)
+    }
+
+    pub fn request_resource_data(&self, url: String) -> Vec<u8> {
+        self.http_client.request(Method::GET, url)
+            .basic_auth(&self.username, Some(&self.password))
+            .send()
+            .unwrap()
+            .bytes().unwrap()
+            .to_vec()
+    }
+
+    pub fn list_all_resources(&self) -> Vec<WebDavResource> {
+        let body = r#"<?xml version="1.0" encoding="utf-8" ?>
+            <D:propfind xmlns:D="DAV:">
+                <D:allprop/>
+            </D:propfind>
+        "#;
+
+        let response = self.http_client.request(
+            Method::from_str("PROPFIND").unwrap(),
+            format!("{}/originals", self.base_url),
+        )
+            .basic_auth(&self.username, Some(&self.password))
+            .body(Body::from(body))
+            .send();
+
+        if response.is_err() {
+            return vec![];
+        }
+
+        let response_body = response.unwrap()
+            .text().unwrap();
+
+        return parse_propfind_result(self, response_body);
+    }
+}
+
+pub fn new(base_url: &str, username: &str, password: &str) -> WebDavClient {
+    return WebDavClient {
+        username: username.to_string(),
+        password: password.to_string(),
+        base_url: base_url.to_string(),
+        http_client: reqwest::blocking::Client::new(),
+    };
+}
+
+fn parse_propfind_result(web_dav_client: &WebDavClient, xml: String) -> Vec<WebDavResource> {
     let doc = Document::parse(&xml).unwrap();
     let multi_status = doc.descendants()
         .find(|node| node.tag_name().name().eq("multistatus"))
         .unwrap();
 
-    multi_status.descendants()
+    let xml_nodes: Vec<WebDavResource> = multi_status.descendants()
         .filter(|node| node.tag_name().name().eq("response"))
         .filter_map(|response_node| parse_resource_node(response_node))
+        .collect();
+
+    xml_nodes.par_iter()
         // TODO: allow all type of media and convert on get, to an image
         .filter(|resource| resource.content_type.eq("image/jpeg"))
+        .filter(|resource| !resource.path.contains("thumbnail"))
+        .map(|resource| exif_reader::fill_exif_data(web_dav_client, resource))
         .collect()
 }
 
@@ -103,6 +174,7 @@ fn parse_resource_node(response_node: Node) -> Option<WebDavResource> {
     }
 
     Some(WebDavResource {
+        id: resource_processor::md5(&path.unwrap().text().unwrap().to_string()),
         path: path.unwrap().text().unwrap().to_string(),
         content_type: content_type.unwrap().text().unwrap().to_string(),
         name: name.unwrap().text().unwrap().to_string(),
@@ -111,6 +183,7 @@ fn parse_resource_node(response_node: Node) -> Option<WebDavResource> {
             last_modified.unwrap().text().unwrap(),
             "%a, %d %h %Y %T %Z",
         ).unwrap(),
-        e_tag: e_tag.unwrap().text().unwrap().to_string(),
+        taken: None,
+        location: None,
     })
 }
