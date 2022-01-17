@@ -33,5 +33,5 @@ pub fn fetch_resources(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<
     };
     kv_writer.refresh();
 
-    println!("Job done in {}ms!", s.elapsed().as_millis());
+    println!("Job done in {}s!", s.elapsed().as_secs());
 }

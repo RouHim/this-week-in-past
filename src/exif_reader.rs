@@ -80,7 +80,6 @@ pub fn load_exif(web_dav_client: &WebDavClient, resource: &WebDavResource) -> Op
     // Read the exif metadata
     let maybe_exif = Reader::new().read_from_container(&mut buf_reader);
 
-    println!("Done reading exif in {}ms!", s.elapsed().as_millis());
     maybe_exif.ok()
 }
 
