@@ -42,7 +42,6 @@ fn dms_to_dd(dms_string: &str) -> Option<f32> {
     } else if let Some(pattern_match) = dms_pattern_2_match {
         parse_pattern_2(pattern_match)
     } else {
-        println!("Could not parse location: {}", dms_string);
         None
     }
 }

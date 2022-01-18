@@ -88,10 +88,6 @@ pub fn fill_exif_data(web_dav_client: &WebDavClient, resource: &WebDavResource) 
     if let Some(exif_data) = maybe_exif_data {
         taken_date = get_exif_date(&exif_data);
         location = detect_location(&exif_data);
-
-        if location.is_none() {
-            println!("No location found for: {}", &resource.path)
-        }
     }
 
     if taken_date.is_none() {
