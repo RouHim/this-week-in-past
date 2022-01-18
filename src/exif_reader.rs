@@ -1,26 +1,22 @@
 use std::io::{BufReader, Cursor, Read};
-use std::time::Instant;
 
 use chrono::{NaiveDate, NaiveDateTime};
 use exif::{Exif, In, Reader, Tag};
 
-use crate::{WebDavClient, WebDavResource};
+use crate::{geo_location, WebDavClient, WebDavResource};
+use crate::geo_location::GeoLocation;
 
-pub fn get_exif_date(exif_data: Exif) -> Option<NaiveDateTime> {
+pub fn get_exif_date(exif_data: &Exif) -> Option<NaiveDateTime> {
     let mut exif_date: Option<NaiveDateTime> = detect_exif_date(
         vec![Tag::DateTime, Tag::DateTimeOriginal, Tag::DateTimeDigitized],
-        &exif_data,
+        exif_data,
     );
 
     if exif_date.is_none() {
-        exif_date = get_gps_date(&exif_data);
+        exif_date = get_gps_date(exif_data);
     };
 
-    if exif_date.is_none() {
-        return None;
-    };
-
-    return exif_date;
+    exif_date
 }
 
 fn get_gps_date(exif_data: &Exif) -> Option<NaiveDateTime> {
@@ -38,8 +34,8 @@ fn detect_exif_date(tags_to_evaluate: Vec<Tag>, exif_data: &Exif) -> Option<Naiv
         .filter_map(|exif_date| parse_exit_date(exif_date.display_value().to_string()))
         .collect();
 
-    if exit_dates.len() > 0 {
-        Some(exit_dates.first().unwrap().clone())
+    if !exit_dates.is_empty() {
+        Some(*exit_dates.first().unwrap())
     } else {
         None
     }
@@ -53,21 +49,19 @@ fn parse_exit_date(date: String) -> Option<NaiveDateTime> {
         return None;
     };
 
-    return Some(result.unwrap());
+    Some(result.unwrap())
 }
 
 pub fn load_exif(web_dav_client: &WebDavClient, resource: &WebDavResource) -> Option<Exif> {
-    let s = Instant::now();
-
     // Build the resource url and request data pointer
     let resource_url = format!("{}{}", web_dav_client.base_url, &resource.path);
     let mut response = web_dav_client.request_resource_data(resource_url);
 
     // If there is no content-length there might be something broken, exit here.
     let content_length = response.content_length();
-    if content_length.is_none() {
-        return None;
-    }
+
+    // Return none if not present
+    content_length?;
 
     // Just read the very first bytes of the resource that very likely contains the exif data
     let buf_length = content_length.unwrap() as f32 * 0.004;
@@ -86,40 +80,51 @@ pub fn load_exif(web_dav_client: &WebDavClient, resource: &WebDavResource) -> Op
 pub fn fill_exif_data(web_dav_client: &WebDavClient, resource: &WebDavResource) -> WebDavResource {
     let mut augmented_resource = resource.clone();
 
-    let exif_data = load_exif(web_dav_client, resource);
+    let maybe_exif_data = load_exif(web_dav_client, resource);
 
-    let taken_date: Option<NaiveDateTime> = detect_taken_date(exif_data, &resource.path);
-    if taken_date.is_none() {
-        println!("No date found for: {}", &resource.path)
-    }
-    augmented_resource.taken = taken_date;
-
-    // TODO: parse location
-
-    return augmented_resource;
-}
-
-fn detect_taken_date(exif_data: Option<Exif>, resource_path: &String) -> Option<NaiveDateTime> {
     let mut taken_date = None;
+    let mut location = None;
 
-    if exif_data.is_some() {
-        taken_date = get_exif_date(exif_data.unwrap());
+    if let Some(exif_data) = maybe_exif_data {
+        taken_date = get_exif_date(&exif_data);
+        location = detect_location(&exif_data);
+
+        if location.is_none() {
+            println!("No location found for: {}", &resource.path)
+        }
     }
 
     if taken_date.is_none() {
-        taken_date = detect_date_by_name(resource_path);
+        taken_date = detect_date_by_name(&resource.path);
     }
 
-    return taken_date;
+    augmented_resource.taken = taken_date;
+    augmented_resource.location = location;
+
+    augmented_resource
 }
 
-fn detect_date_by_name(resource_path: &String) -> Option<NaiveDateTime> {
+fn detect_location(exif_data: &Exif) -> Option<GeoLocation> {
+    let maybe_latitude = exif_data.get_field(Tag::GPSLatitude, In::PRIMARY);
+    let maybe_longitude = exif_data.get_field(Tag::GPSLongitude, In::PRIMARY);
+
+    if let (Some(latitude), Some(longitude)) = (maybe_latitude, maybe_longitude) {
+        return geo_location::from_degrees_minutes_seconds(
+            latitude.display_value().to_string(),
+            longitude.display_value().to_string(),
+        );
+    }
+
+    None
+}
+
+fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {
     let parsed: Vec<NaiveDate> = resource_path
-        .replace("/", "_")
-        .replace(" ", "_")
+        .replace('/', "_")
+        .replace(' ', "_")
         .split('_')
         .into_iter()
-        .filter_map(|shard| parse_from_str(shard))
+        .filter_map(parse_from_str)
         .collect();
 
     if parsed.is_empty() {

@@ -18,6 +18,7 @@ evmap = "10"
 clokwerk = "0.3"
 kamadak-exif = "0.5"
 rayon = "1.5"
+regex = "1.5"
 
 # Strip debug symbols in release mode
 [profile.release]

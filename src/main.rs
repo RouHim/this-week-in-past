@@ -10,6 +10,7 @@ mod scheduler;
 mod web_dav_client;
 mod resource_processor;
 mod exif_reader;
+mod geo_location;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -56,7 +57,7 @@ async fn main() -> std::io::Result<()> {
     scheduler_handle.stop();
 
     // Done, let's get out here
-    return http_server_result;
+    http_server_result
 }
 
 async fn api_resources_handler(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {

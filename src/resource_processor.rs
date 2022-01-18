@@ -2,7 +2,7 @@ use evmap::ReadHandle;
 
 use crate::WebDavResource;
 
-pub fn md5(string: &String) -> String {
+pub fn md5(string: &str) -> String {
     format!("{:x}", md5::compute(string.as_bytes()))
 }
 

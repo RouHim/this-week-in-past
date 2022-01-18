@@ -8,8 +8,14 @@ use crate::web_dav_client::WebDavClient;
 
 pub fn initialize(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>) -> ScheduleHandle {
     let mut scheduler = Scheduler::new();
-    scheduler.every(1.day()).at("00:00:00").run(move || fetch_resources(web_dav_client.clone(), kv_writer_mutex.clone()));
-    scheduler.watch_thread(Duration::from_millis(100))
+
+    // Fetch webdav resources at midnight
+    scheduler.every(1.day()).at("13:06").run(
+        move || fetch_resources(web_dav_client.clone(), kv_writer_mutex.clone())
+    );
+
+    // Check the thread every minute
+    scheduler.watch_thread(Duration::from_secs(60))
 }
 
 pub fn fetch_resources(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>) {

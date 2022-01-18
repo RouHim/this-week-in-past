@@ -9,6 +9,7 @@ use roxmltree::{Document, Node};
 use serde::{Deserialize, Serialize};
 
 use crate::{exif_reader, resource_processor};
+use crate::geo_location::GeoLocation;
 
 #[derive(Clone)]
 pub struct WebDavClient {
@@ -16,12 +17,6 @@ pub struct WebDavClient {
     pub password: String,
     pub base_url: String,
     pub http_client: reqwest::blocking::Client,
-}
-
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
-pub struct Location {
-    pub latitude: f32,
-    pub longitude: f32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -33,7 +28,7 @@ pub struct WebDavResource {
     pub content_length: u64,
     pub last_modified: NaiveDateTime,
     pub taken: Option<NaiveDateTime>,
-    pub location: Option<Location>,
+    pub location: Option<GeoLocation>,
 }
 
 impl WebDavResource {
@@ -59,17 +54,6 @@ impl Display for WebDavResource {
             self.last_modified,
             self.taken,
             self.location,
-        )
-    }
-}
-
-impl Display for Location {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "[lat={} lon={}]",
-            self.latitude,
-            self.longitude,
         )
     }
 }
@@ -104,17 +88,17 @@ impl WebDavClient {
         let response_body = response.unwrap()
             .text().unwrap();
 
-        return parse_propfind_result(self, response_body);
+        parse_propfind_result(self, response_body)
     }
 }
 
 pub fn new(base_url: &str, username: &str, password: &str) -> WebDavClient {
-    return WebDavClient {
+    WebDavClient {
         username: username.to_string(),
         password: password.to_string(),
         base_url: base_url.to_string(),
         http_client: reqwest::blocking::Client::new(),
-    };
+    }
 }
 
 fn parse_propfind_result(web_dav_client: &WebDavClient, xml: String) -> Vec<WebDavResource> {
@@ -125,7 +109,7 @@ fn parse_propfind_result(web_dav_client: &WebDavClient, xml: String) -> Vec<WebD
 
     let xml_nodes: Vec<WebDavResource> = multi_status.descendants()
         .filter(|node| node.tag_name().name().eq("response"))
-        .filter_map(|response_node| parse_resource_node(response_node))
+        .filter_map(parse_resource_node)
         .collect();
 
     xml_nodes.par_iter()
@@ -166,7 +150,7 @@ fn parse_resource_node(response_node: Node) -> Option<WebDavResource> {
     }
 
     Some(WebDavResource {
-        id: resource_processor::md5(&path.unwrap().text().unwrap().to_string()),
+        id: resource_processor::md5(path.unwrap().text().unwrap()),
         path: path.unwrap().text().unwrap().to_string(),
         content_type: content_type.unwrap().text().unwrap().to_string(),
         name: name.unwrap().text().unwrap().to_string(),

@@ -1938,6 +1938,7 @@ dependencies = [
  "lazy_static",
  "md5",
  "rayon",
+ "regex",
  "reqwest",
  "roxmltree",
  "serde",
