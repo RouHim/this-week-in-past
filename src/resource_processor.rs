@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use evmap::ReadHandle;
 
 use crate::WebDavResource;
@@ -24,9 +25,15 @@ pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
 }
 
 pub fn build_display_value(resource: WebDavResource) -> String {
-    if let (taken_date) = resource.taken {
-        //TODO
+    let mut display_value: String = String::new();
+
+    if let Some(taken_date) = resource.taken {
+        display_value.push_str(taken_date.date().format("%Y-%m-%d").to_string().as_str());
     }
 
-    return "".to_string();
+    if let Some(location) = resource.location {
+
+    }
+
+    return display_value;
 }
