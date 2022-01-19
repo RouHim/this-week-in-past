@@ -643,6 +643,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "exif"
+version = "0.5.4"
+source = "git+https://github.com/RouHim/exif-rs?rev=1334172dc3c3d48a159619c7f1b1b952764ec530#1334172dc3c3d48a159619c7f1b1b952764ec530"
+dependencies = [
+ "mutate_once",
+]
+
+[[package]]
 name = "fastrand"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1044,15 +1052,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7cc9ffccd38c451a86bf13657df244e9c3f37493cce8e5e21e940963777acc84"
 dependencies = [
  "wasm-bindgen",
-]
-
-[[package]]
-name = "kamadak-exif"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70494964492bf8e491eb3951c5d70c9627eb7100ede6cc56d748b9a3f302cfb6"
-dependencies = [
- "mutate_once",
 ]
 
 [[package]]
@@ -1934,7 +1933,7 @@ dependencies = [
  "chrono",
  "clokwerk",
  "evmap",
- "kamadak-exif",
+ "exif",
  "lazy_static",
  "md5",
  "rayon",

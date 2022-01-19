@@ -1,5 +1,3 @@
-use std::io::{BufReader, Cursor, Read};
-
 use chrono::{NaiveDate, NaiveDateTime};
 use exif::{Exif, In, Reader, Tag};
 
@@ -53,28 +51,12 @@ fn parse_exit_date(date: String) -> Option<NaiveDateTime> {
 }
 
 pub fn load_exif(web_dav_client: &WebDavClient, resource: &WebDavResource) -> Option<Exif> {
-    // Build the resource url and request data pointer
+    // Build the resource url and request resource data response
     let resource_url = format!("{}{}", web_dav_client.base_url, &resource.path);
     let mut response = web_dav_client.request_resource_data(resource_url);
 
-    // If there is no content-length there might be something broken, exit here.
-    let content_length = response.content_length();
-
-    // Return none if not present
-    content_length?;
-
-    // Just read the very first bytes of the resource that very likely contains the exif data
-    let buf_length = content_length.unwrap() as f32 * 0.004;
-    let mut data_buffer = vec![0; buf_length as usize];
-    response.read_exact(&mut data_buffer).unwrap();
-    let mut buf_reader = BufReader::new(
-        Cursor::new(data_buffer)
-    );
-
     // Read the exif metadata
-    let maybe_exif = Reader::new().read_from_container(&mut buf_reader);
-
-    maybe_exif.ok()
+    Reader::new().from_reader(&mut response).ok()
 }
 
 pub fn fill_exif_data(web_dav_client: &WebDavClient, resource: &WebDavResource) -> WebDavResource {
