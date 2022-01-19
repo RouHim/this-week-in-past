@@ -51,9 +51,8 @@ fn parse_exit_date(date: String) -> Option<NaiveDateTime> {
 }
 
 pub fn load_exif(web_dav_client: &WebDavClient, resource: &WebDavResource) -> Option<Exif> {
-    // Build the resource url and request resource data response
-    let resource_url = format!("{}{}", web_dav_client.base_url, &resource.path);
-    let mut response = web_dav_client.request_resource_data(resource_url);
+    // Build the resource url and request resource data response    
+    let mut response = web_dav_client.request_resource_data(resource);
 
     // Read the exif metadata
     Reader::new().from_reader(&mut response).ok()

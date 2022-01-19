@@ -59,8 +59,9 @@ impl Display for WebDavResource {
 }
 
 impl WebDavClient {
-    pub fn request_resource_data(&self, url: String) -> Response {
-        self.http_client.request(Method::GET, url)
+    pub fn request_resource_data(&self, resource: &WebDavResource) -> Response {
+        let resource_url = format!("{}{}", self.base_url, &resource.path);
+        self.http_client.request(Method::GET, resource_url)
             .basic_auth(&self.username, Some(&self.password))
             .send()
             .unwrap()

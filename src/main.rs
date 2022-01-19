@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use actix_files::Files;
-use actix_web::{App, HttpResponse, HttpServer, middleware, web};
+use actix_web::{App, get, HttpResponse, HttpServer, middleware, web};
 use evmap::ReadHandle;
 
 use crate::web_dav_client::{WebDavClient, WebDavResource};
@@ -39,14 +39,18 @@ async fn main() -> std::io::Result<()> {
     );
 
     // Run the actual web server and hold the main thread here
+    println!("Launching webserver 🚀");
     let http_server_result = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(kv_reader.clone()))
-            .data(web::Data::new(web_dav_client.clone()))
+            .data(web_dav_client.clone())
             .wrap(middleware::Logger::default()) // enable logger
-            .route("/api/resources", web::get().to(api_resources_handler))
-            // .route("/api/resources/{resources-id}", web::get().to(api_get_resource_handler))
-            // .route("/api/resources/{resources-id}/metadata", web::post().to(api_get_resource_metadata_handler))
+            .service(
+                web::scope("/api/resources")
+                    .service(list_resources)
+                    .service(get_resource)
+                    .service(get_resource_metadata)
+            )
             .service(Files::new("/", "./static/").index_file("index.html"))
     })
         .bind("0.0.0.0:8080")?
@@ -60,11 +64,37 @@ async fn main() -> std::io::Result<()> {
     http_server_result
 }
 
-async fn api_resources_handler(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
+#[get("")]
+async fn list_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
     let keys: Vec<String> = resource_processor::get_this_week_in_past(kv_reader.as_ref());
 
     HttpResponse::Ok()
         .content_type("application/json")
         .body(serde_json::to_string(&keys).unwrap())
+}
+
+#[get("{resource_id}")]
+async fn get_resource(resources_id: web::Path<String>, kv_reader: web::Data<ReadHandle<String, String>>, web_dav_client: web::Data<WebDavClient>) -> HttpResponse {
+    println!("requesting resource with id: {}", resources_id);
+
+    let guard = kv_reader.get(resources_id.as_str()).unwrap();
+    let web_dav_resource: WebDavResource = serde_json::from_str(guard.get_one().unwrap()).unwrap();
+    let response_data = web_dav_client.request_resource_data(&web_dav_resource).bytes().unwrap();
+
+    HttpResponse::Ok()
+        .content_type(web_dav_resource.content_type)
+        .body(response_data.to_vec())
+}
+
+#[get("{resource_id}/metadata")]
+async fn get_resource_metadata(resources_id: web::Path<String>, kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
+    println!("requesting resource with id: {}", resources_id);
+
+    let guard = kv_reader.get(resources_id.as_str()).unwrap();
+    let data = guard.get_one().unwrap();
+
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(data)
 }
 

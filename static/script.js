@@ -1,4 +1,4 @@
-let images;
+let resources;
 let currentIndex = 0;
 let maxIndex = 0;
 
@@ -8,12 +8,12 @@ window.onload = () => {
 
 function slideshowTick() {
     let photoDataRequest = new XMLHttpRequest();
-    photoDataRequest.open("GET", window.location.href + "api/photos/" + images[currentIndex]);
+    photoDataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex]);
     photoDataRequest.send();
     photoDataRequest.onload = () => document.getElementById("slideshow-image").src = photoDataRequest.response;
 
     let photoMetadataRequest = new XMLHttpRequest();
-    photoMetadataRequest.open("GET", window.location.href + "api/photos/" + images[currentIndex] + "/metadata");
+    photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex] + "/metadata");
     photoMetadataRequest.send();
     photoMetadataRequest.onload = () => document.getElementById("slideshow-metadata").innerText = photoMetadataRequest.response;
 
@@ -24,8 +24,8 @@ function slideshowTick() {
 }
 
 function startSlideshow(response) {
-    images = response;
-    maxIndex = Object.keys(images).length - 1;
+    resources = response;
+    maxIndex = Object.keys(resources).length - 1;
     slideshowTick();
 
     // Tick every 10 seconds
@@ -37,7 +37,7 @@ function startSlideshow(response) {
 
 function loadAvailableImages() {
     const http = new XMLHttpRequest();
-    http.open("GET", window.location.href + "api/photos");
+    http.open("GET", window.location.href + "api/resources");
     http.send();
     http.responseType = "json"
     http.onload = () => startSlideshow(http.response);
