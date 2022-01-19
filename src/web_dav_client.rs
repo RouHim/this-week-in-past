@@ -33,7 +33,7 @@ pub struct WebDavResource {
 
 impl WebDavResource {
     pub fn is_this_week(&self) -> bool {
-        // build get image stream
+        // TODO: build get image stream
         // read exif metadata
         // filter for this week
 

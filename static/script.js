@@ -13,7 +13,7 @@ function slideshowTick() {
     photoDataRequest.onload = () => document.getElementById("slideshow-image").src = photoDataRequest.response;
 
     let photoMetadataRequest = new XMLHttpRequest();
-    photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex] + "/metadata");
+    photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex] + "/display");
     photoMetadataRequest.send();
     photoMetadataRequest.onload = () => document.getElementById("slideshow-metadata").innerText = photoMetadataRequest.response;
 

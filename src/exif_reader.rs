@@ -40,18 +40,11 @@ fn detect_exif_date(tags_to_evaluate: Vec<Tag>, exif_data: &Exif) -> Option<Naiv
 }
 
 fn parse_exit_date(date: String) -> Option<NaiveDateTime> {
-    let result = NaiveDateTime::parse_from_str(date.as_str(), "%F %T");
-
-    if result.is_err() {
-        println!("broken date format: {date}");
-        return None;
-    };
-
-    Some(result.unwrap())
+    NaiveDateTime::parse_from_str(date.as_str(), "%F %T").ok()
 }
 
 pub fn load_exif(web_dav_client: &WebDavClient, resource: &WebDavResource) -> Option<Exif> {
-    // Build the resource url and request resource data response    
+    // Build the resource url and request resource data response
     let mut response = web_dav_client.request_resource_data(resource);
 
     // Read the exif metadata

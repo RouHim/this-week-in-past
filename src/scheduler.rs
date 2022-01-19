@@ -27,7 +27,7 @@ pub fn fetch_resources(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<
     println!("Purging kv store");
     kv_writer.purge();
 
-    println!("Fetching resources from webdav");
+    println!("Fetching resources from webdav...");
     let resources = web_dav_client.list_all_resources();
 
     println!("Storing {} items", resources.len());

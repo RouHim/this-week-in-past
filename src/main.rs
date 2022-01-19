@@ -48,8 +48,10 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api/resources")
                     .service(list_resources)
+                    .service(list_this_week_resources)
                     .service(get_resource)
                     .service(get_resource_metadata)
+                    .service(get_resource_metadata_display)
             )
             .service(Files::new("/", "./static/").index_file("index.html"))
     })
@@ -66,6 +68,15 @@ async fn main() -> std::io::Result<()> {
 
 #[get("")]
 async fn list_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
+    let keys: Vec<String> = resource_processor::get_all(kv_reader.as_ref());
+
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(serde_json::to_string(&keys).unwrap())
+}
+
+#[get("today")]
+async fn list_this_week_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
     let keys: Vec<String> = resource_processor::get_this_week_in_past(kv_reader.as_ref());
 
     HttpResponse::Ok()
@@ -96,5 +107,18 @@ async fn get_resource_metadata(resources_id: web::Path<String>, kv_reader: web::
     HttpResponse::Ok()
         .content_type("application/json")
         .body(data)
+}
+
+#[get("{resource_id}/display")]
+async fn get_resource_metadata_display(resources_id: web::Path<String>, kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
+    println!("requesting resource with id: {}", resources_id);
+
+    let guard = kv_reader.get(resources_id.as_str()).unwrap();
+    let web_dav_resource: WebDavResource = serde_json::from_str(guard.get_one().unwrap()).unwrap();
+    let display_value = resource_processor::build_display_value(web_dav_resource);
+
+    HttpResponse::Ok()
+        .content_type("plain/text")
+        .body(display_value)
 }
 
