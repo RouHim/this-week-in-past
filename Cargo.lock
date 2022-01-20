@@ -1930,6 +1930,7 @@ dependencies = [
  "actix-files",
  "actix-http",
  "actix-web",
+ "base64",
  "chrono",
  "clokwerk",
  "evmap",

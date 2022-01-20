@@ -19,6 +19,7 @@ clokwerk = "0.3"
 exif = { git = "https://github.com/RouHim/exif-rs", rev = "1334172dc3c3d48a159619c7f1b1b952764ec530" }
 rayon = "1.5"
 regex = "1.5"
+base64 = "0.13"
 
 # Strip debug symbols in release mode
 [profile.release]

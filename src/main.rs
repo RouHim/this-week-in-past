@@ -50,6 +50,7 @@ async fn main() -> std::io::Result<()> {
                     .service(list_resources)
                     .service(list_this_week_resources)
                     .service(get_resource)
+                    .service(get_resource_base64)
                     .service(get_resource_metadata)
                     .service(get_resource_metadata_display)
             )
@@ -86,39 +87,65 @@ async fn list_this_week_resources(kv_reader: web::Data<ReadHandle<String, String
 
 #[get("{resource_id}")]
 async fn get_resource(resources_id: web::Path<String>, kv_reader: web::Data<ReadHandle<String, String>>, web_dav_client: web::Data<WebDavClient>) -> HttpResponse {
-    println!("requesting resource with id: {}", resources_id);
+    let resource_data = kv_reader.get_one(resources_id.as_str())
+        .map(|value| value.to_string())
+        .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok())
+        .and_then(|web_dav_resource| web_dav_client.request_resource_data(&web_dav_resource).bytes().ok());
 
-    let guard = kv_reader.get(resources_id.as_str()).unwrap();
-    let web_dav_resource: WebDavResource = serde_json::from_str(guard.get_one().unwrap()).unwrap();
-    let response_data = web_dav_client.request_resource_data(&web_dav_resource).bytes().unwrap();
+    if let Some(resource_data) = resource_data {
+        HttpResponse::Ok()
+            .content_type("image/jpeg")
+            .body(resource_data.to_vec())
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
+}
 
-    HttpResponse::Ok()
-        .content_type(web_dav_resource.content_type)
-        .body(response_data.to_vec())
+#[get("{resource_id}/base64")]
+async fn get_resource_base64(resources_id: web::Path<String>, kv_reader: web::Data<ReadHandle<String, String>>, web_dav_client: web::Data<WebDavClient>) -> HttpResponse {
+    let base64_image = kv_reader.get_one(resources_id.as_str())
+        .map(|value| value.to_string())
+        .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok())
+        .and_then(|web_dav_resource| web_dav_client.request_resource_data(&web_dav_resource).bytes().ok())
+        .map(|resource_data| base64::encode(&resource_data))
+        .map(|base64_string| format!("data:image/jpeg;base64,{}", base64_string));
+
+    if let Some(base64_image) = base64_image {
+        HttpResponse::Ok()
+            .content_type("plain/text")
+            .body(base64_image)
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
 }
 
 #[get("{resource_id}/metadata")]
 async fn get_resource_metadata(resources_id: web::Path<String>, kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
-    println!("requesting resource with id: {}", resources_id);
+    let metadata = kv_reader.get_one(resources_id.as_str())
+        .map(|value| value.to_string());
 
-    let guard = kv_reader.get(resources_id.as_str()).unwrap();
-    let data = guard.get_one().unwrap();
-
-    HttpResponse::Ok()
-        .content_type("application/json")
-        .body(data)
+    if let Some(metadata) = metadata {
+        HttpResponse::Ok()
+            .content_type("application/json")
+            .body(metadata)
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
 }
 
 #[get("{resource_id}/display")]
 async fn get_resource_metadata_display(resources_id: web::Path<String>, kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
-    println!("requesting resource with id: {}", resources_id);
+    let display_value = kv_reader.get_one(resources_id.as_str())
+        .map(|value| value.to_string())
+        .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok())
+        .map(resource_processor::build_display_value);
 
-    let guard = kv_reader.get(resources_id.as_str()).unwrap();
-    let web_dav_resource: WebDavResource = serde_json::from_str(guard.get_one().unwrap()).unwrap();
-    let display_value = resource_processor::build_display_value(web_dav_resource);
-
-    HttpResponse::Ok()
-        .content_type("plain/text")
-        .body(display_value)
+    if let Some(display_value) = display_value {
+        HttpResponse::Ok()
+            .content_type("plain/text")
+            .body(display_value)
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
 }
 

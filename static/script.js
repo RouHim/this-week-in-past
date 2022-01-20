@@ -8,7 +8,7 @@ window.onload = () => {
 
 function slideshowTick() {
     let photoDataRequest = new XMLHttpRequest();
-    photoDataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex]);
+    photoDataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex] + "/base64");
     photoDataRequest.send();
     photoDataRequest.onload = () => document.getElementById("slideshow-image").src = photoDataRequest.response;
 
