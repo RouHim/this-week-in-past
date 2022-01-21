@@ -37,7 +37,7 @@ function startSlideshow(response) {
 
 function loadAvailableImages() {
     const http = new XMLHttpRequest();
-    http.open("GET", window.location.href + "api/resources");
+    http.open("GET", window.location.href + "api/resources/week");
     http.send();
     http.responseType = "json"
     http.onload = () => startSlideshow(http.response);

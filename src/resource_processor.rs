@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use evmap::ReadHandle;
+use serde_json::Value;
 
 use crate::geo_location::GeoLocation;
 use crate::WebDavResource;
@@ -45,18 +46,35 @@ pub fn build_display_value(resource: WebDavResource) -> String {
         display_value.push_str(city_name.as_str());
     }
 
-    display_value
+    display_value.trim().to_string()
 }
 
-fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
-    reqwest::blocking::get(format!(
+pub fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
+    let response_json = reqwest::blocking::get(format!(
         "https://api.bigdatacloud.net/data/reverse-geocode?latitude={}&longitude={}&localityLanguage=de&key={}",
         geo_location.latitude,
         geo_location.longitude,
         "6b8aad17eba7449d9d93c533359b0384",
     ))
         .and_then(|response| response.text()).ok()
-        .and_then(|json_string| serde_json::from_str::<HashMap<String, serde_json::Value>>(&json_string).ok())
-        .and_then(|json_data| json_data.get("city").map(|city| city.to_string()))
+        .and_then(|json_string| serde_json::from_str::<HashMap<String, serde_json::Value>>(&json_string).ok());
+
+    let mut city_name = response_json.as_ref()
+        .and_then(|json_data| get_string_value("city", json_data))
+        .filter(|city_name| !city_name.trim().is_empty());
+
+    if city_name.is_none() {
+        city_name = response_json.as_ref()
+            .and_then(|json_data| get_string_value("locality", json_data))
+            .filter(|city_name| !city_name.trim().is_empty());
+    }
+
+    city_name
+}
+
+fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Option<String> {
+    json_data.get(field_name)
+        .and_then(|field_value| field_value.as_str())
+        .map(|field_string_value| field_string_value.to_string())
 }
 

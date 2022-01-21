@@ -1,7 +1,8 @@
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
-use chrono::NaiveDateTime;
+use chrono::{Local, NaiveDateTime, TimeZone};
+use now::DateTimeNow;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reqwest::blocking::{Body, Response};
 use reqwest::Method;
@@ -33,11 +34,17 @@ pub struct WebDavResource {
 
 impl WebDavResource {
     pub fn is_this_week(&self) -> bool {
-        // TODO: build get image stream
-        // read exif metadata
-        // filter for this week
+        if self.taken.is_none() {
+            return false;
+        }
 
-        return true;
+        let current_date = Local::now();
+        let resource_date = Local.from_local_datetime(&self.taken.unwrap());
+
+        let current_week_of_year = current_date.week_of_year();
+        let resource_week_of_year = resource_date.unwrap().week_of_year();
+
+        current_week_of_year == resource_week_of_year
     }
 }
 

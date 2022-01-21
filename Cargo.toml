@@ -8,10 +8,11 @@ lazy_static = "1.4"
 serde = "1.0"
 serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
+now = "0.1"
 md5 = "0.7"
 reqwest = { version = "0.11", features = ["blocking"] }
 roxmltree = "0.14"
-actix-http = "2"
+actix-http = { version = "2" }
 actix-web = "3"
 actix-files = "0.5"
 evmap = "10"
@@ -20,6 +21,10 @@ exif = { git = "https://github.com/RouHim/exif-rs", rev = "1334172dc3c3d48a15961
 rayon = "1.5"
 regex = "1.5"
 base64 = "0.13"
+
+[dev-dependencies]
+assertor = "0.0"
+pretty_assertions = "0.7"
 
 # Strip debug symbols in release mode
 [profile.release]
