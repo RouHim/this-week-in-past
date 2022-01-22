@@ -8,12 +8,14 @@ window.onload = () => {
 
 function slideshowTick() {
     let photoDataRequest = new XMLHttpRequest();
-    photoDataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex] + "/base64");
+    photoDataRequest.open("GET",
+        `${window.location.href}api/resources/${resources[currentIndex]}/${window.screen.availWidth}/${window.screen.availHeight}/base64`
+    );
     photoDataRequest.send();
     photoDataRequest.onload = () => document.getElementById("slideshow-image").src = photoDataRequest.response;
 
     let photoMetadataRequest = new XMLHttpRequest();
-    photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex] + "/display");
+    photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex] + "/description");
     photoMetadataRequest.send();
     photoMetadataRequest.onload = () => document.getElementById("slideshow-metadata").innerText = photoMetadataRequest.response;
 

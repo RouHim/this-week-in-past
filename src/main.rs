@@ -1,3 +1,4 @@
+use std::env;
 use std::sync::{Arc, Mutex};
 
 use actix_files::Files;
@@ -11,18 +12,21 @@ mod resource_processor;
 mod exif_reader;
 mod geo_location;
 mod resource_endpoint;
+mod image_processor;
 
 #[cfg(test)]
 mod resource_processor_test;
+#[cfg(test)]
+mod image_processor_test;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Build webdav client
-    // TODO: use env vars
+
     let web_dav_client = web_dav_client::new(
-        "https://photos.himmelstein.info",
-        "admin",
-        "hPjCqWh5#P8c*r9XijqE",
+        env::var("TWIP_WEBDAV_BASE_URL").expect("TWIP_WEBDAV_BASE_URL is missing").as_str(),
+        env::var("TWIP_USERNAME").expect("TWIP_USERNAME is missing").as_str(),
+        env::var("TWIP_PASSWORD").expect("TWIP_PASSWORD is missing").as_str(),
     );
 
     // Initialize kv_store reader and writer
@@ -56,7 +60,7 @@ async fn main() -> std::io::Result<()> {
                     .service(resource_endpoint::get_resource)
                     .service(resource_endpoint::get_resource_base64)
                     .service(resource_endpoint::get_resource_metadata)
-                    .service(resource_endpoint::get_resource_metadata_display)
+                    .service(resource_endpoint::get_resource_metadata_description)
             )
             .service(Files::new("/", "./static/").index_file("index.html"))
     })

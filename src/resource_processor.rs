@@ -77,4 +77,3 @@ fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Opt
         .and_then(|field_value| field_value.as_str())
         .map(|field_string_value| field_string_value.to_string())
 }
-

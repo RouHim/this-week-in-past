@@ -21,6 +21,7 @@ exif = { git = "https://github.com/RouHim/exif-rs", rev = "1334172dc3c3d48a15961
 rayon = "1.5"
 regex = "1.5"
 base64 = "0.13"
+image = "0.23"
 
 [dev-dependencies]
 assertor = "0.0"

@@ -1,3 +1,4 @@
+use std::env;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
@@ -81,9 +82,12 @@ impl WebDavClient {
             </D:propfind>
         "#;
 
+        let sub_path = env::var("TWIP_WEBDAV_RESOURCE_LOCATION")
+            .expect("TWIP_WEBDAV_RESOURCE_LOCATION is missing");
+
         let response = self.http_client.request(
             Method::from_str("PROPFIND").unwrap(),
-            format!("{}/originals", self.base_url),
+            format!("{}{}", self.base_url, sub_path),
         )
             .basic_auth(&self.username, Some(&self.password))
             .body(Body::from(body))
