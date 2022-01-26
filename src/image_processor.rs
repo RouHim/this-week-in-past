@@ -3,20 +3,61 @@ use std::time::Instant;
 
 use image::imageops::FilterType;
 use image::io::Reader as ImageReader;
+use serde::{Deserialize, Serialize};
 
-pub fn scale(resource_data: Vec<u8>, display_width: u32, display_height: u32) -> Vec<u8> {
-    let img = ImageReader::new(Cursor::new(resource_data))
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+pub struct ImageOrientation {
+    pub rotation: u16,
+    pub mirror_vertically: bool,
+}
+
+/// Adjusts the image to fit optimal to the browser resolution
+/// Also fixes the orientation delivered by the exif image rotation
+/// src: https://sirv.com/help/articles/rotate-photos-to-be-upright/
+pub fn optimize_image(resource_data: Vec<u8>, display_width: u32, display_height: u32, image_orientation: Option<ImageOrientation>) -> Vec<u8> {
+    let mut s = Instant::now();
+
+    let original_image = ImageReader::new(Cursor::new(resource_data))
         .with_guessed_format().unwrap()
         .decode().unwrap();
+    println!("loading from memory {}s!", s.elapsed().as_millis());
+    s = Instant::now();
 
-    let resize = img.resize(
+    let resized = original_image.resize(
         display_width,
         display_height,
-        FilterType::Nearest
+        FilterType::Nearest,
     );
+    println!("Resize {}s!", s.elapsed().as_millis());
+    s = Instant::now();
+
+    let fixed_orientation = if let Some(orientation) = image_orientation {
+        let rotated = match orientation.rotation {
+            90 => resized.rotate90(),
+            180 => resized.rotate180(),
+            270 => resized.rotate270(),
+            _ => resized,
+        };
+        println!("rotation {:?}: {}s!", orientation.rotation, s.elapsed().as_millis());
+        s = Instant::now();
+
+        let mirrored = if orientation.mirror_vertically {
+            rotated.flipv()
+        } else {
+            rotated
+        };
+        println!("mirroring {}s!", s.elapsed().as_millis());
+        s = Instant::now();
+
+        mirrored
+    } else {
+        resized
+    };
 
     let mut bytes: Vec<u8> = Vec::new();
-    resize.write_to(&mut bytes, image::ImageOutputFormat::Png).unwrap();
+    fixed_orientation.write_to(&mut bytes, image::ImageOutputFormat::Png).unwrap();
+    println!("writing bytes {}s!", s.elapsed().as_millis());
+    println!("====!");
 
     bytes
 }

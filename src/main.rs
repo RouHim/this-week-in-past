@@ -72,6 +72,7 @@ async fn main() -> std::io::Result<()> {
     println!("Stopping Scheduler 🕐️");
     scheduler_handle.stop();
 
+    println!("Stopping Application 😵️");
     // Done, let's get out here
     http_server_result
 }

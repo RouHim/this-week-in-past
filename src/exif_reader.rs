@@ -3,6 +3,7 @@ use exif::{Exif, In, Reader, Tag};
 
 use crate::{geo_location, WebDavClient, WebDavResource};
 use crate::geo_location::GeoLocation;
+use crate::image_processor::ImageOrientation;
 
 pub fn get_exif_date(exif_data: &Exif) -> Option<NaiveDateTime> {
     let mut exif_date: Option<NaiveDateTime> = detect_exif_date(
@@ -58,10 +59,12 @@ pub fn fill_exif_data(web_dav_client: &WebDavClient, resource: &WebDavResource) 
 
     let mut taken_date = None;
     let mut location = None;
+    let mut orientation = None;
 
     if let Some(exif_data) = maybe_exif_data {
         taken_date = get_exif_date(&exif_data);
         location = detect_location(&exif_data);
+        orientation = detect_orientation(&exif_data);
     }
 
     if taken_date.is_none() {
@@ -70,6 +73,7 @@ pub fn fill_exif_data(web_dav_client: &WebDavClient, resource: &WebDavResource) 
 
     augmented_resource.taken = taken_date;
     augmented_resource.location = location;
+    augmented_resource.orientation = orientation;
 
     augmented_resource
 }
@@ -86,6 +90,23 @@ fn detect_location(exif_data: &Exif) -> Option<GeoLocation> {
     }
 
     None
+}
+
+fn detect_orientation(exif_data: &Exif) -> Option<ImageOrientation> {
+    let maybe_orientation = exif_data.get_field(Tag::Orientation, In::PRIMARY)
+        .and_then(|field| field.value.get_uint(0));
+
+    match maybe_orientation {
+        Some(1) => Some(ImageOrientation { rotation: 0, mirror_vertically: false }),
+        Some(2) => Some(ImageOrientation { rotation: 0, mirror_vertically: true }),
+        Some(3) => Some(ImageOrientation { rotation: 180, mirror_vertically: false }),
+        Some(4) => Some(ImageOrientation { rotation: 180, mirror_vertically: true }),
+        Some(5) => Some(ImageOrientation { rotation: 90, mirror_vertically: true }),
+        Some(6) => Some(ImageOrientation { rotation: 90, mirror_vertically: false }),
+        Some(7) => Some(ImageOrientation { rotation: 270, mirror_vertically: true }),
+        Some(8) => Some(ImageOrientation { rotation: 270, mirror_vertically: false }),
+        _ => None,
+    }
 }
 
 fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {

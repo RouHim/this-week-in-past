@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{exif_reader, resource_processor};
 use crate::geo_location::GeoLocation;
+use crate::image_processor::ImageOrientation;
 
 #[derive(Clone)]
 pub struct WebDavClient {
@@ -31,6 +32,7 @@ pub struct WebDavResource {
     pub last_modified: NaiveDateTime,
     pub taken: Option<NaiveDateTime>,
     pub location: Option<GeoLocation>,
+    pub orientation: Option<ImageOrientation>,
 }
 
 impl WebDavResource {
@@ -125,8 +127,7 @@ fn parse_propfind_result(web_dav_client: &WebDavClient, xml: String) -> Vec<WebD
         .collect();
 
     xml_nodes.par_iter()
-        // TODO: allow all type of media and convert on get, to an image
-        .filter(|resource| resource.content_type.eq("image/jpeg"))
+        .filter(|resource| resource.content_type.starts_with("image/"))
         .filter(|resource| !resource.path.contains("thumbnail"))
         .map(|resource| exif_reader::fill_exif_data(web_dav_client, resource))
         .collect()
@@ -173,5 +174,6 @@ fn parse_resource_node(response_node: Node) -> Option<WebDavResource> {
         ).unwrap(),
         taken: None,
         location: None,
+        orientation: None,
     })
 }

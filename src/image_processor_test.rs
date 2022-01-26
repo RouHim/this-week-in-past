@@ -14,7 +14,12 @@ fn scale_image() {
     ).unwrap().bytes().unwrap().to_vec();
 
     // WHEN resolving the city name
-    let scaled_image_buf = image_processor::scale(image_data, 1024, 786);
+    let scaled_image_buf = image_processor::optimize_image(
+        image_data,
+        1024,
+        786,
+        None
+    );
 
     // THEN the resolved city name should be Koblenz
     let scaled_image = ImageReader::new(Cursor::new(scaled_image_buf))
