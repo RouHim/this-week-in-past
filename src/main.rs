@@ -22,7 +22,6 @@ mod image_processor_test;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Build webdav client
-
     let web_dav_client = web_dav_client::new(
         env::var("TWIP_WEBDAV_BASE_URL").expect("TWIP_WEBDAV_BASE_URL is missing").as_str(),
         env::var("TWIP_USERNAME").expect("TWIP_USERNAME is missing").as_str(),
@@ -31,11 +30,11 @@ async fn main() -> std::io::Result<()> {
 
     // Initialize kv_store reader and writer
     let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    // Build arc mutex of kv_store writer (we have multiple writer)
+    // Build arc mutex of kv_store writer, we need this exact instance (cause, we have multiple writer)
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
 
     // Start scheduler to run at midnight
-    let scheduler_handle = scheduler::initialize(
+    let scheduler_handle = scheduler::run_webdav_indexer(
         web_dav_client.clone(),
         kv_writer_mutex.clone(),
     );

@@ -6,7 +6,7 @@ use evmap::WriteHandle;
 
 use crate::web_dav_client::WebDavClient;
 
-pub fn initialize(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>) -> ScheduleHandle {
+pub fn run_webdav_indexer(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>) -> ScheduleHandle {
     let mut scheduler = Scheduler::new();
 
     // Fetch webdav resources at midnight

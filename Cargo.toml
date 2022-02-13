@@ -22,6 +22,7 @@ rayon = "1.5"
 regex = "1.5"
 base64 = "0.13"
 image = "0.23"
+cacache = "10"
 
 [dev-dependencies]
 assertor = "0.0"

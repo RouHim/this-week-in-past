@@ -18,7 +18,7 @@ fn scale_image() {
         image_data,
         1024,
         786,
-        None
+        None,
     );
 
     // THEN the resolved city name should be Koblenz
