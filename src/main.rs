@@ -54,12 +54,13 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Logger::default()) // enable logger
             .service(
                 web::scope("/api/resources")
-                    .service(resource_endpoint::list_resources)
+                    .service(resource_endpoint::list_all_resources)
                     .service(resource_endpoint::list_this_week_resources)
-                    .service(resource_endpoint::get_resource)
-                    .service(resource_endpoint::get_resource_base64)
-                    .service(resource_endpoint::get_resource_metadata)
-                    .service(resource_endpoint::get_resource_metadata_description)
+                    .service(resource_endpoint::random_resource)
+                    .service(resource_endpoint::get_resource_by_id_and_resolution)
+                    .service(resource_endpoint::get_resource_base64_by_id_and_resolution)
+                    .service(resource_endpoint::get_resource_metadata_by_id)
+                    .service(resource_endpoint::get_resource_metadata_description_by_id)
             )
             .service(Files::new("/", "./static/").index_file("index.html"))
     })

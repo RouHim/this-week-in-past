@@ -23,6 +23,7 @@ regex = "1.5"
 base64 = "0.13"
 image = "0.23"
 cacache = "10"
+rand = "0.8"
 
 [dev-dependencies]
 assertor = "0.0"

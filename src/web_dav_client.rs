@@ -78,7 +78,7 @@ impl WebDavClient {
     }
 
     pub fn list_all_resources(&self) -> Vec<WebDavResource> {
-        let body = r#"<?xml version="1.0" encoding="utf-8" ?>
+        let request_body_xml = r#"<?xml version="1.0" encoding="utf-8" ?>
             <D:propfind xmlns:D="DAV:">
                 <D:allprop/>
             </D:propfind>
@@ -92,17 +92,17 @@ impl WebDavClient {
             format!("{}{}", self.base_url, sub_path),
         )
             .basic_auth(&self.username, Some(&self.password))
-            .body(Body::from(body))
+            .body(Body::from(request_body_xml))
             .send();
 
         if response.is_err() {
             return vec![];
         }
 
-        let response_body = response.unwrap()
+        let response_body_xml = response.unwrap()
             .text().unwrap();
 
-        parse_propfind_result(self, response_body)
+        parse_propfind_result(self, response_body_xml)
     }
 }
 

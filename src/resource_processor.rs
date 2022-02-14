@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use evmap::ReadHandle;
+use rand::Rng;
 use serde_json::Value;
 
 use crate::geo_location::GeoLocation;
@@ -76,4 +77,11 @@ fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Opt
     json_data.get(field_name)
         .and_then(|field_value| field_value.as_str())
         .map(|field_string_value| field_string_value.to_string())
+}
+
+pub fn random_entry(kv_reader: &ReadHandle<String, String>) -> Option<String> {
+    kv_reader.read().unwrap().len().checked_sub(1).and_then(|len| {
+        let random_index = rand::thread_rng().gen_range(0..len);
+        kv_reader.read().unwrap().iter().nth(random_index).map(|(k, _)| k.clone())
+    })
 }

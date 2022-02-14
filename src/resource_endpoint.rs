@@ -7,7 +7,7 @@ use crate::{get, image_processor, resource_processor, WebDavClient, WebDavResour
 const CACHE_DIR: &'static str = "./cache";
 
 #[get("")]
-pub async fn list_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
+pub async fn list_all_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
     let keys: Vec<String> = resource_processor::get_all(kv_reader.as_ref());
 
     HttpResponse::Ok()
@@ -24,8 +24,21 @@ pub async fn list_this_week_resources(kv_reader: web::Data<ReadHandle<String, St
         .body(serde_json::to_string(&keys).unwrap())
 }
 
+#[get("random")]
+pub async fn random_resource(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
+    let resource_id: Option<String> = resource_processor::random_entry(kv_reader.as_ref());
+
+    if let Some(resource_id) = resource_id {
+        HttpResponse::Ok()
+            .content_type("plain/text")
+            .body(resource_id)
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
+}
+
 #[get("{resource_id}/{display_width}/{display_height}")]
-pub async fn get_resource(
+pub async fn get_resource_by_id_and_resolution(
     resources_id: web::Path<(String, u32, u32)>,
     kv_reader: web::Data<ReadHandle<String, String>>,
     web_dav_client: web::Data<WebDavClient>,
@@ -60,7 +73,7 @@ pub async fn get_resource(
 }
 
 #[get("{resource_id}/{display_width}/{display_height}/base64")]
-pub async fn get_resource_base64(
+pub async fn get_resource_base64_by_id_and_resolution(
     resources_id: web::Path<(String, u32, u32)>,
     kv_reader: web::Data<ReadHandle<String, String>>,
     web_dav_client: web::Data<WebDavClient>,
@@ -112,7 +125,7 @@ pub async fn get_resource_base64(
 }
 
 #[get("{resource_id}/metadata")]
-pub async fn get_resource_metadata(
+pub async fn get_resource_metadata_by_id(
     resources_id: web::Path<String>,
     kv_reader: web::Data<ReadHandle<String, String>>,
 ) -> HttpResponse {
@@ -129,7 +142,7 @@ pub async fn get_resource_metadata(
 }
 
 #[get("{resource_id}/description")]
-pub async fn get_resource_metadata_description(
+pub async fn get_resource_metadata_description_by_id(
     resources_id: web::Path<String>,
     kv_reader: web::Data<ReadHandle<String, String>>,
 ) -> HttpResponse {
