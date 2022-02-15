@@ -4,6 +4,8 @@ use std::time::{Duration, Instant};
 use clokwerk::{ScheduleHandle, Scheduler, TimeUnits};
 use evmap::WriteHandle;
 
+use crate::CACHE_DIR;
+use crate::resource_endpoint;
 use crate::web_dav_client::WebDavClient;
 
 pub fn run_webdav_indexer(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>) -> ScheduleHandle {
@@ -38,6 +40,9 @@ pub fn fetch_resources(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<
         );
     };
     kv_writer.refresh();
+
+    println!("Cleanup cache");
+    cacache::clear_sync(CACHE_DIR).expect("Cleaning cache");
 
     println!("Job done in {}s!", s.elapsed().as_secs());
 }

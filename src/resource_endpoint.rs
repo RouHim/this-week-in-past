@@ -2,9 +2,7 @@ use actix_http::Response as HttpResponse;
 use actix_web::web;
 use evmap::ReadHandle;
 
-use crate::{get, image_processor, resource_processor, WebDavClient, WebDavResource};
-
-const CACHE_DIR: &'static str = "./cache";
+use crate::{CACHE_DIR, get, image_processor, resource_processor, WebDavClient, WebDavResource};
 
 #[get("")]
 pub async fn list_all_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {

@@ -2,7 +2,7 @@ use std::env;
 use std::sync::{Arc, Mutex};
 
 use actix_files::Files;
-use actix_web::{App, get, HttpServer, middleware, web};
+use actix_web::{App, get, HttpResponse, HttpServer, middleware, web};
 
 use crate::web_dav_client::{WebDavClient, WebDavResource};
 
@@ -18,6 +18,8 @@ mod image_processor;
 mod resource_processor_test;
 #[cfg(test)]
 mod image_processor_test;
+
+pub const CACHE_DIR: &str = "./cache";
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -62,6 +64,7 @@ async fn main() -> std::io::Result<()> {
                     .service(resource_endpoint::get_resource_metadata_by_id)
                     .service(resource_endpoint::get_resource_metadata_description_by_id)
             )
+            .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./static/").index_file("index.html"))
     })
         .bind("0.0.0.0:8080")?
@@ -76,4 +79,3 @@ async fn main() -> std::io::Result<()> {
     // Done, let's get out here
     http_server_result
 }
-
