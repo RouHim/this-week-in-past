@@ -5,7 +5,6 @@ use clokwerk::{ScheduleHandle, Scheduler, TimeUnits};
 use evmap::WriteHandle;
 
 use crate::CACHE_DIR;
-use crate::resource_endpoint;
 use crate::web_dav_client::WebDavClient;
 
 pub fn run_webdav_indexer(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>) -> ScheduleHandle {

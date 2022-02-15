@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use evmap::ReadHandle;
+use rand::prelude::SliceRandom;
 use rand::Rng;
 use serde_json::Value;
 
@@ -12,12 +13,18 @@ pub fn md5(string: &str) -> String {
 }
 
 pub fn get_this_week_in_past(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
-    kv_reader.read().unwrap()
+    let mut resource_ids: Vec<String> = kv_reader.read().unwrap()
         .iter()
         .map(|(_, v)| serde_json::from_str::<WebDavResource>(v.get_one().unwrap()).unwrap())
         .filter(|resource| resource.is_this_week())
         .map(|resource| resource.id)
-        .collect()
+        .collect();
+
+    // shuffle resource keys
+    let mut rng = rand::thread_rng();
+    resource_ids.shuffle(&mut rng);
+
+    resource_ids
 }
 
 pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
