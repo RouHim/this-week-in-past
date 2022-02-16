@@ -52,12 +52,10 @@ pub async fn get_resource_by_id_and_resolution(
         format!("{resource_id}_{display_width}_{display_height}"),
     );
     if let Ok(cached_data) = cached_data.await {
-        println!(" #### Cache hit! {}", format!("{resource_id}_{display_width}_{display_height}"));
         return HttpResponse::Ok()
             .content_type("image/png")
             .body(cached_data);
     }
-    println!(" #### Cache miss! {}", format!("{resource_id}_{display_width}_{display_height}"));
 
     let web_dav_resource = kv_reader.get_one(resource_id)
         .map(|value| value.to_string())
@@ -106,12 +104,10 @@ pub async fn get_resource_base64_by_id_and_resolution(
         format!("{resource_id}_{display_width}_{display_height}_base64"),
     );
     if let Ok(cached_data) = cached_data.await {
-        println!(" #### Cache hit! {}", format!("{resource_id}_{display_width}_{display_height}_base64"));
         return HttpResponse::Ok()
             .content_type("plain/text")
             .body(cached_data);
     }
-    println!(" #### Cache miss! {}", format!("{resource_id}_{display_width}_{display_height}_base64"));
 
     // Read image from webdav
     let web_dav_resource = kv_reader.get_one(resource_id)
