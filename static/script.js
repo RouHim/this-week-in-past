@@ -4,6 +4,7 @@ let maxIndex = 0;
 
 window.onload = () => {
     loadAvailableImages();
+    loadCurrentWeather();
 };
 
 function loadCurrentWeather() {
@@ -36,8 +37,10 @@ function slideshowTick() {
     if (currentIndex > maxIndex) {
         currentIndex = 0;
     }
+}
 
-    loadCurrentWeather();
+function reloadPage() {
+    location.reload();
 }
 
 function startSlideshow(response) {
@@ -48,8 +51,8 @@ function startSlideshow(response) {
     // Tick every 10 seconds
     setInterval(() => slideshowTick(), 10000);
 
-    // Reload every 6 hours
-    setInterval(() => location.reload(), 21600000);
+    // Reload every hour
+    setInterval(() => reloadPage(), 3600000);
 }
 
 function loadAvailableImages() {
