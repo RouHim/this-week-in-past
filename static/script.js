@@ -39,10 +39,6 @@ function slideshowTick() {
     }
 }
 
-function reloadPage() {
-    location.reload();
-}
-
 function startSlideshow(response) {
     resources = response;
     maxIndex = Object.keys(resources).length - 1;
@@ -52,7 +48,7 @@ function startSlideshow(response) {
     setInterval(() => slideshowTick(), 10000);
 
     // Reload every hour
-    setInterval(() => reloadPage(), 3600000);
+    setInterval(() => location.reload(), 3600000);
 }
 
 function loadAvailableImages() {
