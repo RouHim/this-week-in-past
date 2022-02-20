@@ -6,6 +6,19 @@ window.onload = () => {
     loadAvailableImages();
 };
 
+function loadCurrentWeather() {
+    const url = 'https://api.openweathermap.org/data/2.5/weather?q=Koblenz&appid=4021b60be2b322c8cfc749a6503bb553&units=metric&lang=de';
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            const weather = data.weather[0];
+            const temp = data.main.temp;
+            const icon = weather.icon;
+            document.getElementById("weather-temp").innerHTML = weather.description + ", " + Math.round(temp) + "°C";
+            document.getElementById("weather-icon").src = "https://openweathermap.org/img/w/" + icon + ".png";
+        });
+}
+
 function slideshowTick() {
     let photoDataRequest = new XMLHttpRequest();
     photoDataRequest.open("GET",
@@ -23,6 +36,8 @@ function slideshowTick() {
     if (currentIndex > maxIndex) {
         currentIndex = 0;
     }
+
+    loadCurrentWeather();
 }
 
 function startSlideshow(response) {

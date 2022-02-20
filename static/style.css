@@ -33,3 +33,16 @@
     -webkit-text-stroke-width: 1px;
     -webkit-text-stroke-color: black;
 }
+
+.weather {
+    position: absolute;
+    bottom: 5vh;
+    right: 5vh;
+    text-align: right;
+    color: #FFFFFF;
+    font-family: "Roboto Medium", serif;
+    background: transparent;
+    font-size: 30px;
+    -webkit-text-stroke-width: 1px;
+    -webkit-text-stroke-color: black;
+}
