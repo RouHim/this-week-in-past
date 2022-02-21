@@ -23,21 +23,26 @@
 
 .label {
     position: absolute;
-    top: 93vh;
+    bottom: 3vh;
+    left: 3vh;
     color: #FFFFFF;
     font-family: "Roboto Medium", serif;
     background: transparent;
-    font-size: 40px;
-    text-align: center;
-    width: 100%;
+    font-size: 30px;
+    text-align: left;
     -webkit-text-stroke-width: 1px;
     -webkit-text-stroke-color: black;
 }
 
 .weather {
     position: absolute;
-    bottom: 5vh;
-    right: 5vh;
+    bottom: 3vh;
+    right: 3vh;
+    text-align: right;
+    background: transparent;
+}
+
+.weather-label {
     text-align: right;
     color: #FFFFFF;
     font-family: "Roboto Medium", serif;
@@ -45,4 +50,5 @@
     font-size: 30px;
     -webkit-text-stroke-width: 1px;
     -webkit-text-stroke-color: black;
+    flex-grow: 0;
 }
