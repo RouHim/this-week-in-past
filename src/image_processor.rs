@@ -4,7 +4,7 @@ use image::imageops::FilterType;
 use image::io::Reader as ImageReader;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct ImageOrientation {
     pub rotation: u16,
     pub mirror_vertically: bool,

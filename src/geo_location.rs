@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct GeoLocation {
     pub latitude: f32,
     pub longitude: f32,

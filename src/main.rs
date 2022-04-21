@@ -2,12 +2,9 @@ use std::env;
 use std::sync::{Arc, Mutex};
 
 use actix_files::Files;
-use actix_web::{App, get, HttpResponse, HttpServer, middleware, web};
-
-use crate::web_dav_client::{WebDavClient, WebDavResource};
+use actix_web::{App, HttpResponse, HttpServer, middleware, web};
 
 mod scheduler;
-mod web_dav_client;
 mod resource_processor;
 mod exif_reader;
 mod geo_location;
@@ -18,16 +15,15 @@ mod image_processor;
 mod resource_processor_test;
 #[cfg(test)]
 mod image_processor_test;
+mod resource_reader;
 
 pub const CACHE_DIR: &str = "./cache";
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Build webdav client
-    let web_dav_client = web_dav_client::new(
-        env::var("TWIP_WEBDAV_BASE_URL").expect("TWIP_WEBDAV_BASE_URL is missing").as_str(),
-        env::var("TWIP_USERNAME").expect("TWIP_USERNAME is missing").as_str(),
-        env::var("TWIP_PASSWORD").expect("TWIP_PASSWORD is missing").as_str(),
+    let web_dav_client = resource_reader::new(
+        env::var("RESOURCE_PATHS").expect("RESOURCE_PATHS is missing").as_str()
     );
 
     // Initialize kv_store reader and writer

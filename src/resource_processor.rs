@@ -6,7 +6,7 @@ use rand::Rng;
 use serde_json::Value;
 
 use crate::geo_location::GeoLocation;
-use crate::WebDavResource;
+use crate::resource_reader::RemoteResource;
 
 pub fn md5(string: &str) -> String {
     format!("{:x}", md5::compute(string.as_bytes()))
@@ -15,7 +15,7 @@ pub fn md5(string: &str) -> String {
 pub fn get_this_week_in_past(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
     let mut resource_ids: Vec<String> = kv_reader.read().unwrap()
         .iter()
-        .map(|(_, v)| serde_json::from_str::<WebDavResource>(v.get_one().unwrap()).unwrap())
+        .map(|(_, v)| serde_json::from_str::<RemoteResource>(v.get_one().unwrap()).unwrap())
         .filter(|resource| resource.is_this_week())
         .map(|resource| resource.id)
         .collect();
@@ -30,12 +30,12 @@ pub fn get_this_week_in_past(kv_reader: &ReadHandle<String, String>) -> Vec<Stri
 pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
     kv_reader.read().unwrap()
         .iter()
-        .map(|(_, v)| serde_json::from_str::<WebDavResource>(v.get_one().unwrap()).unwrap())
+        .map(|(_, v)| serde_json::from_str::<RemoteResource>(v.get_one().unwrap()).unwrap())
         .map(|resource| resource.id)
         .collect()
 }
 
-pub fn build_display_value(resource: WebDavResource) -> String {
+pub fn build_display_value(resource: RemoteResource) -> String {
     let mut display_value: String = String::new();
 
     if let Some(taken_date) = resource.taken {

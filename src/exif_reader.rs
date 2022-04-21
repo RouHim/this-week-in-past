@@ -1,9 +1,10 @@
 use chrono::{NaiveDate, NaiveDateTime};
 use exif::{Exif, In, Reader, Tag};
 
-use crate::{geo_location, WebDavClient, WebDavResource};
+use crate::geo_location;
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
+use crate::resource_reader::{RemoteResource, ResourceReader};
 
 pub fn get_exif_date(exif_data: &Exif) -> Option<NaiveDateTime> {
     let mut exif_date: Option<NaiveDateTime> = detect_exif_date(
@@ -44,7 +45,7 @@ fn parse_exit_date(date: String) -> Option<NaiveDateTime> {
     NaiveDateTime::parse_from_str(date.as_str(), "%F %T").ok()
 }
 
-pub fn load_exif(web_dav_client: &WebDavClient, resource: &WebDavResource) -> Option<Exif> {
+pub fn load_exif(web_dav_client: &ResourceReader, resource: &RemoteResource) -> Option<Exif> {
     // Build the resource url and request resource data response
     let mut response = web_dav_client.request_resource_data(resource);
 
@@ -52,7 +53,7 @@ pub fn load_exif(web_dav_client: &WebDavClient, resource: &WebDavResource) -> Op
     Reader::new().from_reader(&mut response).ok()
 }
 
-pub fn fill_exif_data(web_dav_client: &WebDavClient, resource: &WebDavResource) -> WebDavResource {
+pub fn fill_exif_data(web_dav_client: &ResourceReader, resource: &RemoteResource) -> RemoteResource {
     let mut augmented_resource = resource.clone();
 
     let maybe_exif_data = load_exif(web_dav_client, resource);
