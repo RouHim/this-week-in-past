@@ -1,10 +1,10 @@
 use chrono::{NaiveDate, NaiveDateTime};
-use exif::{Exif, In, Reader, Tag};
+use exif::{Exif, In, Tag};
 
 use crate::geo_location;
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
-use crate::resource_reader::{RemoteResource, ResourceReader};
+use crate::resource_reader::RemoteResource;
 
 pub fn get_exif_date(exif_data: &Exif) -> Option<NaiveDateTime> {
     let mut exif_date: Option<NaiveDateTime> = detect_exif_date(
@@ -45,18 +45,18 @@ fn parse_exit_date(date: String) -> Option<NaiveDateTime> {
     NaiveDateTime::parse_from_str(date.as_str(), "%F %T").ok()
 }
 
-pub fn load_exif(web_dav_client: &ResourceReader, resource: &RemoteResource) -> Option<Exif> {
-    // Build the resource url and request resource data response
-    let mut response = web_dav_client.request_resource_data(resource);
-
-    // Read the exif metadata
-    Reader::new().from_reader(&mut response).ok()
+pub fn load_exif(resource: &RemoteResource) -> Option<Exif> {
+    let file = std::fs::File::open(&resource.path).unwrap();
+    let mut bufreader = std::io::BufReader::new(&file);
+    let exif_reader = exif::Reader::new();
+    exif_reader.read_from_container(&mut bufreader).ok()
 }
 
-pub fn fill_exif_data(web_dav_client: &ResourceReader, resource: &RemoteResource) -> RemoteResource {
+/// Augments the provided resource with meta information
+pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
     let mut augmented_resource = resource.clone();
 
-    let maybe_exif_data = load_exif(web_dav_client, resource);
+    let maybe_exif_data = load_exif(resource);
 
     let mut taken_date = None;
     let mut location = None;

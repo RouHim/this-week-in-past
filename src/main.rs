@@ -1,3 +1,5 @@
+extern crate core;
+
 use std::env;
 use std::sync::{Arc, Mutex};
 
@@ -14,7 +16,7 @@ mod image_processor;
 #[cfg(test)]
 mod resource_processor_test;
 #[cfg(test)]
-mod image_processor_test;
+mod resource_reader_test;
 mod resource_reader;
 
 pub const CACHE_DIR: &str = "./cache";
@@ -22,7 +24,7 @@ pub const CACHE_DIR: &str = "./cache";
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Build webdav client
-    let web_dav_client = resource_reader::new(
+    let resource_reader = resource_reader::new(
         env::var("RESOURCE_PATHS").expect("RESOURCE_PATHS is missing").as_str()
     );
 
@@ -32,14 +34,15 @@ async fn main() -> std::io::Result<()> {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
 
     // Start scheduler to run at midnight
+    scheduler::init();
     let scheduler_handle = scheduler::run_webdav_indexer(
-        web_dav_client.clone(),
+        resource_reader.clone(),
         kv_writer_mutex.clone(),
     );
 
     // Fetch resources for the first time
     scheduler::fetch_resources(
-        web_dav_client.clone(),
+        resource_reader.clone(),
         kv_writer_mutex.clone(),
     );
 
@@ -48,7 +51,7 @@ async fn main() -> std::io::Result<()> {
     let http_server_result = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(kv_reader.clone()))
-            .data(web_dav_client.clone())
+            .app_data(resource_reader.clone())
             .wrap(middleware::Logger::default()) // enable logger
             .service(web::scope("/api/resources")
                 .service(resource_endpoint::list_all_resources)

@@ -17,13 +17,15 @@ actix-web = "4"
 actix-files = "0.6"
 evmap = "10"
 clokwerk = "0.3"
-exif = { git = "https://github.com/RouHim/exif-rs", rev = "1334172dc3c3d48a159619c7f1b1b952764ec530" }
+kamadak-exif = "0.5"
 rayon = "1.5"
 regex = "1.5"
 base64 = "0.13"
 image = "0.24"
 cacache = "10"
 rand = "0.8"
+log = "0.4.0"
+mime_guess = "2.0"
 
 [dev-dependencies]
 assertor = "0.0"

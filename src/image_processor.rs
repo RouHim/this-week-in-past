@@ -4,7 +4,7 @@ use image::imageops::FilterType;
 use image::io::Reader as ImageReader;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ImageOrientation {
     pub rotation: u16,
     pub mirror_vertically: bool,
@@ -41,7 +41,5 @@ pub fn optimize_image(resource_data: Vec<u8>, display_width: u32, display_height
         resized
     };
 
-    let mut bytes: Vec<u8> = Vec::new();
-    fixed_orientation.write_to(&mut bytes, image::ImageOutputFormat::Png).unwrap();
-    bytes
+    fixed_orientation.as_bytes().to_vec()
 }

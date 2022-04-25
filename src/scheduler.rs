@@ -7,6 +7,11 @@ use evmap::WriteHandle;
 use crate::CACHE_DIR;
 use crate::resource_reader::ResourceReader;
 
+pub fn init() {
+    // create cache dir
+    std::fs::create_dir_all(CACHE_DIR).expect("Creating cache dir");
+}
+
 pub fn run_webdav_indexer(resource_reader: ResourceReader, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>) -> ScheduleHandle {
     let mut scheduler = Scheduler::new();
 

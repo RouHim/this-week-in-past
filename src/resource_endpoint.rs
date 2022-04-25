@@ -3,7 +3,7 @@ use actix_web::HttpResponse;
 use actix_web::web;
 use evmap::ReadHandle;
 
-use crate::{CACHE_DIR, image_processor, resource_processor, resource_reader};
+use crate::{CACHE_DIR, image_processor, resource_processor};
 use crate::resource_reader::{RemoteResource, ResourceReader};
 
 #[get("")]
@@ -41,7 +41,7 @@ pub async fn random_resource(kv_reader: web::Data<ReadHandle<String, String>>) -
 pub async fn get_resource_by_id_and_resolution(
     resources_id: web::Path<(String, u32, u32)>,
     kv_reader: web::Data<ReadHandle<String, String>>,
-    web_dav_client: web::Data<ResourceReader>,
+    resource_reader: web::Data<ResourceReader>,
 ) -> HttpResponse {
     let path_params = resources_id.into_inner();
     let resource_id = path_params.0.as_str();
@@ -65,10 +65,9 @@ pub async fn get_resource_by_id_and_resolution(
     let orientation = remote_resource.clone().and_then(|web_dav_resource: RemoteResource| web_dav_resource.orientation);
 
     let resource_data = remote_resource
-        .map(|web_dav_resource| web_dav_client.request_resource_data(&web_dav_resource))
-        .and_then(|web_response| web_response.bytes().ok())
+        .map(|web_dav_resource| resource_reader.read_resource_data(&web_dav_resource))
         .map(|resource_data| image_processor::optimize_image(
-            resource_data.to_vec(),
+            resource_data,
             display_width,
             display_height,
             orientation,
@@ -118,8 +117,7 @@ pub async fn get_resource_base64_by_id_and_resolution(
     let orientation = web_dav_resource.clone().and_then(|web_dav_resource: RemoteResource| web_dav_resource.orientation);
 
     let base64_image = web_dav_resource
-        .map(|web_dav_resource| web_dav_client.request_resource_data(&web_dav_resource))
-        .and_then(|web_response| web_response.bytes().ok())
+        .map(|web_dav_resource| web_dav_client.read_resource_data(&web_dav_resource))
         .map(|resource_data| image_processor::optimize_image(resource_data.to_vec(), display_width, display_height, orientation))
         .map(|scaled_image| base64::encode(&scaled_image))
         .map(|base64_string| format!("data:image/png;base64,{}", base64_string));
