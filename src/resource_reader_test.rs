@@ -48,7 +48,6 @@ fn read_jpg_image_resource() {
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/jpeg");
     assert_eq!(resources_read[0].name, test_image_name);
-    assert_eq!(resources_read[0].content_length, 102117);
 
     // cleanup
     cleanup(&base_test_dir);
@@ -89,7 +88,6 @@ fn read_png_image_resource() {
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/png");
     assert_eq!(resources_read[0].name, test_image_name);
-    assert_eq!(resources_read[0].content_length, 512596);
 
     // cleanup
     cleanup(&base_test_dir);
@@ -111,7 +109,6 @@ fn read_gif_image_resource() {
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/gif");
     assert_eq!(resources_read[0].name, test_image_name);
-    assert_eq!(resources_read[0].content_length, 510619);
 
     // cleanup
     cleanup(&base_test_dir);
@@ -168,7 +165,7 @@ fn create_test_image(base_dir: &PathBuf, sub_dir: &str, file_name: &str, image_u
     let target_dir = base_dir.clone().join(sub_dir);
 
     if !target_dir.exists() {
-        fs::create_dir(&target_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
     }
 
     let test_image_path = target_dir.join(file_name);
@@ -193,7 +190,7 @@ fn create_test_file(base_dir: &PathBuf, sub_dir: &str, file_name: &str) -> Strin
     let target_dir = base_dir.clone().join(sub_dir);
 
     if !target_dir.exists() {
-        fs::create_dir(&target_dir).unwrap();
+        fs::create_dir_all(&target_dir).unwrap();
     }
 
     let test_file_path = target_dir.join(file_name);
@@ -211,6 +208,8 @@ fn create_temp_folder() -> PathBuf {
     if test_dir.exists() {
         fs::remove_dir_all(&test_dir).expect("Failed to remove test dir");
     }
-    fs::create_dir(&test_dir).unwrap();
+
+    fs::create_dir_all(&test_dir).unwrap();
+
     test_dir
 }
