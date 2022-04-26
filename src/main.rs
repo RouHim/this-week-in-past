@@ -12,12 +12,14 @@ mod exif_reader;
 mod geo_location;
 mod resource_endpoint;
 mod image_processor;
+mod resource_reader;
 
 #[cfg(test)]
 mod resource_processor_test;
 #[cfg(test)]
 mod resource_reader_test;
-mod resource_reader;
+#[cfg(test)]
+mod integration_test_rest_api;
 
 pub const CACHE_DIR: &str = "./cache";
 
@@ -35,7 +37,7 @@ async fn main() -> std::io::Result<()> {
 
     // Start scheduler to run at midnight
     scheduler::init();
-    let scheduler_handle = scheduler::run_webdav_indexer(
+    let scheduler_handle = scheduler::schedule_indexer(
         resource_reader.clone(),
         kv_writer_mutex.clone(),
     );

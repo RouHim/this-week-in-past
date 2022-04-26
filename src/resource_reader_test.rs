@@ -12,7 +12,7 @@ const TEST_JPEG_URL: &str = "https://file-examples.com/storage/fe69f82402626533c
 const TEST_JPEG_EXIF_URL: &str = "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
 const TEST_PNG_URL: &str = "https://file-examples.com/storage/fe69f82402626533c98f608/2017/10/file_example_PNG_500kB.png";
 const TEST_GIF_URL: &str = "https://file-examples.com/storage/fe69f82402626533c98f608/2017/10/file_example_GIF_500kB.gif";
-const TEST_TEMP_BASE_DIR: &str = "resource_reader_test";
+const TEST_FOLDER_NAME: &str = "resource_reader_test";
 
 #[test]
 fn read_dir_recursive() {
@@ -203,7 +203,7 @@ fn create_test_file(base_dir: &PathBuf, sub_dir: &str, file_name: &str) -> Strin
 /// Creates a temp folder with the given name and returns its full path
 fn create_temp_folder() -> PathBuf {
     let random_string = rand::thread_rng().gen::<u32>().to_string();
-    let test_dir: PathBuf = env::temp_dir().join(TEST_TEMP_BASE_DIR).join(random_string);
+    let test_dir: PathBuf = env::temp_dir().join(TEST_FOLDER_NAME).join(random_string);
 
     if test_dir.exists() {
         fs::remove_dir_all(&test_dir).expect("Failed to remove test dir");

@@ -12,7 +12,7 @@ pub fn init() {
     std::fs::create_dir_all(CACHE_DIR).expect("Creating cache dir");
 }
 
-pub fn run_webdav_indexer(resource_reader: ResourceReader, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>) -> ScheduleHandle {
+pub fn schedule_indexer(resource_reader: ResourceReader, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>) -> ScheduleHandle {
     let mut scheduler = Scheduler::new();
 
     // Fetch webdav resources at midnight
