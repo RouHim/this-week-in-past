@@ -28,36 +28,19 @@ mod integration_tests {
         let test_image_2 = create_test_image(&base_test_dir, "", "test_image_2.jpg", TEST_JPEG_EXIF_URL).await;
 
         // AND a running this-week-in-past instance
-        // TODO use: App<impl ServiceFactory<ServiceRequest, Config=(), Response=ServiceResponse, Error=Error, InitError=(), >, >
-        let base_test_dir_argument = &base_test_dir;
-        let resource_reader = resource_reader::new(
-            base_test_dir_argument.to_str().unwrap(),
-        );
         let (kv_reader, kv_writer) = evmap::new::<String, String>();
         let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-        scheduler::init();
-        scheduler::fetch_resources(
-            resource_reader.clone(),
+        let app_server = test::init_service(build_app(
+            kv_reader,
+            resource_reader::new(base_test_dir.to_str().unwrap()),
             kv_writer_mutex.clone(),
-        );
-        let app = App::new()
-            .app_data(web::Data::new(kv_reader.clone()))
-            .app_data(resource_reader.clone())
-            .service(web::scope("/api/resources")
-                .service(resource_endpoint::list_all_resources)
-                .service(resource_endpoint::list_this_week_resources)
-                .service(resource_endpoint::random_resource)
-                .service(resource_endpoint::get_resource_by_id_and_resolution)
-                .service(resource_endpoint::get_resource_base64_by_id_and_resolution)
-                .service(resource_endpoint::get_resource_metadata_by_id)
-                .service(resource_endpoint::get_resource_metadata_description_by_id)
-            );
-        let app = app;
-        let app_server = test::init_service(app).await;
+        )).await;
 
         // WHEN requesting all resources
-        let req = test::TestRequest::get().uri("/api/resources").to_request();
-        let response: Vec<String> = test::call_and_read_body_json(&app_server, req).await;
+        let response: Vec<String> = test::call_and_read_body_json(
+            &app_server,
+            test::TestRequest::get().uri("/api/resources").to_request(),
+        ).await;
 
         // THEN the response contains the two resources
         assert_that!(response).contains_exactly(vec![
@@ -67,6 +50,27 @@ mod integration_tests {
 
         // cleanup
         cleanup(&base_test_dir).await;
+    }
+
+    fn build_app(kv_reader: ReadHandle<String, String>, resource_reader: ResourceReader, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>)
+                 -> App<impl ServiceFactory<ServiceRequest, Config=(), Response=ServiceResponse, Error=Error, InitError=(), >, > {
+        scheduler::init();
+        scheduler::fetch_resources(
+            resource_reader.clone(),
+            kv_writer_mutex,
+        );
+        App::new()
+            .app_data(web::Data::new(kv_reader))
+            .app_data(resource_reader)
+            .service(web::scope("/api/resources")
+                .service(resource_endpoint::list_all_resources)
+                .service(resource_endpoint::list_this_week_resources)
+                .service(resource_endpoint::random_resource)
+                .service(resource_endpoint::get_resource_by_id_and_resolution)
+                .service(resource_endpoint::get_resource_base64_by_id_and_resolution)
+                .service(resource_endpoint::get_resource_metadata_by_id)
+                .service(resource_endpoint::get_resource_metadata_description_by_id)
+            )
     }
 }
 
