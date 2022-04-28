@@ -42,7 +42,7 @@ mod integration_tests {
             test::TestRequest::get().uri("/api/resources").to_request(),
         ).await;
 
-        // THEN the response contains the two resources
+        // THEN the response should contain the two resources
         assert_that!(response).contains_exactly(vec![
             resource_processor::md5(test_image_1.as_str()),
             resource_processor::md5(test_image_2.as_str()),
