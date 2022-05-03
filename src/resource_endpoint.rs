@@ -30,8 +30,8 @@ pub async fn random_resource(kv_reader: web::Data<ReadHandle<String, String>>) -
 
     if let Some(resource_id) = resource_id {
         HttpResponse::Ok()
-            .content_type("plain/text")
-            .body(resource_id)
+            .content_type("application/json")
+            .body(serde_json::to_string(&resource_id).unwrap())
     } else {
         HttpResponse::InternalServerError().finish()
     }

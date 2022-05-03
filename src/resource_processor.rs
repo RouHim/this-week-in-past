@@ -87,8 +87,7 @@ fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Opt
 }
 
 pub fn random_entry(kv_reader: &ReadHandle<String, String>) -> Option<String> {
-    kv_reader.read().unwrap().len().checked_sub(1).and_then(|len| {
-        let random_index = rand::thread_rng().gen_range(0..len);
-        kv_reader.read().unwrap().iter().nth(random_index).map(|(k, _)| k.clone())
-    })
+    let entry_count = kv_reader.read().unwrap().len();
+    let random_index = rand::thread_rng().gen_range(0..entry_count);
+    kv_reader.read().unwrap().iter().nth(random_index).map(|(key, _)| key.clone())
 }

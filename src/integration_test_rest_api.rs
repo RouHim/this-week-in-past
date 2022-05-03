@@ -12,7 +12,7 @@ mod integration_tests {
 
     use actix_web::{App, Error, test, web};
     use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
-    use assertor::{assert_that, VecAssertion};
+    use assertor::{assert_that, EqualityAssertion, VecAssertion};
     use evmap::{ReadHandle, WriteHandle};
 
     use crate::{resource_endpoint, resource_processor, resource_reader, scheduler};
@@ -47,6 +47,35 @@ mod integration_tests {
             resource_processor::md5(test_image_1.as_str()),
             resource_processor::md5(test_image_2.as_str()),
         ]);
+
+        // cleanup
+        cleanup(&base_test_dir).await;
+    }
+
+    #[actix_web::test]
+    async fn test_get_random_resources() {
+        // GIVEN is a folder structure with two images and another file type
+        let base_test_dir = create_temp_folder().await;
+        let test_image_1 = create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
+
+        // AND a running this-week-in-past instance
+        let (kv_reader, kv_writer) = evmap::new::<String, String>();
+        let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
+        let app_server = test::init_service(build_app(
+            kv_reader,
+            resource_reader::new(base_test_dir.to_str().unwrap()),
+            kv_writer_mutex.clone(),
+        )).await;
+
+
+        // WHEN requesting a random resource
+        let response: String = test::call_and_read_body_json(
+            &app_server,
+            test::TestRequest::get().uri("/api/resources/random").to_request(),
+        ).await;
+
+        // THEN the response should contain the random resources
+        assert_that!(response).is_equal_to(resource_processor::md5(test_image_1.as_str()));
 
         // cleanup
         cleanup(&base_test_dir).await;
