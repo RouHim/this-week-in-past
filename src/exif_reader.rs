@@ -114,6 +114,7 @@ fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {
     let parsed: Vec<NaiveDate> = resource_path
         .replace('/', "_")
         .replace(' ', "_")
+        .replace('.', "_")
         .split('_')
         .into_iter()
         .filter_map(parse_from_str)

@@ -8,10 +8,10 @@ use crate::{exif_reader, resource_processor, resource_reader};
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
 
-const TEST_JPEG_URL: &str = "https://file-examples.com/storage/fe69f82402626533c98f608/2017/10/file_example_JPG_100kB.jpg";
 const TEST_JPEG_EXIF_URL: &str = "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
-const TEST_PNG_URL: &str = "https://file-examples.com/storage/fe69f82402626533c98f608/2017/10/file_example_PNG_500kB.png";
-const TEST_GIF_URL: &str = "https://file-examples.com/storage/fe69f82402626533c98f608/2017/10/file_example_GIF_500kB.gif";
+const TEST_JPEG_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.jpg";
+const TEST_PNG_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.png";
+const TEST_GIF_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.gif";
 const TEST_FOLDER_NAME: &str = "resource_reader_test";
 
 #[test]

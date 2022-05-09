@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use rand::Rng;
 
 const TEST_JPEG_EXIF_URL: &str = "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
+const TEST_JPEG_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.jpg";
 const TEST_FOLDER_NAME: &str = "integration_test_rest_api";
 
 #[cfg(test)]
@@ -13,6 +14,7 @@ mod integration_tests {
     use actix_web::{App, Error, test, web};
     use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
     use assertor::{assert_that, EqualityAssertion, VecAssertion};
+    use chrono::Local;
     use evmap::{ReadHandle, WriteHandle};
 
     use crate::{resource_endpoint, resource_processor, resource_reader, scheduler};
@@ -46,6 +48,37 @@ mod integration_tests {
         assert_that!(response).contains_exactly(vec![
             resource_processor::md5(test_image_1.as_str()),
             resource_processor::md5(test_image_2.as_str()),
+        ]);
+
+        // cleanup
+        cleanup(&base_test_dir).await;
+    }
+
+    #[actix_web::test]
+    async fn test_this_week_in_past_resources() {
+        // GIVEN is a folder structure with two images and another file type
+        let base_test_dir = create_temp_folder().await;
+        let today_date_string = Local::now().date().format("%Y%m%d").to_string();
+        let test_image_1 = create_test_image(&base_test_dir, "", format!("IMG_{}.jpg", today_date_string).as_str(), TEST_JPEG_URL).await;
+
+        // AND a running this-week-in-past instance
+        let (kv_reader, kv_writer) = evmap::new::<String, String>();
+        let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
+        let app_server = test::init_service(build_app(
+            kv_reader,
+            resource_reader::new(base_test_dir.to_str().unwrap()),
+            kv_writer_mutex.clone(),
+        )).await;
+
+        // WHEN requesting of this week in past resources
+        let response: Vec<String> = test::call_and_read_body_json(
+            &app_server,
+            test::TestRequest::get().uri("/api/resources/week").to_request(),
+        ).await;
+
+        // THEN the response should contain the two resources
+        assert_that!(response).contains_exactly(vec![
+            resource_processor::md5(test_image_1.as_str()),
         ]);
 
         // cleanup
