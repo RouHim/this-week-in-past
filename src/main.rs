@@ -53,7 +53,7 @@ async fn main() -> std::io::Result<()> {
     let http_server_result = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(kv_reader.clone()))
-            .app_data(resource_reader.clone())
+            .app_data(web::Data::new(resource_reader.clone()))
             .wrap(middleware::Logger::default()) // enable logger
             .service(web::scope("/api/resources")
                 .service(resource_endpoint::list_all_resources)

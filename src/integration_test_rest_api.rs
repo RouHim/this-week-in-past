@@ -1,5 +1,5 @@
 use std::{env, fs};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use rand::Rng;
 
@@ -13,7 +13,7 @@ mod integration_tests {
 
     use actix_web::{App, Error, test, web};
     use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
-    use assertor::{assert_that, EqualityAssertion, VecAssertion};
+    use assertor::{assert_that, ComparableAssertion, EqualityAssertion, VecAssertion};
     use chrono::Local;
     use evmap::{ReadHandle, WriteHandle};
 
@@ -26,8 +26,8 @@ mod integration_tests {
     async fn test_get_all_resources() {
         // GIVEN is a folder structure with two images and another file type
         let base_test_dir = create_temp_folder().await;
-        let test_image_1 = create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
-        let test_image_2 = create_test_image(&base_test_dir, "", "test_image_2.jpg", TEST_JPEG_EXIF_URL).await;
+        let test_image_1 = create_test_image(&base_test_dir, "sub1", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
+        let test_image_2 = create_test_image(&base_test_dir, "sub2", "test_image_2.jpg", TEST_JPEG_EXIF_URL).await;
 
         // AND a running this-week-in-past instance
         let (kv_reader, kv_writer) = evmap::new::<String, String>();
@@ -56,7 +56,7 @@ mod integration_tests {
 
     #[actix_web::test]
     async fn test_this_week_in_past_resources() {
-        // GIVEN is a folder structure with two images and another file type
+        // GIVEN is one image images
         let base_test_dir = create_temp_folder().await;
         let today_date_string = Local::now().date().format("%Y%m%d").to_string();
         let test_image_1 = create_test_image(&base_test_dir, "", format!("IMG_{}.jpg", today_date_string).as_str(), TEST_JPEG_URL).await;
@@ -87,7 +87,7 @@ mod integration_tests {
 
     #[actix_web::test]
     async fn test_get_random_resources() {
-        // GIVEN is a folder structure with two images and another file type
+        // GIVEN is one exif image
         let base_test_dir = create_temp_folder().await;
         let test_image_1 = create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
 
@@ -100,7 +100,6 @@ mod integration_tests {
             kv_writer_mutex.clone(),
         )).await;
 
-
         // WHEN requesting a random resource
         let response: String = test::call_and_read_body_json(
             &app_server,
@@ -109,6 +108,35 @@ mod integration_tests {
 
         // THEN the response should contain the random resources
         assert_that!(response).is_equal_to(resource_processor::md5(test_image_1.as_str()));
+
+        // cleanup
+        cleanup(&base_test_dir).await;
+    }
+
+    #[actix_web::test]
+    async fn test_get_resource_by_id_and_resolution() {
+        // GIVEN is an exif image
+        let base_test_dir = create_temp_folder().await;
+        let test_image_1 = create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
+        let test_image_1_id = resource_processor::md5(test_image_1.as_str());
+
+        // AND a running this-week-in-past instance
+        let (kv_reader, kv_writer) = evmap::new::<String, String>();
+        let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
+        let app_server = test::init_service(build_app(
+            kv_reader,
+            resource_reader::new(base_test_dir.to_str().unwrap()),
+            kv_writer_mutex.clone(),
+        )).await;
+
+        // WHEN requesting a random resource
+        let response = test::call_and_read_body(
+            &app_server,
+            test::TestRequest::get().uri(format!("/api/resources/{test_image_1_id}/10/10").as_str()).to_request(),
+        ).await;
+
+        // THEN the response should contain the random resources
+        assert_that!(response.len()).is_greater_than(0);
 
         // cleanup
         cleanup(&base_test_dir).await;
@@ -137,8 +165,8 @@ mod integration_tests {
 }
 
 /// Creates a test image withing a folder
-async fn create_test_image(base_dir: &PathBuf, sub_dir: &str, file_name: &str, image_url: &str) -> String {
-    let target_dir = base_dir.clone().join(sub_dir);
+async fn create_test_image(base_dir: &Path, sub_dir: &str, file_name: &str, image_url: &str) -> String {
+    let target_dir = base_dir.join(sub_dir);
 
     if !target_dir.exists() {
         fs::create_dir_all(&target_dir).unwrap();
