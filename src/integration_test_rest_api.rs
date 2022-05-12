@@ -1,9 +1,10 @@
-use std::{env, fs};
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 use rand::Rng;
 
-const TEST_JPEG_EXIF_URL: &str = "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
+const TEST_JPEG_EXIF_URL: &str =
+    "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
 const TEST_JPEG_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.jpg";
 const TEST_FOLDER_NAME: &str = "integration_test_rest_api";
 
@@ -11,14 +12,14 @@ const TEST_FOLDER_NAME: &str = "integration_test_rest_api";
 mod integration_tests {
     use std::sync::{Arc, Mutex};
 
-    use actix_web::{App, Error, test, web};
     use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
-    use assertor::{assert_that, ComparableAssertion, EqualityAssertion, VecAssertion};
+    use actix_web::{test, web, App, Error};
+    use assertor::{assert_that, EqualityAssertion, VecAssertion};
     use chrono::Local;
     use evmap::{ReadHandle, WriteHandle};
 
-    use crate::{resource_endpoint, resource_processor, resource_reader, scheduler};
     use crate::resource_reader::ResourceReader;
+    use crate::{resource_endpoint, resource_processor, resource_reader, scheduler};
 
     use super::*;
 
@@ -26,8 +27,20 @@ mod integration_tests {
     async fn test_get_all_resources() {
         // GIVEN is a folder structure with two images and another file type
         let base_test_dir = create_temp_folder().await;
-        let test_image_1 = create_test_image(&base_test_dir, "sub1", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
-        let test_image_2 = create_test_image(&base_test_dir, "sub2", "test_image_2.jpg", TEST_JPEG_EXIF_URL).await;
+        let test_image_1 = create_test_image(
+            &base_test_dir,
+            "sub1",
+            "test_image_1.jpg",
+            TEST_JPEG_EXIF_URL,
+        )
+        .await;
+        let test_image_2 = create_test_image(
+            &base_test_dir,
+            "sub2",
+            "test_image_2.jpg",
+            TEST_JPEG_EXIF_URL,
+        )
+        .await;
 
         // AND a running this-week-in-past instance
         let (kv_reader, kv_writer) = evmap::new::<String, String>();
@@ -36,13 +49,15 @@ mod integration_tests {
             kv_reader,
             resource_reader::new(base_test_dir.to_str().unwrap()),
             kv_writer_mutex.clone(),
-        )).await;
+        ))
+        .await;
 
         // WHEN requesting all resources
         let response: Vec<String> = test::call_and_read_body_json(
             &app_server,
             test::TestRequest::get().uri("/api/resources").to_request(),
-        ).await;
+        )
+        .await;
 
         // THEN the response should contain the two resources
         assert_that!(response).contains_exactly(vec![
@@ -59,7 +74,13 @@ mod integration_tests {
         // GIVEN is one image images
         let base_test_dir = create_temp_folder().await;
         let today_date_string = Local::now().date().format("%Y%m%d").to_string();
-        let test_image_1 = create_test_image(&base_test_dir, "", format!("IMG_{}.jpg", today_date_string).as_str(), TEST_JPEG_URL).await;
+        let test_image_1 = create_test_image(
+            &base_test_dir,
+            "",
+            format!("IMG_{}.jpg", today_date_string).as_str(),
+            TEST_JPEG_URL,
+        )
+        .await;
 
         // AND a running this-week-in-past instance
         let (kv_reader, kv_writer) = evmap::new::<String, String>();
@@ -68,18 +89,21 @@ mod integration_tests {
             kv_reader,
             resource_reader::new(base_test_dir.to_str().unwrap()),
             kv_writer_mutex.clone(),
-        )).await;
+        ))
+        .await;
 
         // WHEN requesting of this week in past resources
         let response: Vec<String> = test::call_and_read_body_json(
             &app_server,
-            test::TestRequest::get().uri("/api/resources/week").to_request(),
-        ).await;
+            test::TestRequest::get()
+                .uri("/api/resources/week")
+                .to_request(),
+        )
+        .await;
 
         // THEN the response should contain the two resources
-        assert_that!(response).contains_exactly(vec![
-            resource_processor::md5(test_image_1.as_str()),
-        ]);
+        assert_that!(response)
+            .contains_exactly(vec![resource_processor::md5(test_image_1.as_str())]);
 
         // cleanup
         cleanup(&base_test_dir).await;
@@ -89,7 +113,8 @@ mod integration_tests {
     async fn test_get_random_resources() {
         // GIVEN is one exif image
         let base_test_dir = create_temp_folder().await;
-        let test_image_1 = create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
+        let test_image_1 =
+            create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
 
         // AND a running this-week-in-past instance
         let (kv_reader, kv_writer) = evmap::new::<String, String>();
@@ -98,13 +123,17 @@ mod integration_tests {
             kv_reader,
             resource_reader::new(base_test_dir.to_str().unwrap()),
             kv_writer_mutex.clone(),
-        )).await;
+        ))
+        .await;
 
         // WHEN requesting a random resource
         let response: String = test::call_and_read_body_json(
             &app_server,
-            test::TestRequest::get().uri("/api/resources/random").to_request(),
-        ).await;
+            test::TestRequest::get()
+                .uri("/api/resources/random")
+                .to_request(),
+        )
+        .await;
 
         // THEN the response should contain the random resources
         assert_that!(response).is_equal_to(resource_processor::md5(test_image_1.as_str()));
@@ -117,7 +146,8 @@ mod integration_tests {
     async fn test_get_resource_by_id_and_resolution() {
         // GIVEN is an exif image
         let base_test_dir = create_temp_folder().await;
-        let test_image_1 = create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
+        let test_image_1 =
+            create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
         let test_image_1_id = resource_processor::md5(test_image_1.as_str());
 
         // AND a running this-week-in-past instance
@@ -127,45 +157,63 @@ mod integration_tests {
             kv_reader,
             resource_reader::new(base_test_dir.to_str().unwrap()),
             kv_writer_mutex.clone(),
-        )).await;
+        ))
+        .await;
 
         // WHEN requesting a random resource
         let response = test::call_and_read_body(
             &app_server,
-            test::TestRequest::get().uri(format!("/api/resources/{test_image_1_id}/10/10").as_str()).to_request(),
-        ).await;
+            test::TestRequest::get()
+                .uri(format!("/api/resources/{test_image_1_id}/10/10").as_str())
+                .to_request(),
+        )
+        .await;
 
-        // THEN the response should contain the random resources
-        assert_that!(response.len()).is_greater_than(0);
+        // THEN the response should contain the resized image
+        assert_that!(response.len()).is_equal_to(96);
 
         // cleanup
         cleanup(&base_test_dir).await;
     }
 
-    fn build_app(kv_reader: ReadHandle<String, String>, resource_reader: ResourceReader, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>)
-                 -> App<impl ServiceFactory<ServiceRequest, Config=(), Response=ServiceResponse, Error=Error, InitError=(), >, > {
+    fn build_app(
+        kv_reader: ReadHandle<String, String>,
+        resource_reader: ResourceReader,
+        kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
+    ) -> App<
+        impl ServiceFactory<
+            ServiceRequest,
+            Config = (),
+            Response = ServiceResponse,
+            Error = Error,
+            InitError = (),
+        >,
+    > {
         scheduler::init();
-        scheduler::fetch_resources(
-            resource_reader.clone(),
-            kv_writer_mutex,
-        );
+        scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex);
         App::new()
             .app_data(web::Data::new(kv_reader))
             .app_data(resource_reader)
-            .service(web::scope("/api/resources")
-                .service(resource_endpoint::list_all_resources)
-                .service(resource_endpoint::list_this_week_resources)
-                .service(resource_endpoint::random_resource)
-                .service(resource_endpoint::get_resource_by_id_and_resolution)
-                .service(resource_endpoint::get_resource_base64_by_id_and_resolution)
-                .service(resource_endpoint::get_resource_metadata_by_id)
-                .service(resource_endpoint::get_resource_metadata_description_by_id)
+            .service(
+                web::scope("/api/resources")
+                    .service(resource_endpoint::list_all_resources)
+                    .service(resource_endpoint::list_this_week_resources)
+                    .service(resource_endpoint::random_resource)
+                    .service(resource_endpoint::get_resource_by_id_and_resolution)
+                    .service(resource_endpoint::get_resource_base64_by_id_and_resolution)
+                    .service(resource_endpoint::get_resource_metadata_by_id)
+                    .service(resource_endpoint::get_resource_metadata_description_by_id),
             )
     }
 }
 
 /// Creates a test image withing a folder
-async fn create_test_image(base_dir: &Path, sub_dir: &str, file_name: &str, image_url: &str) -> String {
+async fn create_test_image(
+    base_dir: &Path,
+    sub_dir: &str,
+    file_name: &str,
+    image_url: &str,
+) -> String {
     let target_dir = base_dir.join(sub_dir);
 
     if !target_dir.exists() {
@@ -174,10 +222,19 @@ async fn create_test_image(base_dir: &Path, sub_dir: &str, file_name: &str, imag
 
     let test_image_path = target_dir.join(file_name);
 
-    let data = reqwest::get(image_url).await.unwrap()
-        .bytes().await.unwrap();
+    let data = reqwest::get(image_url)
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
 
-    fs::write(&test_image_path, data).unwrap_or_else(|_| panic!("error while writing test image {}", test_image_path.to_str().unwrap()));
+    fs::write(&test_image_path, data).unwrap_or_else(|_| {
+        panic!(
+            "error while writing test image {}",
+            test_image_path.to_str().unwrap()
+        )
+    });
 
     file_name.to_string()
 }

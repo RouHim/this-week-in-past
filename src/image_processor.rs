@@ -1,7 +1,7 @@
 use std::io::Cursor;
 
 use image::imageops::FilterType;
-use image::io::Reader as ImageReader;
+use image::io::Reader;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
@@ -13,17 +13,22 @@ pub struct ImageOrientation {
 /// Adjusts the image to fit optimal to the browser resolution
 /// Also fixes the orientation delivered by the exif image rotation
 /// src: https://sirv.com/help/articles/rotate-photos-to-be-upright/
-pub fn optimize_image(resource_data: Vec<u8>, display_width: u32, display_height: u32, image_orientation: Option<ImageOrientation>) -> Vec<u8> {
-    let original_image = ImageReader::new(Cursor::new(resource_data))
-        .with_guessed_format().unwrap()
-        .decode().unwrap();
+pub fn optimize_image(
+    resource_data: Vec<u8>,
+    display_width: u32,
+    display_height: u32,
+    image_orientation: Option<ImageOrientation>,
+) -> Vec<u8> {
+    let original_image = Reader::new(Cursor::new(resource_data))
+        .with_guessed_format()
+        .unwrap()
+        .decode()
+        .unwrap();
 
-    let resized = original_image.resize(
-        display_width,
-        display_height,
-        FilterType::Nearest,
-    );
+    // Resize the image to the needed display size
+    let resized = original_image.resize(display_width, display_height, FilterType::Nearest);
 
+    // Rotate or flip the image if needed
     let fixed_orientation = if let Some(orientation) = image_orientation {
         let rotated = match orientation.rotation {
             90 => resized.rotate90(),
@@ -41,5 +46,10 @@ pub fn optimize_image(resource_data: Vec<u8>, display_width: u32, display_height
         resized
     };
 
-    fixed_orientation.as_bytes().to_vec()
+    // Write the image to a buffer
+    let mut bytes: Vec<u8> = Vec::new();
+    fixed_orientation
+        .write_to(&mut Cursor::new(&mut bytes), image::ImageOutputFormat::Png)
+        .unwrap();
+    bytes
 }

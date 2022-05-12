@@ -8,9 +8,9 @@ use log::error;
 use now::DateTimeNow;
 use serde::{Deserialize, Serialize};
 
-use crate::{exif_reader, resource_processor};
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
+use crate::{exif_reader, resource_processor};
 
 #[derive(Clone)]
 pub struct ResourceReader {
@@ -33,12 +33,9 @@ impl ResourceReader {
 
 pub fn new(paths: &str) -> ResourceReader {
     ResourceReader {
-        paths: paths.split(',')
-            .map(|s| s.to_string())
-            .collect(),
+        paths: paths.split(',').map(|s| s.to_string()).collect(),
     }
 }
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RemoteResource {
@@ -62,7 +59,10 @@ pub fn read_folder(folder_path: &PathBuf) -> Vec<RemoteResource> {
         return vec![];
     }
 
-    let metadata = maybe_folder_path.unwrap().metadata().expect("Failed to read metadata");
+    let metadata = maybe_folder_path
+        .unwrap()
+        .metadata()
+        .expect("Failed to read metadata");
 
     if metadata.is_file() {
         return vec![];
@@ -70,7 +70,8 @@ pub fn read_folder(folder_path: &PathBuf) -> Vec<RemoteResource> {
 
     let paths = fs::read_dir(folder_path).expect("Failed to read directory");
 
-    paths.flatten()
+    paths
+        .flatten()
         .flat_map(|dir_entry| {
             let metadata = dir_entry.metadata().expect("Failed to read metadata");
 
@@ -90,9 +91,7 @@ fn read_file(file_path: &PathBuf) -> Vec<RemoteResource> {
     let file_name = file_path.as_path().file_name().unwrap().to_str().unwrap();
 
     let is_file = metadata.is_file();
-    let mime_type: &str = mime_guess::from_path(file_name)
-        .first_raw()
-        .unwrap_or("");
+    let mime_type: &str = mime_guess::from_path(file_name).first_raw().unwrap_or("");
 
     // Cancel if no image file
     if !is_file || !mime_type.starts_with("image/") {
@@ -105,7 +104,15 @@ fn read_file(file_path: &PathBuf) -> Vec<RemoteResource> {
         content_type: mime_type.to_string(),
         name: file_name.to_string(),
         content_length: metadata.len(),
-        last_modified: NaiveDateTime::from_timestamp(metadata.modified().unwrap().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64, 0),
+        last_modified: NaiveDateTime::from_timestamp(
+            metadata
+                .modified()
+                .unwrap()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64,
+            0,
+        ),
         taken: None,
         location: None,
         orientation: None,

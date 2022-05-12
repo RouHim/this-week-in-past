@@ -20,16 +20,17 @@ pub fn get_exif_date(exif_data: &Exif) -> Option<NaiveDateTime> {
 }
 
 fn get_gps_date(exif_data: &Exif) -> Option<NaiveDateTime> {
-    exif_data.get_field(Tag::GPSDateStamp, In::PRIMARY)
-        .map(|gps_date| NaiveDate::parse_from_str(
-            gps_date.display_value().to_string().as_str(),
-            "%F",
-        ).unwrap())
+    exif_data
+        .get_field(Tag::GPSDateStamp, In::PRIMARY)
+        .map(|gps_date| {
+            NaiveDate::parse_from_str(gps_date.display_value().to_string().as_str(), "%F").unwrap()
+        })
         .map(|gps_date| gps_date.and_hms(0, 0, 0))
 }
 
 fn detect_exif_date(tags_to_evaluate: Vec<Tag>, exif_data: &Exif) -> Option<NaiveDateTime> {
-    let exit_dates: Vec<NaiveDateTime> = tags_to_evaluate.iter()
+    let exit_dates: Vec<NaiveDateTime> = tags_to_evaluate
+        .iter()
         .filter_map(|tag| exif_data.get_field(*tag, In::PRIMARY))
         .filter_map(|exif_date| parse_exit_date(exif_date.display_value().to_string()))
         .collect();
@@ -94,18 +95,43 @@ fn detect_location(exif_data: &Exif) -> Option<GeoLocation> {
 }
 
 fn detect_orientation(exif_data: &Exif) -> Option<ImageOrientation> {
-    let maybe_orientation = exif_data.get_field(Tag::Orientation, In::PRIMARY)
+    let maybe_orientation = exif_data
+        .get_field(Tag::Orientation, In::PRIMARY)
         .and_then(|field| field.value.get_uint(0));
 
     match maybe_orientation {
-        Some(1) => Some(ImageOrientation { rotation: 0, mirror_vertically: false }),
-        Some(2) => Some(ImageOrientation { rotation: 0, mirror_vertically: true }),
-        Some(3) => Some(ImageOrientation { rotation: 180, mirror_vertically: false }),
-        Some(4) => Some(ImageOrientation { rotation: 180, mirror_vertically: true }),
-        Some(5) => Some(ImageOrientation { rotation: 90, mirror_vertically: true }),
-        Some(6) => Some(ImageOrientation { rotation: 90, mirror_vertically: false }),
-        Some(7) => Some(ImageOrientation { rotation: 270, mirror_vertically: true }),
-        Some(8) => Some(ImageOrientation { rotation: 270, mirror_vertically: false }),
+        Some(1) => Some(ImageOrientation {
+            rotation: 0,
+            mirror_vertically: false,
+        }),
+        Some(2) => Some(ImageOrientation {
+            rotation: 0,
+            mirror_vertically: true,
+        }),
+        Some(3) => Some(ImageOrientation {
+            rotation: 180,
+            mirror_vertically: false,
+        }),
+        Some(4) => Some(ImageOrientation {
+            rotation: 180,
+            mirror_vertically: true,
+        }),
+        Some(5) => Some(ImageOrientation {
+            rotation: 90,
+            mirror_vertically: true,
+        }),
+        Some(6) => Some(ImageOrientation {
+            rotation: 90,
+            mirror_vertically: false,
+        }),
+        Some(7) => Some(ImageOrientation {
+            rotation: 270,
+            mirror_vertically: true,
+        }),
+        Some(8) => Some(ImageOrientation {
+            rotation: 270,
+            mirror_vertically: false,
+        }),
         _ => None,
     }
 }
@@ -123,22 +149,20 @@ fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {
     if parsed.is_empty() {
         None
     } else {
-        Some(
-            parsed.first().unwrap()
-                .and_hms(0, 0, 0)
-        )
+        Some(parsed.first().unwrap().and_hms(0, 0, 0))
     }
 }
 
 fn parse_from_str(shard: &str) -> Option<NaiveDate> {
     // https://docs.rs/chrono/latest/chrono/format/strftime/index.html
     let parse_results: Vec<NaiveDate> = vec![
-        "%F", // 2001-07-08
+        "%F",     // 2001-07-08
         "%Y%m%d", // 20010708
         "signal-%Y-%m-%d-%Z",
-    ].iter()
-        .filter_map(|format| NaiveDate::parse_from_str(shard, format).ok())
-        .collect();
+    ]
+    .iter()
+    .filter_map(|format| NaiveDate::parse_from_str(shard, format).ok())
+    .collect();
 
     if parse_results.is_empty() {
         None

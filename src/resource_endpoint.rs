@@ -1,10 +1,10 @@
 use actix_web::get;
-use actix_web::HttpResponse;
 use actix_web::web;
+use actix_web::HttpResponse;
 use evmap::ReadHandle;
 
-use crate::{CACHE_DIR, image_processor, resource_processor};
 use crate::resource_reader::{RemoteResource, ResourceReader};
+use crate::{image_processor, resource_processor, CACHE_DIR};
 
 #[get("")]
 pub async fn list_all_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
@@ -16,7 +16,9 @@ pub async fn list_all_resources(kv_reader: web::Data<ReadHandle<String, String>>
 }
 
 #[get("week")]
-pub async fn list_this_week_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
+pub async fn list_this_week_resources(
+    kv_reader: web::Data<ReadHandle<String, String>>,
+) -> HttpResponse {
     let keys: Vec<String> = resource_processor::get_this_week_in_past(kv_reader.as_ref());
 
     HttpResponse::Ok()
@@ -59,26 +61,35 @@ pub async fn get_resource_by_id_and_resolution(
             .body(cached_data);
     }
 
-    let remote_resource = kv_reader.get_one(resource_id)
+    // if no cache, fetch from remote
+    let remote_resource = kv_reader
+        .get_one(resource_id)
         .map(|value| value.to_string())
         .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
-    let orientation = remote_resource.clone().and_then(|web_dav_resource: RemoteResource| web_dav_resource.orientation);
+
+    let orientation = remote_resource
+        .clone()
+        .and_then(|web_dav_resource: RemoteResource| web_dav_resource.orientation);
 
     let resource_data = remote_resource
         .map(|web_dav_resource| resource_reader.read_resource_data(&web_dav_resource))
-        .map(|resource_data| image_processor::optimize_image(
-            resource_data,
-            display_width,
-            display_height,
-            orientation,
-        ));
+        .map(|resource_data| {
+            image_processor::optimize_image(
+                resource_data,
+                display_width,
+                display_height,
+                orientation,
+            )
+        });
 
     if let Some(resource_data) = resource_data {
         cacache::write(
             CACHE_DIR,
             format!("{resource_id}_{display_width}_{display_height}"),
             &resource_data,
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         HttpResponse::Ok()
             .content_type("image/png")
@@ -111,14 +122,24 @@ pub async fn get_resource_base64_by_id_and_resolution(
     }
 
     // Read image from webdav
-    let web_dav_resource = kv_reader.get_one(resource_id)
+    let web_dav_resource = kv_reader
+        .get_one(resource_id)
         .map(|value| value.to_string())
         .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
-    let orientation = web_dav_resource.clone().and_then(|web_dav_resource: RemoteResource| web_dav_resource.orientation);
+    let orientation = web_dav_resource
+        .clone()
+        .and_then(|web_dav_resource: RemoteResource| web_dav_resource.orientation);
 
     let base64_image = web_dav_resource
         .map(|web_dav_resource| web_dav_client.read_resource_data(&web_dav_resource))
-        .map(|resource_data| image_processor::optimize_image(resource_data.to_vec(), display_width, display_height, orientation))
+        .map(|resource_data| {
+            image_processor::optimize_image(
+                resource_data.to_vec(),
+                display_width,
+                display_height,
+                orientation,
+            )
+        })
         .map(|scaled_image| base64::encode(&scaled_image))
         .map(|base64_string| format!("data:image/png;base64,{}", base64_string));
 
@@ -127,7 +148,9 @@ pub async fn get_resource_base64_by_id_and_resolution(
             CACHE_DIR,
             format!("{resource_id}_{display_width}_{display_height}_base64"),
             base64_image.as_bytes(),
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         HttpResponse::Ok()
             .content_type("plain/text")
@@ -142,7 +165,8 @@ pub async fn get_resource_metadata_by_id(
     resources_id: web::Path<String>,
     kv_reader: web::Data<ReadHandle<String, String>>,
 ) -> HttpResponse {
-    let metadata = kv_reader.get_one(resources_id.as_str())
+    let metadata = kv_reader
+        .get_one(resources_id.as_str())
         .map(|value| value.to_string());
 
     if let Some(metadata) = metadata {
@@ -159,7 +183,8 @@ pub async fn get_resource_metadata_description_by_id(
     resources_id: web::Path<String>,
     kv_reader: web::Data<ReadHandle<String, String>>,
 ) -> HttpResponse {
-    let display_value = kv_reader.get_one(resources_id.as_str())
+    let display_value = kv_reader
+        .get_one(resources_id.as_str())
         .map(|value| value.to_string())
         .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok())
         .map(resource_processor::build_display_value);

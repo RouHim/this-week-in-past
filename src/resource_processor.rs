@@ -13,7 +13,9 @@ pub fn md5(string: &str) -> String {
 }
 
 pub fn get_this_week_in_past(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
-    let mut resource_ids: Vec<String> = kv_reader.read().unwrap()
+    let mut resource_ids: Vec<String> = kv_reader
+        .read()
+        .unwrap()
         .iter()
         .map(|(_, v)| serde_json::from_str::<RemoteResource>(v.get_one().unwrap()).unwrap())
         .filter(|resource| resource.is_this_week())
@@ -28,7 +30,9 @@ pub fn get_this_week_in_past(kv_reader: &ReadHandle<String, String>) -> Vec<Stri
 }
 
 pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
-    kv_reader.read().unwrap()
+    kv_reader
+        .read()
+        .unwrap()
         .iter()
         .map(|(_, v)| serde_json::from_str::<RemoteResource>(v.get_one().unwrap()).unwrap())
         .map(|resource| resource.id)
@@ -39,9 +43,7 @@ pub fn build_display_value(resource: RemoteResource) -> String {
     let mut display_value: String = String::new();
 
     if let Some(taken_date) = resource.taken {
-        display_value.push_str(
-            taken_date.date().format("%d.%m.%Y").to_string().as_str()
-        );
+        display_value.push_str(taken_date.date().format("%d.%m.%Y").to_string().as_str());
     }
 
     let city_name = resource.location.and_then(resolve_city_name);
@@ -67,12 +69,14 @@ pub fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
         .and_then(|response| response.text()).ok()
         .and_then(|json_string| serde_json::from_str::<HashMap<String, serde_json::Value>>(&json_string).ok());
 
-    let mut city_name = response_json.as_ref()
+    let mut city_name = response_json
+        .as_ref()
         .and_then(|json_data| get_string_value("city", json_data))
         .filter(|city_name| !city_name.trim().is_empty());
 
     if city_name.is_none() {
-        city_name = response_json.as_ref()
+        city_name = response_json
+            .as_ref()
             .and_then(|json_data| get_string_value("locality", json_data))
             .filter(|city_name| !city_name.trim().is_empty());
     }
@@ -81,7 +85,8 @@ pub fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
 }
 
 fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Option<String> {
-    json_data.get(field_name)
+    json_data
+        .get(field_name)
         .and_then(|field_value| field_value.as_str())
         .map(|field_string_value| field_string_value.to_string())
 }
@@ -89,5 +94,10 @@ fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Opt
 pub fn random_entry(kv_reader: &ReadHandle<String, String>) -> Option<String> {
     let entry_count = kv_reader.read().unwrap().len();
     let random_index = rand::thread_rng().gen_range(0..entry_count);
-    kv_reader.read().unwrap().iter().nth(random_index).map(|(key, _)| key.clone())
+    kv_reader
+        .read()
+        .unwrap()
+        .iter()
+        .nth(random_index)
+        .map(|(key, _)| key.clone())
 }

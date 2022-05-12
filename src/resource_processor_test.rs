@@ -6,7 +6,10 @@ use crate::resource_processor;
 #[test]
 fn resolve_koblenz() {
     // GIVEN are the geo coordinates for Koblenz
-    let geo_location: GeoLocation = GeoLocation { latitude: 50.35357, longitude: 7.57883 };
+    let geo_location: GeoLocation = GeoLocation {
+        latitude: 50.35357,
+        longitude: 7.57883,
+    };
 
     // WHEN resolving the city name
     let city_name = resource_processor::resolve_city_name(geo_location);
@@ -18,7 +21,10 @@ fn resolve_koblenz() {
 #[test]
 fn resolve_amsterdam() {
     // GIVEN are the geo coordinates for Amsterdam
-    let geo_location: GeoLocation = GeoLocation { latitude: 52.37403, longitude: 4.88969 };
+    let geo_location: GeoLocation = GeoLocation {
+        latitude: 52.37403,
+        longitude: 4.88969,
+    };
 
     // WHEN resolving the city name
     let city_name = resource_processor::resolve_city_name(geo_location);
@@ -30,7 +36,10 @@ fn resolve_amsterdam() {
 #[test]
 fn resolve_kottenheim() {
     // GIVEN are the geo coordinates for Kottenheim
-    let geo_location: GeoLocation = GeoLocation { latitude: 50.34604, longitude: 7.25359 };
+    let geo_location: GeoLocation = GeoLocation {
+        latitude: 50.34604,
+        longitude: 7.25359,
+    };
 
     // WHEN resolving the city name
     let city_name = resource_processor::resolve_city_name(geo_location);
@@ -42,7 +51,10 @@ fn resolve_kottenheim() {
 #[test]
 fn resolve_invalid_data() {
     // GIVEN are invalid geo coordinates
-    let geo_location: GeoLocation = GeoLocation { latitude: -100.0, longitude: -100.0 };
+    let geo_location: GeoLocation = GeoLocation {
+        latitude: -100.0,
+        longitude: -100.0,
+    };
 
     // WHEN resolving the city name
     let city_name = resource_processor::resolve_city_name(geo_location);

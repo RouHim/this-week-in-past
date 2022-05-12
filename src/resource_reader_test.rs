@@ -1,14 +1,15 @@
-use std::{env, fs};
 use std::path::PathBuf;
+use std::{env, fs};
 
 use chrono::NaiveDateTime;
 use rand::Rng;
 
-use crate::{exif_reader, resource_processor, resource_reader};
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
+use crate::{exif_reader, resource_processor, resource_reader};
 
-const TEST_JPEG_EXIF_URL: &str = "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
+const TEST_JPEG_EXIF_URL: &str =
+    "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
 const TEST_JPEG_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.jpg";
 const TEST_PNG_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.png";
 const TEST_GIF_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.gif";
@@ -44,7 +45,10 @@ fn read_jpg_image_resource() {
 
     // THEN the resource info should be correct
     assert_eq!(resources_read.len(), 1);
-    assert_eq!(resources_read[0].id, resource_processor::md5(test_image_name));
+    assert_eq!(
+        resources_read[0].id,
+        resource_processor::md5(test_image_name)
+    );
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/jpeg");
     assert_eq!(resources_read[0].name, test_image_name);
@@ -61,12 +65,28 @@ fn read_jpg_with_exif_image_resource() {
     create_test_image(&base_test_dir, "", test_image_name, TEST_JPEG_EXIF_URL);
 
     // WHEN reading resources from a folder
-    let resources_read = exif_reader::fill_exif_data(&resource_reader::read_folder(&base_test_dir)[0]);
+    let resources_read =
+        exif_reader::fill_exif_data(&resource_reader::read_folder(&base_test_dir)[0]);
 
     // THEN the resource metadata should be correct
-    assert_eq!(resources_read.taken, Some(NaiveDateTime::parse_from_str("2008-11-01T21:15:07", "%Y-%m-%dT%H:%M:%S").unwrap()));
-    assert_eq!(resources_read.orientation, Some(ImageOrientation { rotation: 0, mirror_vertically: false }));
-    assert_eq!(resources_read.location, Some(GeoLocation { latitude: 43.46745, longitude: 11.885126 }));
+    assert_eq!(
+        resources_read.taken,
+        Some(NaiveDateTime::parse_from_str("2008-11-01T21:15:07", "%Y-%m-%dT%H:%M:%S").unwrap())
+    );
+    assert_eq!(
+        resources_read.orientation,
+        Some(ImageOrientation {
+            rotation: 0,
+            mirror_vertically: false
+        })
+    );
+    assert_eq!(
+        resources_read.location,
+        Some(GeoLocation {
+            latitude: 43.46745,
+            longitude: 11.885126
+        })
+    );
 
     // cleanup
     cleanup(&base_test_dir);
@@ -84,7 +104,10 @@ fn read_png_image_resource() {
 
     // THEN the resource info should be correct
     assert_eq!(resources_read.len(), 1);
-    assert_eq!(resources_read[0].id, resource_processor::md5(test_image_name));
+    assert_eq!(
+        resources_read[0].id,
+        resource_processor::md5(test_image_name)
+    );
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/png");
     assert_eq!(resources_read[0].name, test_image_name);
@@ -105,7 +128,10 @@ fn read_gif_image_resource() {
 
     // THEN the resource info should be correct
     assert_eq!(resources_read.len(), 1);
-    assert_eq!(resources_read[0].id, resource_processor::md5(test_image_name));
+    assert_eq!(
+        resources_read[0].id,
+        resource_processor::md5(test_image_name)
+    );
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/gif");
     assert_eq!(resources_read[0].name, test_image_name);
@@ -161,7 +187,12 @@ fn read_non_existent_folder() {
 }
 
 /// Creates a test image withing a folder
-fn create_test_image(base_dir: &PathBuf, sub_dir: &str, file_name: &str, image_url: &str) -> String {
+fn create_test_image(
+    base_dir: &PathBuf,
+    sub_dir: &str,
+    file_name: &str,
+    image_url: &str,
+) -> String {
     let target_dir = base_dir.clone().join(sub_dir);
 
     if !target_dir.exists() {
@@ -175,7 +206,12 @@ fn create_test_image(base_dir: &PathBuf, sub_dir: &str, file_name: &str, image_u
         .unwrap()
         .copy_to(&mut image_data)
         .unwrap();
-    fs::write(&test_image_path, &image_data).unwrap_or_else(|_| panic!("error while writing test image {}", test_image_path.to_str().unwrap()));
+    fs::write(&test_image_path, &image_data).unwrap_or_else(|_| {
+        panic!(
+            "error while writing test image {}",
+            test_image_path.to_str().unwrap()
+        )
+    });
 
     test_image_path.to_str().unwrap().to_string()
 }
@@ -195,7 +231,12 @@ fn create_test_file(base_dir: &PathBuf, sub_dir: &str, file_name: &str) -> Strin
 
     let test_file_path = target_dir.join(file_name);
 
-    fs::write(&test_file_path, b"test").unwrap_or_else(|_| panic!("error while writing test image {}", test_file_path.to_str().unwrap()));
+    fs::write(&test_file_path, b"test").unwrap_or_else(|_| {
+        panic!(
+            "error while writing test image {}",
+            test_file_path.to_str().unwrap()
+        )
+    });
 
     test_file_path.to_str().unwrap().to_string()
 }
