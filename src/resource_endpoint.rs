@@ -69,10 +69,10 @@ pub async fn get_resource_by_id_and_resolution(
 
     let orientation = remote_resource
         .clone()
-        .and_then(|web_dav_resource: RemoteResource| web_dav_resource.orientation);
+        .and_then(|remote_resource: RemoteResource| remote_resource.orientation);
 
     let resource_data = remote_resource
-        .map(|web_dav_resource| resource_reader.read_resource_data(&web_dav_resource))
+        .map(|remote_resource| resource_reader.read_resource_data(&remote_resource))
         .map(|resource_data| {
             image_processor::optimize_image(
                 resource_data,
@@ -103,7 +103,7 @@ pub async fn get_resource_by_id_and_resolution(
 pub async fn get_resource_base64_by_id_and_resolution(
     resources_id: web::Path<(String, u32, u32)>,
     kv_reader: web::Data<ReadHandle<String, String>>,
-    web_dav_client: web::Data<ResourceReader>,
+    resource_reader: web::Data<ResourceReader>,
 ) -> HttpResponse {
     let path_params = resources_id.into_inner();
     let resource_id = path_params.0.as_str();
@@ -121,17 +121,17 @@ pub async fn get_resource_base64_by_id_and_resolution(
             .body(cached_data);
     }
 
-    // Read image from webdav
-    let web_dav_resource = kv_reader
+    // Read image from dir
+    let remote_resource = kv_reader
         .get_one(resource_id)
         .map(|value| value.to_string())
         .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
-    let orientation = web_dav_resource
+    let orientation = remote_resource
         .clone()
-        .and_then(|web_dav_resource: RemoteResource| web_dav_resource.orientation);
+        .and_then(|remote_resource: RemoteResource| remote_resource.orientation);
 
-    let base64_image = web_dav_resource
-        .map(|web_dav_resource| web_dav_client.read_resource_data(&web_dav_resource))
+    let base64_image = remote_resource
+        .map(|remote_resource| resource_reader.read_resource_data(&remote_resource))
         .map(|resource_data| {
             image_processor::optimize_image(
                 resource_data.to_vec(),

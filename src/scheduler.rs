@@ -18,7 +18,7 @@ pub fn schedule_indexer(
 ) -> ScheduleHandle {
     let mut scheduler = Scheduler::new();
 
-    // Fetch webdav resources at midnight
+    // Fetch resources at midnight
     scheduler
         .every(1.day())
         .at("13:06")
@@ -40,7 +40,7 @@ pub fn fetch_resources(
     println!("Purging kv store");
     kv_writer.purge();
 
-    println!("Fetching resources from webdav...");
+    println!("Fetching resources...");
     let resources = resource_reader.list_all_resources();
 
     println!("Storing {} items", resources.len());

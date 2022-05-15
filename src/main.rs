@@ -25,7 +25,7 @@ pub const CACHE_DIR: &str = "./cache";
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Build webdav client
+    // Build remote resource client
     let resource_reader = resource_reader::new(
         env::var("RESOURCE_PATHS")
             .expect("RESOURCE_PATHS is missing")
