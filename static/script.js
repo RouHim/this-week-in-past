@@ -24,9 +24,9 @@ function loadCurrentWeather() {
 }
 
 function loadCurrentTempFromHomeAssistant() {
-    const base_url = "http://192.168.0.15:8123";
+    const base_url = "http://192.168.0.5:8123";
     const token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiIzYzg5ZmY3MjMyZDg0ZmY2ODVkZDFkODhhOWQxYTRjMiIsImlhdCI6MTY0NTQ1OTA2MiwiZXhwIjoxOTYwODE5MDYyfQ.TknsqBMwriiE4_jrSjEi4z8vn0AUvLD8WYgL-BhaYKw";
-    const entity_id = "sensor.0x00158d0006ec850a_temperature";
+    const entity_id = "sensor.aussen_sensor_temperature";
     const url = `${base_url}/api/states/${entity_id}`;
 
     fetch(url, {

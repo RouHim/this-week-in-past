@@ -52,3 +52,7 @@
     -webkit-text-stroke-color: black;
     flex-grow: 0;
 }
+
+.weather > * {
+    background: transparent;
+}
