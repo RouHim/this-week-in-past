@@ -23,4 +23,5 @@ COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/this-week-in-p
 COPY --from=builder /app/static /static
 VOLUME /cache
 EXPOSE 8080
+USER 1337
 CMD ["/app"]
