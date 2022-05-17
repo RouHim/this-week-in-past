@@ -1,28 +1,27 @@
-ARG BASE_IMAGE=rust:slim-buster
-
-FROM $BASE_IMAGE as planner
-WORKDIR app
+# Using the `rust-musl-builder` as base image, instead of
+# the official Rust toolchain
+FROM clux/muslrust:stable AS chef
+USER root
 RUN cargo install cargo-chef
+WORKDIR /app
+
+FROM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
-FROM $BASE_IMAGE as cacher
-WORKDIR app
-RUN cargo install cargo-chef
+FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
-
-FROM $BASE_IMAGE as builder
-WORKDIR app
+# Notice that we are specifying the --target flag!
+RUN cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
 COPY . .
-# Copy over the cached dependencies
-COPY --from=cacher /app/target target
-COPY --from=cacher $CARGO_HOME $CARGO_HOME
-# We need static linking for musl
-RUN rustup target add x86_64-unknown-linux-musl
-# `cargo build` doesn't work in static linking, need `cargo install`
-RUN cargo install --target x86_64-unknown-linux-musl --path .
+RUN cargo build --release --target x86_64-unknown-linux-musl
 
-FROM scratch
-COPY --from=builder /usr/local/cargo/bin/this-week-in-past .
-CMD ["./this-week-in-past"]
+FROM scratch AS runtime
+ENV RESOURCE_PATHS=/resources
+#RUN addgroup -S myuser && adduser -S myuser -G myuser
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/this-week-in-past /app
+COPY --from=builder /app/static /static
+VOLUME /cache
+#USER myuser
+EXPOSE 8080
+CMD ["/app"]
