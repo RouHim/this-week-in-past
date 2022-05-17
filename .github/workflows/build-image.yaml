@@ -142,6 +142,6 @@ jobs:
 
       - name: Push image to Docker Hub
         run: |
-        docker tag rouhim/this-week-in-past:${{ github.sha }} rouhim/this-week-in-past:latest
-        docker push rouhim/this-week-in-past:${{ github.sha }}
-        docker push rouhim/this-week-in-past:latest
+          docker tag rouhim/this-week-in-past:${{ github.sha }} rouhim/this-week-in-past:latest
+          docker push rouhim/this-week-in-past:${{ github.sha }}
+          docker push rouhim/this-week-in-past:latest
