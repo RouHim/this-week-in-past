@@ -1,0 +1,21 @@
+name: Check code style
+on:
+  push:
+  pull_request:
+
+jobs:
+  check-code-style:
+    name: Check code style
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Use rust toolchain
+        uses: actions/setup-rust-toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+
+      - name: Check the code style
+        run: cargo fmt --all -- --check

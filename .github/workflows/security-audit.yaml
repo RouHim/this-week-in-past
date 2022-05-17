@@ -1,4 +1,4 @@
-name: security-audit
+name: Security Audits
 on:
   push:
   pull_request:
