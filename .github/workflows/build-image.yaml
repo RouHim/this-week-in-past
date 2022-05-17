@@ -1,0 +1,147 @@
+name: Build container image
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+
+  check-code-style:
+    name: Check code style
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+
+      - name: Check the code style
+        run: cargo fmt --all -- --check
+
+  verify-code:
+    name: Verify code for common mistakes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+
+      - name: Verify code
+        run: cargo clippy
+
+  test:
+    name: Run all tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+
+      - name: Test code
+        run: cargo test
+
+  build:
+    name: Build the image
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: 1 # use the new docker build backend
+    needs: [ check-code-style, verify-code, test ]
+    steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build images
+        run: |
+          docker build -t rouhim/this-week-in-past:${{ github.sha }} .
+          docker save rouhim/this-week-in-past:${{ github.sha }} > this-week-in-past.tar
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: docker-artifact
+          path: this-week-in-past.tar
+
+  scan-container:
+    name: CVE Security scan
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Docker Image
+        uses: actions/download-artifact@v2
+        with:
+          name: docker-artifact
+          path: this-week-in-past.tar
+
+      - name: restore docker image
+        run: docker load < this-week-in-past.tar
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'rouhim/this-week-in-past:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+  test-container:
+    name: Test the image
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Docker Image
+        uses: actions/download-artifact@v2
+        with:
+          name: docker-artifact
+          path: this-week-in-past.tar
+
+      - name: restore docker image
+        run: docker load < this-week-in-past.tar
+
+      - name: Run container tests
+        run: |
+          docker run -d --name test-container -e RESOURCES_PATH=/ rouhim/this-week-in-past:${{ github.sha }}
+          wget -q -O /dev/null -t 1 -T 2 http://localhost:8080/api/health
+
+      - name: cleanup
+        run: docker stop test-container && docker rm test-container
+
+  push-container:
+    name: Push the image
+    needs: [ scan-container, test-container ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Docker Image
+        uses: actions/download-artifact@v2
+        with:
+          name: docker-artifact
+          path: this-week-in-past.tar
+
+      - name: restore docker image
+        run: docker load < this-week-in-past.tar
+
+      - name: Push image to Docker Hub
+        run: |
+        docker tag rouhim/this-week-in-past:${{ github.sha }} rouhim/this-week-in-past:latest
+        docker push rouhim/this-week-in-past:${{ github.sha }}
+        docker push rouhim/this-week-in-past:latest
