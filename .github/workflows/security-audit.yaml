@@ -51,6 +51,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'config'
+          hide-progress: false
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
