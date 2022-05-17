@@ -22,7 +22,7 @@ jobs:
         run: cargo fmt --all -- --check
 
   verify-code:
-    name: Verify code for common mistakes        if: github.ref_name == 'main' # only push the image if the branch is main
+    name: Verify code for common mistakes
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
