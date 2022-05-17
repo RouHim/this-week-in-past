@@ -186,7 +186,8 @@ pub async fn get_resource_metadata_description_by_id(
     let display_value = kv_reader
         .get_one(resources_id.as_str())
         .map(|value| value.to_string())
-        .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok())        .map(resource_processor::build_display_value);
+        .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok())
+        .map(resource_processor::build_display_value);
 
     if let Some(display_value) = display_value {
         HttpResponse::Ok()
