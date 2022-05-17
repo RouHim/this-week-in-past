@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use evmap::ReadHandle;
 use rand::prelude::SliceRandom;
 use rand::Rng;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde_json::Value;
 
 use crate::geo_location::GeoLocation;
@@ -18,8 +19,10 @@ pub fn get_this_week_in_past(kv_reader: &ReadHandle<String, String>) -> Vec<Stri
         .unwrap()
         .iter()
         .map(|(_, v)| serde_json::from_str::<RemoteResource>(v.get_one().unwrap()).unwrap())
+        .collect::<Vec<RemoteResource>>()
+        .par_iter()
         .filter(|resource| resource.is_this_week())
-        .map(|resource| resource.id)
+        .map(|resource| resource.clone().id)
         .collect();
 
     // shuffle resource keys

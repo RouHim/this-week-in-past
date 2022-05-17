@@ -43,6 +43,7 @@ function loadCurrentTempFromHomeAssistant() {
 }
 
 function slideshowTick() {
+    // set image
     let photoDataRequest = new XMLHttpRequest();
     photoDataRequest.open("GET",
         `${window.location.href}api/resources/${resources[currentIndex]}/${window.screen.availWidth}/${window.screen.availHeight}/base64`
@@ -50,6 +51,7 @@ function slideshowTick() {
     photoDataRequest.send();
     photoDataRequest.onload = () => document.getElementById("slideshow-image").src = photoDataRequest.response;
 
+    // set image description
     let photoMetadataRequest = new XMLHttpRequest();
     photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex] + "/description");
     photoMetadataRequest.send();

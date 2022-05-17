@@ -6,6 +6,8 @@ use std::time::UNIX_EPOCH;
 use chrono::{Local, NaiveDateTime, TimeZone};
 use log::error;
 use now::DateTimeNow;
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
 
 use crate::geo_location::GeoLocation;
@@ -24,7 +26,7 @@ impl ResourceReader {
 
     pub fn list_all_resources(&self) -> Vec<RemoteResource> {
         self.paths
-            .iter()
+            .par_iter()
             .flat_map(|path| read_folder(&PathBuf::from(path)))
             .map(|resource| exif_reader::fill_exif_data(&resource))
             .collect()
@@ -125,11 +127,11 @@ impl RemoteResource {
             return false;
         }
 
-        let current_date = Local::now();
-        let resource_date = Local.from_local_datetime(&self.taken.unwrap());
-
-        let current_week_of_year = current_date.week_of_year();
-        let resource_week_of_year = resource_date.unwrap().week_of_year();
+        let current_week_of_year = Local::now().week_of_year();
+        let resource_week_of_year = Local
+            .from_local_datetime(&self.taken.unwrap())
+            .unwrap()
+            .week_of_year();
 
         current_week_of_year == resource_week_of_year
     }

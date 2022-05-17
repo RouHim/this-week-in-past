@@ -77,14 +77,14 @@ fn read_jpg_with_exif_image_resource() {
         resources_read.orientation,
         Some(ImageOrientation {
             rotation: 0,
-            mirror_vertically: false
+            mirror_vertically: false,
         })
     );
     assert_eq!(
         resources_read.location,
         Some(GeoLocation {
             latitude: 43.46745,
-            longitude: 11.885126
+            longitude: 11.885126,
         })
     );
 
