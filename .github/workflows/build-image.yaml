@@ -62,12 +62,6 @@ jobs:
       DOCKER_BUILDKIT: 1 # use the new docker build backend
     needs: [ check-code-style, verify-code, test ]
     steps:
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
       - name: Checkout code
         uses: actions/checkout@v2
 
@@ -131,6 +125,12 @@ jobs:
     needs: [ scan-container, test-container ]
     runs-on: ubuntu-latest
     steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
       - name: Download Docker Image
         uses: actions/download-artifact@v2
         with:
