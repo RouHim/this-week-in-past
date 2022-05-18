@@ -115,7 +115,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: docker-artifact
-          path: this-week-in-past.tar
+          path: .
 
       - name: restore docker image
         run: docker load --input this-week-in-past.tar
@@ -138,7 +138,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: docker-artifact
-          path: this-week-in-past.tar
+          path: .
 
       - name: restore docker image
         run: docker load --input this-week-in-past.tar
