@@ -107,8 +107,9 @@ jobs:
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
+          profile: default
           toolchain: nightly
+        run: rustup target add x86_64-unknown-linux-musl
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
