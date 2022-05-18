@@ -2,6 +2,8 @@ name: Build container image
 on:
   push:
   pull_request:
+    types:
+      - opened
 
 jobs:
 
