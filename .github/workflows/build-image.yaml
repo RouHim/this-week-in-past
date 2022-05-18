@@ -109,7 +109,7 @@ jobs:
         with:
           profile: default
           toolchain: nightly
-        run: rustup target add x86_64-unknown-linux-musl
+          target: x86_64-unknown-linux-musl
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
