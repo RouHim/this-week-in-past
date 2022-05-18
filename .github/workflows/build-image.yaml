@@ -112,7 +112,7 @@ jobs:
 
       - name: Prepare build environment
         run: |
-          apt update && apt install -y musl-tools
+          sudo apt update && sudo apt install -y musl-tools
           rustup target add x86_64-unknown-linux-musl
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
