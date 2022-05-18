@@ -5,6 +5,39 @@ on:
 
 jobs:
 
+  check-config:
+    name: Check config files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          hide-progress: false
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+  check-repo:
+    name: Check repo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
   check-code-style:
     name: Check code style
     runs-on: ubuntu-latest
@@ -21,8 +54,8 @@ jobs:
       - name: Check the code style
         run: cargo fmt --all -- --check
 
-  verify-code:
-    name: Verify code for common mistakes
+  check-code:
+    name: Check code
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -38,7 +71,7 @@ jobs:
         run: cargo clippy
 
   test:
-    name: Run all tests
+    name: Run tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -54,11 +87,11 @@ jobs:
         run: cargo test
 
   build:
-    name: Build the image
+    name: Build container image
+    needs: [ check-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
     env:
       DOCKER_BUILDKIT: 1 # use the new docker build backend
-    needs: [ check-code-style, verify-code, test ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -74,7 +107,7 @@ jobs:
           path: this-week-in-past.tar
 
   scan-container:
-    name: CVE Security scan
+    name: Scan container security
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -97,7 +130,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
   test-container:
-    name: Test the image
+    name: Test container image
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -119,7 +152,7 @@ jobs:
         run: docker stop test-container && docker rm test-container
 
   push-container:
-    name: Push the image
+    name: Push container image
     needs: [ scan-container, test-container ]
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' # only push the image if the branch is main
@@ -134,7 +167,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: docker-artifact
-          path: this-week-in-past.tar
+          path: .
 
       - name: restore docker image
         run: docker load < this-week-in-past.tar

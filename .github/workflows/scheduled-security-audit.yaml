@@ -1,7 +1,7 @@
 name: Security Audits
 on:
-  push:
-  pull_request:
+  schedule:
+    - cron: '0 0 * * *'  # every day at midnight
 
 jobs:
   docker-audit:
@@ -24,6 +24,11 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
 
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: 'trivy-results.sarif'
+
   filesystem-audit:
     name: Audit repo filesystem
     runs-on: ubuntu-latest
@@ -39,6 +44,11 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: 'trivy-results.sarif'
 
   config-audit:
     name: Audit config files
@@ -56,3 +66,8 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: 'trivy-results.sarif'
