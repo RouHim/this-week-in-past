@@ -118,7 +118,7 @@ jobs:
           path: this-week-in-past.tar
 
       - name: restore docker image
-        run: docker load < this-week-in-past.tar
+        run: docker load --input this-week-in-past.tar
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -141,7 +141,7 @@ jobs:
           path: this-week-in-past.tar
 
       - name: restore docker image
-        run: docker load < this-week-in-past.tar
+        run: docker load --input this-week-in-past.tar
 
       - name: Run container tests
         run: |
@@ -170,7 +170,7 @@ jobs:
           path: .
 
       - name: restore docker image
-        run: docker load < this-week-in-past.tar
+        run: docker load --input this-week-in-past.tar
 
       - name: Push image to Docker Hub
         run: |
