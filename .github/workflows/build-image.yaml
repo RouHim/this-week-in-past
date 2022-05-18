@@ -123,7 +123,7 @@ jobs:
 
       - name: Build container image
         run: |
-          docker build -t rouhim/this-week-in-past:${{ github.sha }} -f pipe.Dockerfile .
+          docker build -t rouhim/this-week-in-past:${{ github.sha }} .
           docker save rouhim/this-week-in-past:${{ github.sha }} > this-week-in-past.tar
 
       - uses: actions/upload-artifact@v2
