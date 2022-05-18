@@ -109,11 +109,16 @@ jobs:
         with:
           profile: default
           toolchain: nightly
+
+      - name: Prepare build environment
+        run: |
+          apt update && apt install -y musl-tools
+          rustup target add x86_64-unknown-linux-musl
+
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
       - name: Build application
         run: |
-          rustup target add x86_64-unknown-linux-musl
           cargo build --release --target x86_64-unknown-linux-musl
 
       - name: Build container image
