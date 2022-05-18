@@ -53,6 +53,8 @@ jobs:
           profile: minimal
           toolchain: nightly
 
+      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
+
       - name: Check the code style
         run: cargo fmt --all -- --check
 
@@ -68,6 +70,8 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly
+
+      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
       - name: Verify code
         run: cargo clippy
@@ -85,6 +89,8 @@ jobs:
           profile: minimal
           toolchain: nightly
 
+      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
+
       - name: Test code
         run: cargo test
 
@@ -98,9 +104,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Build images
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+
+      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
+
+      - name: Build application
         run: |
-          docker build -t rouhim/this-week-in-past:${{ github.sha }} .
+          cargo build --release --target x86_64-unknown-linux-musl
+
+      - name: Build container image
+        run: |
+          docker build -t rouhim/this-week-in-past:${{ github.sha }} -f pipe.Dockerfile .
           docker save rouhim/this-week-in-past:${{ github.sha }} > this-week-in-past.tar
 
       - uses: actions/upload-artifact@v2
