@@ -109,13 +109,12 @@ jobs:
         with:
           profile: default
           toolchain: nightly
-          target: x86_64-unknown-linux-musl
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
       - name: Build application
         run: |
-          cargo build --release --target x86_64-unknown-linux-musl
+          cargo build --release
 
       - name: Build container image
         run: |
