@@ -168,13 +168,14 @@ jobs:
       - name: restore docker image
         run: docker load --input this-week-in-past.tar
 
-      - name: Run container tests
-        run: |
-          docker run -d --name test-container -e RESOURCES_PATH=/ rouhim/this-week-in-past:${{ github.sha }}
-          wget -q -O /dev/null -t 1 -T 2 http://localhost:8080/api/health
+      - name: Start test container
+        run: docker run -d --name test-container -p 8080:8080 -e RESOURCES_PATH=/ rouhim/this-week-in-past:${{ github.sha }}
 
-      - name: cleanup
-        run: docker stop test-container && docker rm test-container
+      - name: Test container web api
+        run: wget -q -O /dev/null -t 1 -T 2 http://localhost:8080/api/health
+
+      - name: Cleanup
+        run: docker kill test-container && docker rm test-container
 
   push-container:
     name: Push container image
