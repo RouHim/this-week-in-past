@@ -93,7 +93,7 @@ jobs:
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
       - name: Test code
-        run: cargo test
+        run: cargo test -j 1
 
   build:
     name: Build container image
