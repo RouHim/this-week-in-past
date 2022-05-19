@@ -4,12 +4,14 @@ use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
 
+/// Struct representing a geo location
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
 pub struct GeoLocation {
     pub latitude: f32,
     pub longitude: f32,
 }
 
+/// Display trait implementation for GeoLocation
 impl Display for GeoLocation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "[lat={} lon={}]", self.latitude, self.longitude,)
@@ -17,6 +19,7 @@ impl Display for GeoLocation {
 }
 
 /// Converts Degrees Minutes Seconds To Decimal Degrees
+/// See https://stackoverflow.com/questions/14906764/converting-gps-coordinates-to-decimal-degrees
 fn dms_to_dd(dms_string: &str) -> Option<f32> {
     lazy_static! {
         static ref DMS_PARSE_PATTERN_1: Regex = Regex::new(
@@ -95,6 +98,9 @@ fn parse_pattern_2(caps: Captures) -> Option<f32> {
     }
 }
 
+/// Converts latitude and longitude to a GeoLocation
+/// If the latitude or longitude is not valid, None is returned
+/// This is done by converting the latitude and longitude to degrees minutes seconds
 pub fn from_degrees_minutes_seconds(latitude: String, longitude: String) -> Option<GeoLocation> {
     let maybe_dd_lat = dms_to_dd(&latitude);
     let maybe_dd_lon = dms_to_dd(&longitude);

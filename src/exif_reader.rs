@@ -6,6 +6,9 @@ use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
 use crate::resource_reader::RemoteResource;
 
+/// Reads the exif date from a given exif data entry
+/// Primarily the exif date is used to determine the date the image was taken
+/// If the exif date is not available, the gps date is used
 pub fn get_exif_date(exif_data: &Exif) -> Option<NaiveDateTime> {
     let mut exif_date: Option<NaiveDateTime> = detect_exif_date(
         vec![Tag::DateTime, Tag::DateTimeOriginal, Tag::DateTimeDigitized],
@@ -19,6 +22,7 @@ pub fn get_exif_date(exif_data: &Exif) -> Option<NaiveDateTime> {
     exif_date
 }
 
+/// Reads the gps date from a given exif data entry
 fn get_gps_date(exif_data: &Exif) -> Option<NaiveDateTime> {
     exif_data
         .get_field(Tag::GPSDateStamp, In::PRIMARY)
@@ -28,11 +32,13 @@ fn get_gps_date(exif_data: &Exif) -> Option<NaiveDateTime> {
         .map(|gps_date| gps_date.and_hms(0, 0, 0))
 }
 
+/// Finds the exif date in for the given tags
+/// Returns the first date found or None if no date was found
 fn detect_exif_date(tags_to_evaluate: Vec<Tag>, exif_data: &Exif) -> Option<NaiveDateTime> {
     let exit_dates: Vec<NaiveDateTime> = tags_to_evaluate
         .iter()
         .filter_map(|tag| exif_data.get_field(*tag, In::PRIMARY))
-        .filter_map(|exif_date| parse_exit_date(exif_date.display_value().to_string()))
+        .filter_map(|exif_date| parse_exif_date(exif_date.display_value().to_string()))
         .collect();
 
     if !exit_dates.is_empty() {
@@ -42,10 +48,12 @@ fn detect_exif_date(tags_to_evaluate: Vec<Tag>, exif_data: &Exif) -> Option<Naiv
     }
 }
 
-fn parse_exit_date(date: String) -> Option<NaiveDateTime> {
+/// Parses the exif date from a given string
+fn parse_exif_date(date: String) -> Option<NaiveDateTime> {
     NaiveDateTime::parse_from_str(date.as_str(), "%F %T").ok()
 }
 
+/// Reads the exif data from a given resource
 pub fn load_exif(resource: &RemoteResource) -> Option<Exif> {
     let file = std::fs::File::open(&resource.path).unwrap();
     let mut bufreader = std::io::BufReader::new(&file);
@@ -80,6 +88,8 @@ pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
     augmented_resource
 }
 
+/// Detects the location from the exif data
+/// If the location is not found, the location is set to None
 fn detect_location(exif_data: &Exif) -> Option<GeoLocation> {
     let maybe_latitude = exif_data.get_field(Tag::GPSLatitude, In::PRIMARY);
     let maybe_longitude = exif_data.get_field(Tag::GPSLongitude, In::PRIMARY);
@@ -94,6 +104,9 @@ fn detect_location(exif_data: &Exif) -> Option<GeoLocation> {
     None
 }
 
+/// Detects the orientation from the exif data
+/// If the orientation is not found, the orientation is set to None
+/// Possible rotations are: 0, 90, 180, 270
 fn detect_orientation(exif_data: &Exif) -> Option<ImageOrientation> {
     let maybe_orientation = exif_data
         .get_field(Tag::Orientation, In::PRIMARY)

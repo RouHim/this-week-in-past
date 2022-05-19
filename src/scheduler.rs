@@ -7,11 +7,13 @@ use evmap::WriteHandle;
 use crate::resource_reader::ResourceReader;
 use crate::CACHE_DIR;
 
+/// Initializes the scheduler by creating the cache directory
 pub fn init() {
     // create cache dir
     std::fs::create_dir_all(CACHE_DIR).expect("Creating cache dir");
 }
 
+/// Schedules the cache indexer at every day at midnight
 pub fn schedule_indexer(
     resource_reader: ResourceReader,
     kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
@@ -21,13 +23,14 @@ pub fn schedule_indexer(
     // Fetch resources at midnight
     scheduler
         .every(1.day())
-        .at("13:06")
+        .at("00:00")
         .run(move || fetch_resources(resource_reader.clone(), kv_writer_mutex.clone()));
 
     // Check the thread every minute
     scheduler.watch_thread(Duration::from_secs(60))
 }
 
+/// Fetches the resources from the configures paths and writes them to the cache
 pub fn fetch_resources(
     resource_reader: ResourceReader,
     kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,

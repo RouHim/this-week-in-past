@@ -13,6 +13,8 @@ pub fn md5(string: &str) -> String {
     format!("{:x}", md5::compute(string.as_bytes()))
 }
 
+/// Returns resources that was taken this week in the past
+/// The resources are shuffled, to the result is not deterministic
 pub fn get_this_week_in_past(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
     let mut resource_ids: Vec<String> = kv_reader
         .read()
@@ -32,6 +34,7 @@ pub fn get_this_week_in_past(kv_reader: &ReadHandle<String, String>) -> Vec<Stri
     resource_ids
 }
 
+/// Returns all resources in the same order
 pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
     kv_reader
         .read()
@@ -42,6 +45,8 @@ pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
         .collect()
 }
 
+/// Builds the display value for the specified resource
+/// The display value contains the date and location of a resource
 pub fn build_display_value(resource: RemoteResource) -> String {
     let mut display_value: String = String::new();
 
@@ -62,6 +67,8 @@ pub fn build_display_value(resource: RemoteResource) -> String {
     display_value.trim().to_string()
 }
 
+/// Returns the city name for the specified geo location
+/// The city name is resolved from the geo location using the bigdatacloud api
 pub fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     let response_json = reqwest::blocking::get(format!(
         "https://api.bigdatacloud.net/data/reverse-geocode?latitude={}&longitude={}&localityLanguage=de&key={}",
@@ -87,6 +94,7 @@ pub fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     city_name
 }
 
+/// Returns the string value for the specified key of an hash map
 fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Option<String> {
     json_data
         .get(field_name)
@@ -94,6 +102,8 @@ fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Opt
         .map(|field_string_value| field_string_value.to_string())
 }
 
+/// Selects a random entry from the specified resource provider
+/// The id of the resource is returned
 pub fn random_entry(kv_reader: &ReadHandle<String, String>) -> Option<String> {
     let entry_count = kv_reader.read().unwrap().len();
     let random_index = rand::thread_rng().gen_range(0..entry_count);

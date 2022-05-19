@@ -2,6 +2,9 @@ use std::env;
 
 const OPEN_WEATHER_MAP_API_KEY: &str = "4021b60be2b322c8cfc749a6503bb553";
 
+/// Returns the current weather data provided by OpenWeatherMap
+/// The data is selected by the configured location
+/// Returns None if the data could not be retrieved or the weather json data
 pub async fn get_current_weather() -> Option<String> {
     let city: String = env::var("LOCATION_NAME").unwrap_or_else(|_| "Berlin".to_string());
     let units: String = env::var("UNITS").unwrap_or_else(|_| "metric".to_string());
@@ -18,6 +21,9 @@ pub async fn get_current_weather() -> Option<String> {
     }
 }
 
+/// Returns the current weather data provided by Home Assistant
+/// if the Home Assistant integration is enabled
+/// and entity_id is found
 pub async fn get_home_assistant_data() -> Option<String> {
     let base_url = env::var("HOME_ASSISTANT_BASE_URL").ok();
     let api_token = env::var("HOME_ASSISTANT_API_TOKEN").ok();

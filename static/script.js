@@ -2,6 +2,7 @@ let resources;
 let currentIndex = 0;
 let maxIndex = 0;
 
+// Initialize the slideshow
 window.onload = () => {
     loadAvailableImages();
     loadWeatherInformation();
@@ -21,6 +22,7 @@ function loadWeatherInformation() {
         });
 }
 
+// Shows the current weather on the slideshow
 function loadCurrentWeather() {
     fetch(`${window.location.href}api/weather/current`)
         .then(response => response.json())
@@ -29,6 +31,7 @@ function loadCurrentWeather() {
         });
 }
 
+// Shows the current weather on the slideshow
 function showCurrentWeather(data) {
     const weather = data.weather[0];
     const icon = weather.icon;
@@ -46,6 +49,7 @@ function showCurrentWeather(data) {
     }
 }
 
+// Returns true if Home Assistant is enabled
 function isHomeAssistantEnabled() {
     let request = new XMLHttpRequest();
     request.open('GET', `${window.location.href}api/weather/homeassistant`, false);
@@ -57,6 +61,7 @@ function isHomeAssistantEnabled() {
     return false;
 }
 
+// Loads the current temperature from Home Assistant
 function getCurrentTemperatureDataFromHomeAssistant() {
     let request = new XMLHttpRequest();
     request.open('GET', `${window.location.href}api/weather/homeassistant/temperature`, false);
@@ -66,6 +71,8 @@ function getCurrentTemperatureDataFromHomeAssistant() {
     }
 }
 
+
+// Set the slideshow image and its meta information on tick interval
 function slideshowTick() {
     // set image
     let photoDataRequest = new XMLHttpRequest();
@@ -87,6 +94,7 @@ function slideshowTick() {
     }
 }
 
+// Starts the slideshow
 function startSlideshow(response) {
     resources = response;
     maxIndex = Object.keys(resources).length - 1;
@@ -96,6 +104,7 @@ function startSlideshow(response) {
     setInterval(() => slideshowTick(), 10000);
 }
 
+// Loads the available images from the server
 function loadAvailableImages() {
     // load all images of this week in the past years
     const http = new XMLHttpRequest();

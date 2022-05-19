@@ -14,16 +14,20 @@ use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
 use crate::{exif_reader, resource_processor};
 
+/// A resource reader that reads available resources from the filesystem
 #[derive(Clone)]
 pub struct ResourceReader {
     pub paths: Vec<String>,
 }
 
 impl ResourceReader {
+    /// Reads the specified resource from the filesystem
+    /// Returns the resource file data
     pub fn read_resource_data(&self, resource: &RemoteResource) -> Vec<u8> {
         fs::read(resource.path.clone()).unwrap()
     }
 
+    /// Returns all available resources from the filesystem
     pub fn list_all_resources(&self) -> Vec<RemoteResource> {
         self.paths
             .par_iter()
@@ -33,12 +37,14 @@ impl ResourceReader {
     }
 }
 
+/// Instantiates a new resource reader for the given paths
 pub fn new(paths: &str) -> ResourceReader {
     ResourceReader {
         paths: paths.split(',').map(|s| s.to_string()).collect(),
     }
 }
 
+/// A remote resource that is available on the filesystem
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RemoteResource {
     pub id: String,
@@ -53,6 +59,7 @@ pub struct RemoteResource {
 }
 
 /// Reads all files of a folder and returns all found resources
+/// The folder is recursively searched
 pub fn read_folder(folder_path: &PathBuf) -> Vec<RemoteResource> {
     let maybe_folder_path = std::fs::File::open(folder_path);
 
@@ -87,6 +94,7 @@ pub fn read_folder(folder_path: &PathBuf) -> Vec<RemoteResource> {
 }
 
 /// Reads a single file and returns the found resource
+/// Checks if the file is a supported resource currently all image types
 fn read_file(file_path: &PathBuf) -> Vec<RemoteResource> {
     let file = std::fs::File::open(file_path).unwrap();
     let metadata = file.metadata().expect("Failed to read metadata");
@@ -122,6 +130,7 @@ fn read_file(file_path: &PathBuf) -> Vec<RemoteResource> {
 }
 
 impl RemoteResource {
+    /// Checks if the resource was taken in the past but in this calendar week
     pub fn is_this_week(&self) -> bool {
         if self.taken.is_none() {
             return false;
@@ -137,6 +146,7 @@ impl RemoteResource {
     }
 }
 
+/// Renders the resource as a string
 impl Display for RemoteResource {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
