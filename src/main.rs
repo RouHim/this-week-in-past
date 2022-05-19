@@ -13,9 +13,13 @@ mod resource_endpoint;
 mod resource_processor;
 mod resource_reader;
 mod scheduler;
+mod weather_endpoint;
+mod weather_processor;
 
 #[cfg(test)]
-mod integration_test_rest_api;
+mod integration_test_resources_api;
+#[cfg(test)]
+mod integration_test_weather_api;
 #[cfg(test)]
 mod resource_processor_test;
 #[cfg(test)]
@@ -61,6 +65,13 @@ async fn main() -> std::io::Result<()> {
                     .service(resource_endpoint::get_resource_base64_by_id_and_resolution)
                     .service(resource_endpoint::get_resource_metadata_by_id)
                     .service(resource_endpoint::get_resource_metadata_description_by_id),
+            )
+            .service(
+                web::scope("/api/weather")
+                    .service(weather_endpoint::get_is_weather_enabled)
+                    .service(weather_endpoint::get_current_weather)
+                    .service(weather_endpoint::get_is_home_assistant_enabled)
+                    .service(weather_endpoint::get_home_assistant_entity_data),
             )
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./static/").index_file("index.html"))

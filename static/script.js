@@ -4,42 +4,66 @@ let maxIndex = 0;
 
 window.onload = () => {
     loadAvailableImages();
-    loadCurrentWeather();
-    loadCurrentTempFromHomeAssistant();
+    loadWeatherInformation();
+
+    // Reload page every hour
+    setInterval(() => location.reload(), 3600000);
 };
 
-function loadCurrentWeather() {
-    const city = 'Koblenz';
-    const app_id = '4021b60be2b322c8cfc749a6503bb553';
-    const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${app_id}&units=metric&lang=de`;
-
-    fetch(url)
+/// Checks if the weather information should be shown, if so load them
+function loadWeatherInformation() {
+    fetch(`${window.location.href}api/weather`)
         .then(response => response.json())
-        .then(data => {
-            const weather = data.weather[0];
-            const icon = weather.icon;
-            document.getElementById("weather-label").innerHTML = weather.description;
-            document.getElementById("weather-icon").src = `https://openweathermap.org/img/w/${icon}.png`;
+        .then(showWeather => {
+            if (showWeather === true) {
+                loadCurrentWeather();
+            }
         });
 }
 
-function loadCurrentTempFromHomeAssistant() {
-    const base_url = "http://192.168.0.5:8123";
-    const token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiIzYzg5ZmY3MjMyZDg0ZmY2ODVkZDFkODhhOWQxYTRjMiIsImlhdCI6MTY0NTQ1OTA2MiwiZXhwIjoxOTYwODE5MDYyfQ.TknsqBMwriiE4_jrSjEi4z8vn0AUvLD8WYgL-BhaYKw";
-    const entity_id = "sensor.aussen_sensor_temperature";
-    const url = `${base_url}/api/states/${entity_id}`;
-
-    fetch(url, {
-        "method": "GET",
-        "headers": {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-        }
-    })
+function loadCurrentWeather() {
+    fetch(`${window.location.href}api/weather/current`)
         .then(response => response.json())
         .then(data => {
-            document.getElementById("weather-temperature").innerText = Math.round(data.state) + "°C";
+            showCurrentWeather(data);
         });
+}
+
+function showCurrentWeather(data) {
+    const weather = data.weather[0];
+    const icon = weather.icon;
+
+    document.getElementById("weather-label").innerHTML = weather.description + ",&nbsp;";
+    document.getElementById("weather-icon").src = `https://openweathermap.org/img/w/${icon}.png`;
+
+    if (isHomeAssistantEnabled()) {
+        let homeAssistantData = JSON.parse(getCurrentTemperatureDataFromHomeAssistant());
+        document.getElementById("weather-temperature").innerText =
+            Math.round(homeAssistantData.state) + homeAssistantData.attributes.unit_of_measurement;
+    } else {
+        document.getElementById("weather-temperature").innerText =
+            Math.round(data.main.temp) + "°C";
+    }
+}
+
+function isHomeAssistantEnabled() {
+    let request = new XMLHttpRequest();
+    request.open('GET', `${window.location.href}api/weather/homeassistant`, false);
+    request.send(null);
+    if (request.status === 200) {
+        return String(request.responseText) === "true";
+    }
+
+    return false;
+}
+
+function getCurrentTemperatureDataFromHomeAssistant() {
+    let request = new XMLHttpRequest();
+    request.open('GET', `${window.location.href}api/weather/homeassistant/temperature`, false);
+    request.send(null);
+    if (request.status === 200) {
+        return request.response;
+    }
 }
 
 function slideshowTick() {
@@ -68,14 +92,12 @@ function startSlideshow(response) {
     maxIndex = Object.keys(resources).length - 1;
     slideshowTick();
 
-    // Tick every 10 seconds
+    // Slideshow tick every 10 seconds
     setInterval(() => slideshowTick(), 10000);
-
-    // Reload every hour
-    setInterval(() => location.reload(), 3600000);
 }
 
 function loadAvailableImages() {
+    // load all images of this week in the past years
     const http = new XMLHttpRequest();
     http.open("GET", window.location.href + "api/resources/week");
     http.send();
