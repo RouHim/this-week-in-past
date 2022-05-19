@@ -87,10 +87,10 @@ jobs:
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
         with:
-          profile: default
+          profile: minimal
           toolchain: nightly
 
-#      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
+      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
       - name: Test code
         run: cargo test
