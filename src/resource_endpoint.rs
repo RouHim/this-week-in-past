@@ -89,7 +89,7 @@ pub async fn get_resource_by_id_and_resolution(
             &resource_data,
         )
         .await
-        .unwrap();
+        .expect("writing to cache failed");
 
         HttpResponse::Ok()
             .content_type("image/png")
@@ -150,7 +150,7 @@ pub async fn get_resource_base64_by_id_and_resolution(
             base64_image.as_bytes(),
         )
         .await
-        .unwrap();
+        .expect("writing to cache failed");
 
         HttpResponse::Ok()
             .content_type("plain/text")

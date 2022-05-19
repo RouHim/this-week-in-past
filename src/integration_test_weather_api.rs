@@ -1,21 +1,27 @@
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use std::{env, fs};
 
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::{test, web, App, Error};
 use assertor::{assert_that, StringAssertion};
 use evmap::{ReadHandle, WriteHandle};
+use rand::Rng;
 
 use crate::resource_reader::ResourceReader;
 use crate::{resource_reader, scheduler, weather_endpoint};
 
+const TEST_FOLDER_NAME: &str = "integration_test_weather_api";
+
 #[actix_web::test]
 async fn test_get_weather_current() {
     // GIVEN is a running this-week-in-past instance
+    let base_test_dir = create_temp_folder().await;
     let (kv_reader, kv_writer) = evmap::new::<String, String>();
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::new("/tmp"),
+        resource_reader::new(base_test_dir.to_str().unwrap()),
         kv_writer_mutex.clone(),
     ))
     .await;
@@ -40,11 +46,12 @@ async fn test_get_weather_current() {
 #[actix_web::test]
 async fn test_get_is_weather_enabled() {
     // GIVEN is a running this-week-in-past instance
+    let base_test_dir = create_temp_folder().await;
     let (kv_reader, kv_writer) = evmap::new::<String, String>();
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::new("/tmp"),
+        resource_reader::new(base_test_dir.to_str().unwrap()),
         kv_writer_mutex.clone(),
     ))
     .await;
@@ -87,4 +94,18 @@ fn build_app(
                 .service(weather_endpoint::get_is_weather_enabled)
                 .service(weather_endpoint::get_current_weather),
         )
+}
+
+/// Creates a temp folder with the given name and returns its full path
+async fn create_temp_folder() -> PathBuf {
+    let random_string = rand::thread_rng().gen::<u32>().to_string();
+    let test_dir: PathBuf = env::temp_dir().join(TEST_FOLDER_NAME).join(random_string);
+
+    if test_dir.exists() {
+        fs::remove_dir_all(&test_dir).expect("Failed to remove test dir");
+    }
+
+    fs::create_dir_all(&test_dir).unwrap();
+
+    test_dir
 }

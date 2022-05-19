@@ -18,8 +18,8 @@ mod weather_processor;
 
 #[cfg(test)]
 mod integration_test_resources_api;
-// #[cfg(test)]
-// mod integration_test_weather_api;
+#[cfg(test)]
+mod integration_test_weather_api;
 #[cfg(test)]
 mod resource_processor_test;
 #[cfg(test)]
