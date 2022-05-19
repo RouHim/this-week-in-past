@@ -4,6 +4,7 @@ on:
   pull_request:
     types:
       - opened
+  workflow_dispatch: # allow manual execution
 
 jobs:
 
