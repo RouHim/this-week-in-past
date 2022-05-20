@@ -4,13 +4,17 @@ use std::time::{Duration, Instant};
 use clokwerk::{ScheduleHandle, Scheduler, TimeUnits};
 use evmap::WriteHandle;
 
+use crate::resource_processor;
 use crate::resource_reader::ResourceReader;
-use crate::CACHE_DIR;
 
 /// Initializes the scheduler by creating the cache directory
 pub fn init() {
     // create cache dir
-    std::fs::create_dir_all(CACHE_DIR).expect("Creating cache dir");
+    std::fs::create_dir_all(resource_processor::get_cache_dir()).expect("Creating cache dir");
+
+    // Check if cache is writeable
+    cacache::write_sync(resource_processor::get_cache_dir(), "test", b"test")
+        .expect("Cache is not writeable");
 }
 
 /// Schedules the cache indexer at every day at midnight
@@ -43,7 +47,7 @@ pub fn fetch_resources(
     println!("Purging kv store");
     kv_writer.purge();
 
-    println!("Fetching resources...");
+    println!("Indexing resources, this may take some time depending on the amount of resources...");
     let resources = resource_reader.list_all_resources();
 
     println!("Storing {} items", resources.len());
@@ -56,7 +60,7 @@ pub fn fetch_resources(
     kv_writer.refresh();
 
     println!("Cleanup cache");
-    cacache::clear_sync(CACHE_DIR).expect("Cleaning cache");
+    cacache::clear_sync(resource_processor::get_cache_dir()).expect("Cleaning cache");
 
     println!("Job done in {}s!", s.elapsed().as_secs());
 }

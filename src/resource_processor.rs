@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 
 use evmap::ReadHandle;
 use rand::prelude::SliceRandom;
@@ -47,21 +48,22 @@ pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
 
 /// Builds the display value for the specified resource
 /// The display value contains the date and location of a resource
-pub fn build_display_value(resource: RemoteResource) -> String {
+pub async fn build_display_value(resource: RemoteResource) -> String {
     let mut display_value: String = String::new();
 
+    // Append taken date
     if let Some(taken_date) = resource.taken {
         display_value.push_str(taken_date.date().format("%d.%m.%Y").to_string().as_str());
     }
 
-    let city_name = resource.location.and_then(resolve_city_name);
+    // Append city name
+    if let Some(resource_location) = resource.location {
+        let city_name = resolve_city_name(resource_location).await;
 
-    if let Some(city_name) = city_name {
-        if resource.taken.is_some() {
+        if let Some(city_name) = city_name {
             display_value.push_str(", ");
+            display_value.push_str(city_name.as_str());
         }
-
-        display_value.push_str(city_name.as_str());
     }
 
     display_value.trim().to_string()
@@ -69,15 +71,22 @@ pub fn build_display_value(resource: RemoteResource) -> String {
 
 /// Returns the city name for the specified geo location
 /// The city name is resolved from the geo location using the bigdatacloud api
-pub fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
-    let response_json = reqwest::blocking::get(format!(
+pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
+    let response = reqwest::get(format!(
         "https://api.bigdatacloud.net/data/reverse-geocode?latitude={}&longitude={}&localityLanguage=de&key={}",
         geo_location.latitude,
         geo_location.longitude,
         "6b8aad17eba7449d9d93c533359b0384",
-    ))
-        .and_then(|response| response.text()).ok()
-        .and_then(|json_string| serde_json::from_str::<HashMap<String, serde_json::Value>>(&json_string).ok());
+    )).await;
+
+    if response.is_err() {
+        return None;
+    }
+
+    let response_json =
+        response.unwrap().text().await.ok().and_then(|json_string| {
+            serde_json::from_str::<HashMap<String, Value>>(&json_string).ok()
+        });
 
     let mut city_name = response_json
         .as_ref()
@@ -113,4 +122,9 @@ pub fn random_entry(kv_reader: &ReadHandle<String, String>) -> Option<String> {
         .iter()
         .nth(random_index)
         .map(|(key, _)| key.clone())
+}
+
+/// Reads the directory to store the cache into, needs write rights
+pub fn get_cache_dir() -> String {
+    env::var("CACHE_DIR").expect("CACHE_DIR is missing")
 }

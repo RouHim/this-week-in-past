@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 use actix_files::Files;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 
+mod config_endpoint;
 mod exif_reader;
 mod geo_location;
 mod image_processor;
@@ -24,8 +25,6 @@ mod integration_test_weather_api;
 mod resource_processor_test;
 #[cfg(test)]
 mod resource_reader_test;
-
-pub const CACHE_DIR: &str = "./cache";
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -73,6 +72,7 @@ async fn main() -> std::io::Result<()> {
                     .service(weather_endpoint::get_is_home_assistant_enabled)
                     .service(weather_endpoint::get_home_assistant_entity_data),
             )
+            .service(web::scope("/api/config").service(config_endpoint::get_slideshow_interval))
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./static/").index_file("index.html"))
     })

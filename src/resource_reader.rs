@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 use std::fs;
+use std::fs::Metadata;
 use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
 
@@ -114,19 +115,23 @@ fn read_file(file_path: &PathBuf) -> Vec<RemoteResource> {
         content_type: mime_type.to_string(),
         name: file_name.to_string(),
         content_length: metadata.len(),
-        last_modified: NaiveDateTime::from_timestamp(
-            metadata
-                .modified()
-                .unwrap()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64,
-            0,
-        ),
+        last_modified: read_last_modified_date(metadata),
         taken: None,
         location: None,
         orientation: None,
     }]
+}
+
+fn read_last_modified_date(metadata: Metadata) -> NaiveDateTime {
+    NaiveDateTime::from_timestamp(
+        metadata
+            .modified()
+            .unwrap()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or(std::time::Duration::new(0, 0))
+            .as_secs() as i64,
+        0,
+    )
 }
 
 impl RemoteResource {

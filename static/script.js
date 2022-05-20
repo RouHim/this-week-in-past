@@ -71,22 +71,39 @@ function getCurrentTemperatureDataFromHomeAssistant() {
     }
 }
 
-
-// Set the slideshow image and its meta information on tick interval
-function slideshowTick() {
+function setImage(resource_id) {
     // set image
     let photoDataRequest = new XMLHttpRequest();
     photoDataRequest.open("GET",
-        `${window.location.href}api/resources/${resources[currentIndex]}/${window.screen.availWidth}/${window.screen.availHeight}/base64`
+        `${window.location.href}api/resources/${resource_id}/${window.screen.availWidth}/${window.screen.availHeight}/base64`
     );
     photoDataRequest.send();
     photoDataRequest.onload = () => document.getElementById("slideshow-image").src = photoDataRequest.response;
 
     // set image description
     let photoMetadataRequest = new XMLHttpRequest();
-    photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex] + "/description");
+    photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resource_id + "/description");
     photoMetadataRequest.send();
     photoMetadataRequest.onload = () => document.getElementById("slideshow-metadata").innerText = photoMetadataRequest.response;
+}
+
+function getRandomResource() {
+    let request = new XMLHttpRequest();
+    request.open('GET', `${window.location.href}api/resources/random`, false);
+    request.send(null);
+    if (request.status === 200) {
+        return JSON.parse(request.response);
+    }
+}
+
+// Set the slideshow image and its meta information on tick interval
+function slideshowTick() {
+    if (resources.length === 0) {
+        setImage(getRandomResource());
+        return;
+    }
+
+    setImage(resources[currentIndex]);
 
     currentIndex++;
     if (currentIndex > maxIndex) {
@@ -94,14 +111,28 @@ function slideshowTick() {
     }
 }
 
+function getSlideshowInterval() {
+    let request = new XMLHttpRequest();
+    request.open('GET', `${window.location.href}api/config/interval`, false);
+    request.send(null);
+    if (request.status === 200) {
+        return request.responseText;
+    }
+    return 10000;
+}
+
 // Starts the slideshow
 function startSlideshow(response) {
     resources = response;
+
     maxIndex = Object.keys(resources).length - 1;
     slideshowTick();
 
-    // Slideshow tick every 10 seconds
-    setInterval(() => slideshowTick(), 10000);
+    // Load slideshow interval
+    let timeout = getSlideshowInterval();
+
+    // Start image slideshow
+    setInterval(() => slideshowTick(), timeout);
 }
 
 // Loads the available images from the server

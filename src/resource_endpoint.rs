@@ -4,7 +4,7 @@ use actix_web::HttpResponse;
 use evmap::ReadHandle;
 
 use crate::resource_reader::{RemoteResource, ResourceReader};
-use crate::{image_processor, resource_processor, CACHE_DIR};
+use crate::{image_processor, resource_processor};
 
 #[get("")]
 pub async fn list_all_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
@@ -52,7 +52,7 @@ pub async fn get_resource_by_id_and_resolution(
 
     // check cache
     let cached_data = cacache::read(
-        CACHE_DIR,
+        resource_processor::get_cache_dir(),
         format!("{resource_id}_{display_width}_{display_height}"),
     );
     if let Ok(cached_data) = cached_data.await {
@@ -84,7 +84,7 @@ pub async fn get_resource_by_id_and_resolution(
 
     if let Some(resource_data) = resource_data {
         cacache::write(
-            CACHE_DIR,
+            resource_processor::get_cache_dir(),
             format!("{resource_id}_{display_width}_{display_height}"),
             &resource_data,
         )
@@ -101,18 +101,18 @@ pub async fn get_resource_by_id_and_resolution(
 
 #[get("{resource_id}/{display_width}/{display_height}/base64")]
 pub async fn get_resource_base64_by_id_and_resolution(
-    resources_id: web::Path<(String, u32, u32)>,
+    path_variables: web::Path<(String, u32, u32)>,
     kv_reader: web::Data<ReadHandle<String, String>>,
     resource_reader: web::Data<ResourceReader>,
 ) -> HttpResponse {
-    let path_params = resources_id.into_inner();
+    let path_params = path_variables.into_inner();
     let resource_id = path_params.0.as_str();
     let display_width = path_params.1;
     let display_height = path_params.2;
 
     // check cache
     let cached_data = cacache::read(
-        CACHE_DIR,
+        resource_processor::get_cache_dir(),
         format!("{resource_id}_{display_width}_{display_height}_base64"),
     );
     if let Ok(cached_data) = cached_data.await {
@@ -145,7 +145,7 @@ pub async fn get_resource_base64_by_id_and_resolution(
 
     if let Some(base64_image) = base64_image {
         cacache::write(
-            CACHE_DIR,
+            resource_processor::get_cache_dir(),
             format!("{resource_id}_{display_width}_{display_height}_base64"),
             base64_image.as_bytes(),
         )
@@ -183,16 +183,17 @@ pub async fn get_resource_metadata_description_by_id(
     resources_id: web::Path<String>,
     kv_reader: web::Data<ReadHandle<String, String>>,
 ) -> HttpResponse {
-    let display_value = kv_reader
+    let resource = kv_reader
         .get_one(resources_id.as_str())
         .map(|value| value.to_string())
-        .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok())
-        .map(resource_processor::build_display_value);
+        .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
+
+    let display_value = resource.map(resource_processor::build_display_value);
 
     if let Some(display_value) = display_value {
         HttpResponse::Ok()
             .content_type("plain/text")
-            .body(display_value)
+            .body(display_value.await)
     } else {
         HttpResponse::InternalServerError().finish()
     }
