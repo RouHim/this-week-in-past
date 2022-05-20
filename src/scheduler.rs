@@ -60,7 +60,7 @@ pub fn fetch_resources(
     kv_writer.refresh();
 
     println!("Cleanup cache");
-    cacache::clear_sync(resource_processor::get_cache_dir()).expect("Cleaning cache");
+    let _ = cacache::clear_sync(resource_processor::get_cache_dir());
 
     println!("Job done in {}s!", s.elapsed().as_secs());
 }

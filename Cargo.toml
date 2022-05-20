@@ -32,6 +32,7 @@ openssl = { version = "0.10.40", features = ["vendored"] }
 [dev-dependencies]
 assertor = "0.0.1"
 pretty_assertions = "1.2.1"
+actix-rt = "2.7.0"
 
 # Strip debug symbols in release mode
 [profile.release]

@@ -99,13 +99,17 @@ fn build_app(
 /// Creates a temp folder with the given name and returns its full path
 async fn create_temp_folder() -> PathBuf {
     let random_string = rand::thread_rng().gen::<u32>().to_string();
-    let test_dir: PathBuf = env::temp_dir().join(TEST_FOLDER_NAME).join(random_string);
+    let test_dir: PathBuf = env::temp_dir().join(TEST_FOLDER_NAME).join(&random_string);
 
     if test_dir.exists() {
         fs::remove_dir_all(&test_dir).expect("Failed to remove test dir");
     }
 
     fs::create_dir_all(&test_dir).unwrap();
+
+    let cache_dir = format!("/tmp/cache/{}/{}", &random_string, TEST_FOLDER_NAME);
+    env::set_var("CACHE_DIR", &cache_dir);
+    fs::create_dir_all(&cache_dir).unwrap();
 
     test_dir
 }
