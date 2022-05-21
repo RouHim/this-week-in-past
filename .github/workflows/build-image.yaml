@@ -209,3 +209,10 @@ jobs:
           docker tag rouhim/this-week-in-past:${{ github.sha }} rouhim/this-week-in-past:latest
           docker push rouhim/this-week-in-past:${{ github.sha }}
           docker push rouhim/this-week-in-past:latest
+
+      - name: Update docker hub description
+        uses: peter-evans/dockerhub-description@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          repository: rouhim/this-week-in-past
