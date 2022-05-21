@@ -1,33 +1,38 @@
+extern crate core;
+
 use std::env;
 use std::sync::{Arc, Mutex};
 
 use actix_files::Files;
-use actix_web::{App, get, HttpResponse, HttpServer, middleware, web};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 
-use crate::web_dav_client::{WebDavClient, WebDavResource};
-
-mod scheduler;
-mod web_dav_client;
-mod resource_processor;
+mod config_endpoint;
 mod exif_reader;
 mod geo_location;
-mod resource_endpoint;
 mod image_processor;
+mod resource_endpoint;
+mod resource_processor;
+mod resource_reader;
+mod scheduler;
+mod weather_endpoint;
+mod weather_processor;
 
+#[cfg(test)]
+mod integration_test_resources_api;
+#[cfg(test)]
+mod integration_test_weather_api;
 #[cfg(test)]
 mod resource_processor_test;
 #[cfg(test)]
-mod image_processor_test;
-
-pub const CACHE_DIR: &str = "./cache";
+mod resource_reader_test;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Build webdav client
-    let web_dav_client = web_dav_client::new(
-        env::var("TWIP_WEBDAV_BASE_URL").expect("TWIP_WEBDAV_BASE_URL is missing").as_str(),
-        env::var("TWIP_USERNAME").expect("TWIP_USERNAME is missing").as_str(),
-        env::var("TWIP_PASSWORD").expect("TWIP_PASSWORD is missing").as_str(),
+    // Build remote resource client
+    let resource_reader = resource_reader::new(
+        env::var("RESOURCE_PATHS")
+            .expect("RESOURCE_PATHS is missing")
+            .as_str(),
     );
 
     // Initialize kv_store reader and writer
@@ -36,39 +41,44 @@ async fn main() -> std::io::Result<()> {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
 
     // Start scheduler to run at midnight
-    let scheduler_handle = scheduler::run_webdav_indexer(
-        web_dav_client.clone(),
-        kv_writer_mutex.clone(),
-    );
+    scheduler::init();
+    let scheduler_handle =
+        scheduler::schedule_indexer(resource_reader.clone(), kv_writer_mutex.clone());
 
     // Fetch resources for the first time
-    scheduler::fetch_resources(
-        web_dav_client.clone(),
-        kv_writer_mutex.clone(),
-    );
+    scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex.clone());
 
     // Run the actual web server and hold the main thread here
     println!("Launching webserver 🚀");
     let http_server_result = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(kv_reader.clone()))
-            .data(web_dav_client.clone())
+            .app_data(web::Data::new(resource_reader.clone()))
             .wrap(middleware::Logger::default()) // enable logger
-            .service(web::scope("/api/resources")
-                .service(resource_endpoint::list_all_resources)
-                .service(resource_endpoint::list_this_week_resources)
-                .service(resource_endpoint::random_resource)
-                .service(resource_endpoint::get_resource_by_id_and_resolution)
-                .service(resource_endpoint::get_resource_base64_by_id_and_resolution)
-                .service(resource_endpoint::get_resource_metadata_by_id)
-                .service(resource_endpoint::get_resource_metadata_description_by_id)
+            .service(
+                web::scope("/api/resources")
+                    .service(resource_endpoint::list_all_resources)
+                    .service(resource_endpoint::list_this_week_resources)
+                    .service(resource_endpoint::random_resource)
+                    .service(resource_endpoint::get_resource_by_id_and_resolution)
+                    .service(resource_endpoint::get_resource_base64_by_id_and_resolution)
+                    .service(resource_endpoint::get_resource_metadata_by_id)
+                    .service(resource_endpoint::get_resource_metadata_description_by_id),
             )
+            .service(
+                web::scope("/api/weather")
+                    .service(weather_endpoint::get_is_weather_enabled)
+                    .service(weather_endpoint::get_current_weather)
+                    .service(weather_endpoint::get_is_home_assistant_enabled)
+                    .service(weather_endpoint::get_home_assistant_entity_data),
+            )
+            .service(web::scope("/api/config").service(config_endpoint::get_slideshow_interval))
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./static/").index_file("index.html"))
     })
-        .bind("0.0.0.0:8080")?
-        .run()
-        .await;
+    .bind("0.0.0.0:8080")?
+    .run()
+    .await;
 
     // If the http server is terminated, stop also the scheduler
     println!("Stopping Scheduler 🕐️");

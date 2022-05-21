@@ -2,58 +2,108 @@ let resources;
 let currentIndex = 0;
 let maxIndex = 0;
 
+// Initialize the slideshow
 window.onload = () => {
     loadAvailableImages();
-    loadCurrentWeather();
-    loadCurrentTempFromHomeAssistant();
+    loadWeatherInformation();
+
+    // Reload page every hour
+    setInterval(() => location.reload(), 3600000);
 };
 
+/// Checks if the weather information should be shown, if so load them
+function loadWeatherInformation() {
+    fetch(`${window.location.href}api/weather`)
+        .then(response => response.json())
+        .then(showWeather => {
+            if (showWeather === true) {
+                loadCurrentWeather();
+            }
+        });
+}
+
+// Shows the current weather on the slideshow
 function loadCurrentWeather() {
-    const city = 'Koblenz';
-    const app_id = '4021b60be2b322c8cfc749a6503bb553';
-    const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${app_id}&units=metric&lang=de`;
-
-    fetch(url)
+    fetch(`${window.location.href}api/weather/current`)
         .then(response => response.json())
         .then(data => {
-            const weather = data.weather[0];
-            const icon = weather.icon;
-            document.getElementById("weather-label").innerHTML = weather.description;
-            document.getElementById("weather-icon").src = `https://openweathermap.org/img/w/${icon}.png`;
+            showCurrentWeather(data);
         });
 }
 
-function loadCurrentTempFromHomeAssistant() {
-    const base_url = "http://192.168.0.15:8123";
-    const token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiIzYzg5ZmY3MjMyZDg0ZmY2ODVkZDFkODhhOWQxYTRjMiIsImlhdCI6MTY0NTQ1OTA2MiwiZXhwIjoxOTYwODE5MDYyfQ.TknsqBMwriiE4_jrSjEi4z8vn0AUvLD8WYgL-BhaYKw";
-    const entity_id = "sensor.0x00158d0006ec850a_temperature";
-    const url = `${base_url}/api/states/${entity_id}`;
+// Shows the current weather on the slideshow
+function showCurrentWeather(data) {
+    const weather = data.weather[0];
+    const icon = weather.icon;
 
-    fetch(url, {
-        "method": "GET",
-        "headers": {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-        }
-    })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById("weather-temperature").innerText = Math.round(data.state) + "°C";
-        });
+    document.getElementById("weather-label").innerHTML = weather.description + ",&nbsp;";
+    document.getElementById("weather-icon").src = `https://openweathermap.org/img/w/${icon}.png`;
+
+    if (isHomeAssistantEnabled()) {
+        let homeAssistantData = JSON.parse(getCurrentTemperatureDataFromHomeAssistant());
+        document.getElementById("weather-temperature").innerText =
+            Math.round(homeAssistantData.state) + homeAssistantData.attributes.unit_of_measurement;
+    } else {
+        document.getElementById("weather-temperature").innerText =
+            Math.round(data.main.temp) + "°C";
+    }
 }
 
-function slideshowTick() {
+// Returns true if Home Assistant is enabled
+function isHomeAssistantEnabled() {
+    let request = new XMLHttpRequest();
+    request.open('GET', `${window.location.href}api/weather/homeassistant`, false);
+    request.send(null);
+    if (request.status === 200) {
+        return String(request.responseText) === "true";
+    }
+
+    return false;
+}
+
+// Loads the current temperature from Home Assistant
+function getCurrentTemperatureDataFromHomeAssistant() {
+    let request = new XMLHttpRequest();
+    request.open('GET', `${window.location.href}api/weather/homeassistant/temperature`, false);
+    request.send(null);
+    if (request.status === 200) {
+        return request.response;
+    }
+}
+
+function setImage(resource_id) {
+    // set image
     let photoDataRequest = new XMLHttpRequest();
     photoDataRequest.open("GET",
-        `${window.location.href}api/resources/${resources[currentIndex]}/${window.screen.availWidth}/${window.screen.availHeight}/base64`
+        `${window.location.href}api/resources/${resource_id}/${window.screen.availWidth}/${window.screen.availHeight}/base64`
     );
     photoDataRequest.send();
     photoDataRequest.onload = () => document.getElementById("slideshow-image").src = photoDataRequest.response;
 
+    // set image description
     let photoMetadataRequest = new XMLHttpRequest();
-    photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resources[currentIndex] + "/description");
+    photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resource_id + "/description");
     photoMetadataRequest.send();
     photoMetadataRequest.onload = () => document.getElementById("slideshow-metadata").innerText = photoMetadataRequest.response;
+}
+
+function getRandomResource() {
+    let request = new XMLHttpRequest();
+    request.open('GET', `${window.location.href}api/resources/random`, false);
+    request.send(null);
+    if (request.status === 200) {
+        return JSON.parse(request.response);
+    }
+}
+
+// Set the slideshow image and its meta information on tick interval
+function slideshowTick() {
+    if (resources.length === 0) {
+        setImage(getRandomResource());
+        return;
+    }
+
+    setImage(resources[currentIndex]);
 
     currentIndex++;
     if (currentIndex > maxIndex) {
@@ -61,19 +111,33 @@ function slideshowTick() {
     }
 }
 
+function getSlideshowInterval() {
+    let request = new XMLHttpRequest();
+    request.open('GET', `${window.location.href}api/config/interval`, false);
+    request.send(null);
+    if (request.status === 200) {
+        return request.responseText;
+    }
+    return 10000;
+}
+
+// Starts the slideshow
 function startSlideshow(response) {
     resources = response;
+
     maxIndex = Object.keys(resources).length - 1;
     slideshowTick();
 
-    // Tick every 10 seconds
-    setInterval(() => slideshowTick(), 10000);
+    // Load slideshow interval
+    let timeout = getSlideshowInterval();
 
-    // Reload every hour
-    setInterval(() => location.reload(), 3600000);
+    // Start image slideshow
+    setInterval(() => slideshowTick(), timeout);
 }
 
+// Loads the available images from the server
 function loadAvailableImages() {
+    // load all images of this week in the past years
     const http = new XMLHttpRequest();
     http.open("GET", window.location.href + "api/resources/week");
     http.send();

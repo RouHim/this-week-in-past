@@ -4,22 +4,41 @@ use std::time::{Duration, Instant};
 use clokwerk::{ScheduleHandle, Scheduler, TimeUnits};
 use evmap::WriteHandle;
 
-use crate::CACHE_DIR;
-use crate::web_dav_client::WebDavClient;
+use crate::resource_processor;
+use crate::resource_reader::ResourceReader;
 
-pub fn run_webdav_indexer(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>) -> ScheduleHandle {
+/// Initializes the scheduler by creating the cache directory
+pub fn init() {
+    // create cache dir
+    std::fs::create_dir_all(resource_processor::get_cache_dir()).expect("Creating cache dir");
+
+    // Check if cache is writeable
+    cacache::write_sync(resource_processor::get_cache_dir(), "test", b"test")
+        .expect("Cache is not writeable");
+}
+
+/// Schedules the cache indexer at every day at midnight
+pub fn schedule_indexer(
+    resource_reader: ResourceReader,
+    kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
+) -> ScheduleHandle {
     let mut scheduler = Scheduler::new();
 
-    // Fetch webdav resources at midnight
-    scheduler.every(1.day()).at("13:06").run(
-        move || fetch_resources(web_dav_client.clone(), kv_writer_mutex.clone())
-    );
+    // Fetch resources at midnight
+    scheduler
+        .every(1.day())
+        .at("00:00")
+        .run(move || fetch_resources(resource_reader.clone(), kv_writer_mutex.clone()));
 
     // Check the thread every minute
     scheduler.watch_thread(Duration::from_secs(60))
 }
 
-pub fn fetch_resources(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>) {
+/// Fetches the resources from the configures paths and writes them to the cache
+pub fn fetch_resources(
+    resource_reader: ResourceReader,
+    kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
+) {
     let s = Instant::now();
     println!("Begin fetch_images");
 
@@ -28,8 +47,8 @@ pub fn fetch_resources(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<
     println!("Purging kv store");
     kv_writer.purge();
 
-    println!("Fetching resources from webdav...");
-    let resources = web_dav_client.list_all_resources();
+    println!("Indexing resources, this may take some time depending on the amount of resources...");
+    let resources = resource_reader.list_all_resources();
 
     println!("Storing {} items", resources.len());
     for resource in resources {
@@ -37,11 +56,11 @@ pub fn fetch_resources(web_dav_client: WebDavClient, kv_writer_mutex: Arc<Mutex<
             resource.id.clone(),
             serde_json::to_string(&resource).unwrap(),
         );
-    };
+    }
     kv_writer.refresh();
 
     println!("Cleanup cache");
-    cacache::clear_sync(CACHE_DIR).expect("Cleaning cache");
+    let _ = cacache::clear_sync(resource_processor::get_cache_dir());
 
     println!("Job done in {}s!", s.elapsed().as_secs());
 }
