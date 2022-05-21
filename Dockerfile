@@ -1,6 +1,8 @@
 FROM alpine AS base
 RUN mkdir "/cache"
 FROM scratch AS runtime
+ENV CACHE_DIR "/cache"
+ENV RESOURCE_PATHS "/resources"
 
 VOLUME /cache
 

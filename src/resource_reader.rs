@@ -78,7 +78,12 @@ pub fn read_folder(folder_path: &PathBuf) -> Vec<RemoteResource> {
         return vec![];
     }
 
-    let paths = fs::read_dir(folder_path).expect("Failed to read directory");
+    let paths = fs::read_dir(folder_path).unwrap_or_else(|_| {
+        panic!(
+            "Failed to read directory: {}",
+            &folder_path.to_str().unwrap()
+        )
+    });
 
     paths
         .flatten()

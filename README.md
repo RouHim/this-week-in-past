@@ -9,12 +9,11 @@ The application should be started as a container.
 Example:
 
 ```bash
-docker run -p 8080:8080 
-        -e RESOURCE_PATHS=/resources
-        -e CACHE_DIR=/cache 
-        -e WEATHER_ENABLED=false 
-        -v /path/to/pictures:/resources 
-        -v /path/to/cache:/cache # 
+docker run -p 8080:8080 \
+        -e RESOURCE_PATHS=/resources \
+        -e CACHE_DIR=/cache \
+        -e WEATHER_ENABLED=false \
+        -v /path/to/pictures:/resources \
         rouhim/this-week-in-past
 ```
 
