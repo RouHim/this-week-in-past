@@ -127,7 +127,7 @@ jobs:
           docker build -t rouhim/this-week-in-past:${{ github.sha }} .
           docker save rouhim/this-week-in-past:${{ github.sha }} > this-week-in-past.tar
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: docker-artifact
           path: this-week-in-past.tar
