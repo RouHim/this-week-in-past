@@ -52,7 +52,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: default
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
@@ -70,7 +70,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: default
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
@@ -88,7 +88,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: default
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
@@ -109,7 +109,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: default
-          toolchain: nightly
+          toolchain: default
 
       - name: Prepare build environment
         run: |
@@ -143,7 +143,7 @@ jobs:
           name: docker-artifact
           path: .
 
-      - name: restore docker image
+      - name: Restore docker image
         run: docker load --input this-week-in-past.tar
 
       - name: Run Trivy vulnerability scanner
@@ -166,7 +166,7 @@ jobs:
           name: docker-artifact
           path: .
 
-      - name: restore docker image
+      - name: Restore docker image
         run: docker load --input this-week-in-past.tar
 
       - name: Prepare test env
@@ -204,7 +204,7 @@ jobs:
           name: docker-artifact
           path: .
 
-      - name: restore docker image
+      - name: Restore docker image
         run: docker load --input this-week-in-past.tar
 
       - name: Push image to Docker Hub
