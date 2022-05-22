@@ -1,6 +1,16 @@
-# This week in past
+<p align="center">
+  <img src="icon.png" width="192">
+</p>
 
-Aggregates images taken this week, from previous years and presents them on a web page with slideshow.
+<p align="center">
+    <a href="https://github.com/RouHim/this-week-in-past/actions/workflows/build-image.yaml"><img src="https://github.com/RouHim/this-week-in-past/actions/workflows/build-image.yaml/badge.svg" alt="CI"></a>
+    <a href="https://hub.docker.com/r/rouhim/this-week-in-past"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/rouhim/this-week-in-past"></a>
+    <a href="https://hub.docker.com/r/rouhim/this-week-in-past/tags"><img alt="Docker Image Size (tag)" src="https://img.shields.io/docker/image-size/rouhim/this-week-in-past/latest"></a>
+</p>
+
+<p align="center">
+    <i>Aggregate images taken this week, from previous years and presents them on a web page with slideshow.</i>
+</p>
 
 ## Run the application
 
