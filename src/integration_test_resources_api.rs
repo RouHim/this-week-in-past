@@ -261,6 +261,44 @@ async fn test_get_resource_metadata_by_id() {
     cleanup(&base_test_dir).await;
 }
 
+#[actix_web::test]
+async fn test_get_resource_description_by_id() {
+    // GIVEN is an exif image
+    let base_test_dir = create_temp_folder().await;
+    let test_image_1 =
+        create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
+    let test_image_1_id = resource_processor::md5(test_image_1.as_str());
+
+    // AND a running this-week-in-past instance
+    let (kv_reader, kv_writer) = evmap::new::<String, String>();
+    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
+    let app_server = test::init_service(build_app(
+        kv_reader,
+        resource_reader::new(base_test_dir.to_str().unwrap()),
+        kv_writer_mutex.clone(),
+    ))
+    .await;
+
+    // WHEN requesting a description resource
+    let response = String::from_utf8(
+        test::call_and_read_body(
+            &app_server,
+            test::TestRequest::get()
+                .uri(format!("/api/resources/{test_image_1_id}/description").as_str())
+                .to_request(),
+        )
+        .await
+        .to_vec(),
+    )
+    .unwrap();
+
+    // THEN the response should contain the resized image
+    assert_that!(response).is_equal_to("01.11.2008, Arezzo".to_string());
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
 fn build_app(
     kv_reader: ReadHandle<String, String>,
     resource_reader: ResourceReader,
