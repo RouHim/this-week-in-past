@@ -52,7 +52,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: default
+          toolchain: stable
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
@@ -70,7 +70,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: default
+          toolchain: stable
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
@@ -88,7 +88,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: default
+          toolchain: stable
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
 
@@ -109,7 +109,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: default
-          toolchain: default
+          toolchain: stable
 
       - name: Prepare build environment
         run: |
