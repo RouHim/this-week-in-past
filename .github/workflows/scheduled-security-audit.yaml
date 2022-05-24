@@ -37,7 +37,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'rouhim/this-week-in-past:latest'
-          format: 'table'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
           exit-code: '1'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
