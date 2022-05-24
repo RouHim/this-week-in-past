@@ -124,8 +124,8 @@ jobs:
 
       - name: Build container image
         run: |
-          docker build -t rouhim/this-week-in-past:${{ github.sha }} .
-          docker save rouhim/this-week-in-past:${{ github.sha }} > this-week-in-past.tar
+          docker build -t rouhim/this-week-in-past:latest .
+          docker save rouhim/this-week-in-past:latest > this-week-in-past.tar
 
       - uses: actions/upload-artifact@v3
         with:
@@ -149,7 +149,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'rouhim/this-week-in-past:${{ github.sha }}'
+          image-ref: 'rouhim/this-week-in-past:latest'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
@@ -170,12 +170,12 @@ jobs:
         run: docker load --input this-week-in-past.tar
 
       - name: Prepare test env
-        run: | 
+        run: |
           mkdir -p /tmp/test
           wget https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg -O /tmp/test/DSCN0010.jpg          
 
       - name: Start test container
-        run: docker run -d --name test-container -p 8080:8080 -v /tmp/test:/resources rouhim/this-week-in-past:${{ github.sha }}
+        run: docker run -d --name test-container -p 8080:8080 -v /tmp/test:/resources rouhim/this-week-in-past:latest
 
       - name: Test container web api
         run: wget -q -O /dev/null -t 1 -T 2 http://localhost:8080/api/health
@@ -209,7 +209,6 @@ jobs:
 
       - name: Push image to Docker Hub
         run: |
-          docker tag rouhim/this-week-in-past:${{ github.sha }} rouhim/this-week-in-past:latest
           docker push rouhim/this-week-in-past:latest
 
       - name: Update docker hub description
