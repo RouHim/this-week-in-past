@@ -10,7 +10,7 @@ services:
       context: .
     volumes:
       - twip-cache:/cache:rw  # needs read/write
-      - /home/rouven/mnt/rouven/photos:/resources:ro # should be read only
+      - /home/rouven/Downloads:/resources:ro # should be read only
     ports:
       - "8080:8080"
     environment:
