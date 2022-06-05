@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+use std::env;
 use std::fmt::{Display, Formatter};
 
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 /// Struct representing a geo location
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
@@ -113,4 +116,50 @@ pub fn from_degrees_minutes_seconds(latitude: String, longitude: String) -> Opti
     } else {
         None
     }
+}
+
+/// Returns the city name for the specified geo location
+/// The city name is resolved from the geo location using the bigdatacloud api
+pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
+    if env::var("BIGDATA_CLOUD_API_KEY").is_err() {
+        return None;
+    }
+
+    let response = reqwest::get(format!(
+        "https://api.bigdatacloud.net/data/reverse-geocode?latitude={}&longitude={}&localityLanguage=de&key={}",
+        geo_location.latitude,
+        geo_location.longitude,
+        env::var("BIGDATA_CLOUD_API_KEY").unwrap(),
+    )).await;
+
+    if response.is_err() {
+        return None;
+    }
+
+    let response_json =
+        response.unwrap().text().await.ok().and_then(|json_string| {
+            serde_json::from_str::<HashMap<String, Value>>(&json_string).ok()
+        });
+
+    let mut city_name = response_json
+        .as_ref()
+        .and_then(|json_data| get_string_value("city", json_data))
+        .filter(|city_name| !city_name.trim().is_empty());
+
+    if city_name.is_none() {
+        city_name = response_json
+            .as_ref()
+            .and_then(|json_data| get_string_value("locality", json_data))
+            .filter(|city_name| !city_name.trim().is_empty());
+    }
+
+    city_name
+}
+
+/// Returns the string value for the specified key of an hash map
+fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Option<String> {
+    json_data
+        .get(field_name)
+        .and_then(|field_value| field_value.as_str())
+        .map(|field_string_value| field_string_value.to_string())
 }

@@ -80,6 +80,9 @@ jobs:
   test:
     name: Run application tests
     runs-on: ubuntu-latest
+    env:
+      BIGDATA_CLOUD_API_KEY: ${{ secrets.BIGDATA_CLOUD_API_KEY }}
+      OPEN_WEATHER_MAP_API_KEY: ${{ secrets.OPEN_WEATHER_MAP_API_KEY }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3

@@ -1,13 +1,11 @@
-use std::collections::HashMap;
 use std::env;
 
 use evmap::ReadHandle;
 use rand::prelude::SliceRandom;
 use rand::Rng;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use serde_json::Value;
 
-use crate::geo_location::GeoLocation;
+use crate::geo_location;
 use crate::resource_reader::RemoteResource;
 
 pub fn md5(string: &str) -> String {
@@ -58,7 +56,7 @@ pub async fn build_display_value(resource: RemoteResource) -> String {
 
     // Append city name
     if let Some(resource_location) = resource.location {
-        let city_name = resolve_city_name(resource_location).await;
+        let city_name = geo_location::resolve_city_name(resource_location).await;
 
         if let Some(city_name) = city_name {
             display_value.push_str(", ");
@@ -67,48 +65,6 @@ pub async fn build_display_value(resource: RemoteResource) -> String {
     }
 
     display_value.trim().to_string()
-}
-
-/// Returns the city name for the specified geo location
-/// The city name is resolved from the geo location using the bigdatacloud api
-pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
-    let response = reqwest::get(format!(
-        "https://api.bigdatacloud.net/data/reverse-geocode?latitude={}&longitude={}&localityLanguage=de&key={}",
-        geo_location.latitude,
-        geo_location.longitude,
-        "6b8aad17eba7449d9d93c533359b0384",
-    )).await;
-
-    if response.is_err() {
-        return None;
-    }
-
-    let response_json =
-        response.unwrap().text().await.ok().and_then(|json_string| {
-            serde_json::from_str::<HashMap<String, Value>>(&json_string).ok()
-        });
-
-    let mut city_name = response_json
-        .as_ref()
-        .and_then(|json_data| get_string_value("city", json_data))
-        .filter(|city_name| !city_name.trim().is_empty());
-
-    if city_name.is_none() {
-        city_name = response_json
-            .as_ref()
-            .and_then(|json_data| get_string_value("locality", json_data))
-            .filter(|city_name| !city_name.trim().is_empty());
-    }
-
-    city_name
-}
-
-/// Returns the string value for the specified key of an hash map
-fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Option<String> {
-    json_data
-        .get(field_name)
-        .and_then(|field_value| field_value.as_str())
-        .map(|field_string_value| field_string_value.to_string())
 }
 
 /// Selects a random entry from the specified resource provider
