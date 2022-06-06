@@ -54,6 +54,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(kv_reader.clone()))
             .app_data(web::Data::new(resource_reader.clone()))
+            .app_data(web::Data::new(kv_writer_mutex.clone()))
             .wrap(middleware::Logger::default()) // enable logger
             .service(
                 web::scope("/api/resources")
