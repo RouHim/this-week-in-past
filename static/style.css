@@ -19,6 +19,11 @@
     max-width: 100%;
     height: auto;
     max-height: 100%;
+
+    /*center the image vertically*/
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .label {

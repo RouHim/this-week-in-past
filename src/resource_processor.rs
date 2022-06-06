@@ -51,8 +51,6 @@ pub async fn build_display_value(
     resource: RemoteResource,
     kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
 ) -> String {
-    let mut kv_writer = kv_writer_mutex.lock().unwrap();
-
     let mut display_value: String = String::new();
 
     // Append taken date
@@ -61,35 +59,49 @@ pub async fn build_display_value(
     }
 
     // Append city name
-    if let Some(resource_location) = resource.location {
-        // First check cache
-        let resource_location_str = resource_location.to_string();
-        if kv_writer.contains_key(resource_location_str.as_str()) {
-            let city_name_result = kv_writer
-                .get_one(resource_location_str.as_str())
-                .unwrap()
-                .to_string();
-            let city_name = city_name_result.as_str();
-            println!("Cache hit for: {} -> {}", &resource_location, city_name);
-            
-            display_value.push_str(", ");
-            display_value.push_str(city_name.as_str());
-        } else {
-            // Get city name
-            let city_name = geo_location::resolve_city_name(resource_location).await;
-            println!("Cache miss");
-
-            if let Some(city_name) = city_name {
-                display_value.push_str(", ");
-                display_value.push_str(city_name.as_str());
-
-                // Write to cache
-                kv_writer.insert(resource_location_str, city_name);
-            }
-        }
+    let city_name = get_city_name(resource, kv_writer_mutex.clone()).await;
+    if let Some(city_name) = city_name {
+        display_value.push_str(", ");
+        display_value.push_str(city_name.as_str());
     }
 
     display_value.trim().to_string()
+}
+
+/// Returns the city name for the specified resource
+/// The city name is taken from the cache, if available
+/// If not, the city name is taken from the geo location service
+async fn get_city_name(
+    resource: RemoteResource,
+    kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
+) -> Option<String> {
+    let resource_location = resource.location?;
+    let resource_location_string = resource_location.to_string();
+
+    // First check cache
+    if kv_writer_mutex
+        .lock()
+        .unwrap()
+        .contains_key(resource_location_string.as_str())
+    {
+        kv_writer_mutex
+            .lock()
+            .unwrap()
+            .get_one(resource_location_string.as_str())
+            .map(|city_name| city_name.to_string())
+    } else {
+        // Get city name
+        let city_name = geo_location::resolve_city_name(resource_location).await;
+
+        if let Some(city_name) = &city_name {
+            // Write to cache
+            let mut kv_writer = kv_writer_mutex.lock().unwrap();
+            kv_writer.insert(resource_location_string, city_name.clone());
+            kv_writer.refresh();
+        }
+
+        city_name
+    }
 }
 
 /// Selects a random entry from the specified resource provider
