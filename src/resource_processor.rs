@@ -1,13 +1,12 @@
-use std::collections::HashMap;
 use std::env;
+use std::sync::{Arc, Mutex};
 
-use evmap::ReadHandle;
+use evmap::{ReadHandle, WriteHandle};
 use rand::prelude::SliceRandom;
 use rand::Rng;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use serde_json::Value;
 
-use crate::geo_location::GeoLocation;
+use crate::geo_location;
 use crate::resource_reader::RemoteResource;
 
 pub fn md5(string: &str) -> String {
@@ -48,7 +47,10 @@ pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
 
 /// Builds the display value for the specified resource
 /// The display value contains the date and location of a resource
-pub async fn build_display_value(resource: RemoteResource) -> String {
+pub async fn build_display_value(
+    resource: RemoteResource,
+    kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
+) -> String {
     let mut display_value: String = String::new();
 
     // Append taken date
@@ -57,58 +59,49 @@ pub async fn build_display_value(resource: RemoteResource) -> String {
     }
 
     // Append city name
-    if let Some(resource_location) = resource.location {
-        let city_name = resolve_city_name(resource_location).await;
-
-        if let Some(city_name) = city_name {
-            display_value.push_str(", ");
-            display_value.push_str(city_name.as_str());
-        }
+    let city_name = get_city_name(resource, kv_writer_mutex.clone()).await;
+    if let Some(city_name) = city_name {
+        display_value.push_str(", ");
+        display_value.push_str(city_name.as_str());
     }
 
     display_value.trim().to_string()
 }
 
-/// Returns the city name for the specified geo location
-/// The city name is resolved from the geo location using the bigdatacloud api
-pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
-    let response = reqwest::get(format!(
-        "https://api.bigdatacloud.net/data/reverse-geocode?latitude={}&longitude={}&localityLanguage=de&key={}",
-        geo_location.latitude,
-        geo_location.longitude,
-        "6b8aad17eba7449d9d93c533359b0384",
-    )).await;
+/// Returns the city name for the specified resource
+/// The city name is taken from the cache, if available
+/// If not, the city name is taken from the geo location service
+async fn get_city_name(
+    resource: RemoteResource,
+    kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
+) -> Option<String> {
+    let resource_location = resource.location?;
+    let resource_location_string = resource_location.to_string();
 
-    if response.is_err() {
-        return None;
+    // First check cache
+    if kv_writer_mutex
+        .lock()
+        .unwrap()
+        .contains_key(resource_location_string.as_str())
+    {
+        kv_writer_mutex
+            .lock()
+            .unwrap()
+            .get_one(resource_location_string.as_str())
+            .map(|city_name| city_name.to_string())
+    } else {
+        // Get city name
+        let city_name = geo_location::resolve_city_name(resource_location).await;
+
+        if let Some(city_name) = &city_name {
+            // Write to cache
+            let mut kv_writer = kv_writer_mutex.lock().unwrap();
+            kv_writer.insert(resource_location_string, city_name.clone());
+            kv_writer.refresh();
+        }
+
+        city_name
     }
-
-    let response_json =
-        response.unwrap().text().await.ok().and_then(|json_string| {
-            serde_json::from_str::<HashMap<String, Value>>(&json_string).ok()
-        });
-
-    let mut city_name = response_json
-        .as_ref()
-        .and_then(|json_data| get_string_value("city", json_data))
-        .filter(|city_name| !city_name.trim().is_empty());
-
-    if city_name.is_none() {
-        city_name = response_json
-            .as_ref()
-            .and_then(|json_data| get_string_value("locality", json_data))
-            .filter(|city_name| !city_name.trim().is_empty());
-    }
-
-    city_name
-}
-
-/// Returns the string value for the specified key of an hash map
-fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Option<String> {
-    json_data
-        .get(field_name)
-        .and_then(|field_value| field_value.as_str())
-        .map(|field_string_value| field_string_value.to_string())
 }
 
 /// Selects a random entry from the specified resource provider

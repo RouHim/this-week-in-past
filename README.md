@@ -31,14 +31,16 @@ docker run -p 8080:8080 \
 
 All configuration is done via environment parameter:
 
-| Name                     | Description                                             | Default value |
-|--------------------------|---------------------------------------------------------|---------------|
-| RESOURCE_PATHS           | Paths to the resources to load (comma separated)        |               |
-| CACHE_DIR                | Path to the caching to load, needs to read/write rights |               |
-| SLIDESHOW_INTERVAL       | Interval of the slideshow in milliseconds               | 10000         |
-| WEATHER_ENABLED          | Indicates if weather should be shown in the slideshow   | true          |
-| LOCATION_NAME            | Weather location                                        | Berlin        |
-| LANGUAGE                 | Weather language                                        | en            |
-| HOME_ASSISTANT_BASE_URL  | Home assistant base url                                 |               |
-| HOME_ASSISTANT_ENTITY_ID | Home assistant entity id to load the weather from       |               |
-| HOME_ASSISTANT_API_TOKEN | Home assistant api access token                         |               |
+| Name                     | Description                                                                        | Default value |
+|--------------------------|------------------------------------------------------------------------------------|---------------|
+| RESOURCE_PATHS           | Paths to the resources to load (comma separated)                                   |               |
+| CACHE_DIR                | Path to the caching to load, needs to read/write rights                            |               |
+| SLIDESHOW_INTERVAL       | Interval of the slideshow in milliseconds                                          | 10000         |
+| WEATHER_ENABLED          | Indicates if weather should be shown in the slideshow                              | true          |
+| BIGDATA_CLOUD_API_KEY    | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com |               |
+| OPEN_WEATHER_MAP_API_KEY | To receive weather live data. Obtain here: https://openweathermap.org/api          |               |
+| LOCATION_NAME            | Weather location                                                                   | Berlin        |
+| LANGUAGE                 | Weather language                                                                   | en            |
+| HOME_ASSISTANT_BASE_URL  | Home assistant base url                                                            |               |
+| HOME_ASSISTANT_ENTITY_ID | Home assistant entity id to load the weather from                                  |               |
+| HOME_ASSISTANT_API_TOKEN | Home assistant api access token                                                    |               |

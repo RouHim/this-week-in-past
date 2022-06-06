@@ -1,17 +1,20 @@
 use std::env;
 
-const OPEN_WEATHER_MAP_API_KEY: &str = "4021b60be2b322c8cfc749a6503bb553";
-
 /// Returns the current weather data provided by OpenWeatherMap
 /// The data is selected by the configured location
 /// Returns None if the data could not be retrieved or the weather json data
 pub async fn get_current_weather() -> Option<String> {
+    if env::var("OPEN_WEATHER_MAP_API_KEY").is_err() {
+        return None;
+    }
+
+    let api_key: String = env::var("OPEN_WEATHER_MAP_API_KEY").unwrap();
     let city: String = env::var("LOCATION_NAME").unwrap_or_else(|_| "Berlin".to_string());
     let units: String = env::var("UNITS").unwrap_or_else(|_| "metric".to_string());
     let language: String = env::var("LANGUAGE").unwrap_or_else(|_| "en".to_string());
 
     let response = reqwest::get(format!(
-        "https://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPEN_WEATHER_MAP_API_KEY}&units={units}&lang={language}"
+        "https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units={units}&lang={language}"
     )).await;
 
     if response.is_ok() {

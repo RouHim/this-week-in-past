@@ -3,3 +3,4 @@ cache
 target
 !target/x86_64-unknown-linux-musl/release/this-week-in-past
 !target/release/this-week-in-past
+test.sh
