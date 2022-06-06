@@ -313,10 +313,11 @@ fn build_app(
     >,
 > {
     scheduler::init();
-    scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex);
+    scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex.clone());
     App::new()
-        .app_data(web::Data::new(kv_reader.clone()))
-        .app_data(web::Data::new(resource_reader.clone()))
+        .app_data(web::Data::new(kv_reader))
+        .app_data(web::Data::new(resource_reader))
+        .app_data(web::Data::new(kv_writer_mutex))
         .service(
             web::scope("/api/resources")
                 .service(resource_endpoint::list_all_resources)
