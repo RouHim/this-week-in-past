@@ -1,6 +1,7 @@
 use std::env;
+use std::sync::{Arc, Mutex};
 
-use evmap::ReadHandle;
+use evmap::{ReadHandle, WriteHandle};
 use rand::prelude::SliceRandom;
 use rand::Rng;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -46,7 +47,12 @@ pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
 
 /// Builds the display value for the specified resource
 /// The display value contains the date and location of a resource
-pub async fn build_display_value(resource: RemoteResource) -> String {
+pub async fn build_display_value(
+    resource: RemoteResource,
+    kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
+) -> String {
+    let mut kv_writer = kv_writer_mutex.lock().unwrap();
+
     let mut display_value: String = String::new();
 
     // Append taken date
@@ -56,11 +62,30 @@ pub async fn build_display_value(resource: RemoteResource) -> String {
 
     // Append city name
     if let Some(resource_location) = resource.location {
-        let city_name = geo_location::resolve_city_name(resource_location).await;
-
-        if let Some(city_name) = city_name {
+        // First check cache
+        let resource_location_str = resource_location.to_string();
+        if kv_writer.contains_key(resource_location_str.as_str()) {
+            let city_name_result = kv_writer
+                .get_one(resource_location_str.as_str())
+                .unwrap()
+                .to_string();
+            let city_name = city_name_result.as_str();
+            println!("Cache hit for: {} -> {}", &resource_location, city_name);
+            
             display_value.push_str(", ");
             display_value.push_str(city_name.as_str());
+        } else {
+            // Get city name
+            let city_name = geo_location::resolve_city_name(resource_location).await;
+            println!("Cache miss");
+
+            if let Some(city_name) = city_name {
+                display_value.push_str(", ");
+                display_value.push_str(city_name.as_str());
+
+                // Write to cache
+                kv_writer.insert(resource_location_str, city_name);
+            }
         }
     }
 
