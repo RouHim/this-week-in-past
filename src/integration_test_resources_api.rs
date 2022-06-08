@@ -12,7 +12,9 @@ use rand::Rng;
 
 use crate::geo_location::GeoLocation;
 use crate::resource_reader::{RemoteResource, ResourceReader};
-use crate::{resource_endpoint, resource_processor, resource_reader, scheduler};
+use crate::{
+    geo_location_cache, resource_endpoint, resource_processor, resource_reader, scheduler,
+};
 
 const TEST_JPEG_EXIF_URL: &str =
     "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
@@ -314,10 +316,12 @@ fn build_app(
 > {
     scheduler::init();
     scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex.clone());
+    let geo_location_cache = Arc::new(Mutex::new(geo_location_cache::init()));
     App::new()
         .app_data(web::Data::new(kv_reader))
         .app_data(web::Data::new(resource_reader))
         .app_data(web::Data::new(kv_writer_mutex))
+        .app_data(web::Data::new(geo_location_cache.clone()))
         .service(
             web::scope("/api/resources")
                 .service(resource_endpoint::list_all_resources)
