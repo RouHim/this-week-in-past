@@ -41,10 +41,10 @@ fn detect_exif_date(tags_to_evaluate: Vec<Tag>, exif_data: &Exif) -> Option<Naiv
         .filter_map(|exif_date| parse_exif_date(exif_date.display_value().to_string()))
         .collect();
 
-    if !exit_dates.is_empty() {
-        Some(*exit_dates.first().unwrap())
-    } else {
+    if exit_dates.is_empty() {
         None
+    } else {
+        Some(*exit_dates.first().unwrap())
     }
 }
 
