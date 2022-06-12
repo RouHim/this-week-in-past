@@ -1,7 +1,7 @@
 use assertor::*;
 
+use crate::geo_location;
 use crate::geo_location::GeoLocation;
-use crate::{geo_location, resource_processor};
 
 #[actix_rt::test]
 async fn resolve_koblenz() {
