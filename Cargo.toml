@@ -13,7 +13,7 @@ time = "0.3.9"
 md5 = "0.7.0"
 reqwest = { version = "0.11.10", features = ["blocking"] }
 actix-http = { version = "3.1.0" }
-actix-web = "4.0.1"
+actix-web = "4.1.0"
 actix-files = "0.6.1"
 evmap = "10.0.2"
 clokwerk = "0.3.5"
