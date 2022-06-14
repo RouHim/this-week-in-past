@@ -12,6 +12,19 @@
     <i>Aggregate images taken this week, from previous years and presents them on a web page with slideshow.</i>
 </p>
 
+## Motivation
+
+When I migrated my photo collection from google photos to a locally hosted instance of photoprism, I missed the
+automatically generated slideshow feature of google photos, here it is now.
+
+## Performance
+
+Hardware: i3-12100T, 3xWD_BLACK SN750 (RAID-Z1), 32GB RAM
+
+Photos: ~80k
+
+The first indexing when starting the application took about 6 seconds.
+
 ## Run the application
 
 The application should be started as a container.
