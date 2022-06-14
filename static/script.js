@@ -71,6 +71,7 @@ function getCurrentTemperatureDataFromHomeAssistant() {
     }
 }
 
+// Sets the image and its meta information
 function setImage(resource_id) {
     // set image
     let photoDataRequest = new XMLHttpRequest();
@@ -87,6 +88,7 @@ function setImage(resource_id) {
     photoMetadataRequest.onload = () => document.getElementById("slideshow-metadata").innerText = photoMetadataRequest.response;
 }
 
+// Returns a random resource
 function getRandomResource() {
     let request = new XMLHttpRequest();
     request.open('GET', `${window.location.href}api/resources/random`, false);
@@ -111,6 +113,7 @@ function slideshowTick() {
     }
 }
 
+// Returns the slideshow interval
 function getSlideshowInterval() {
     let request = new XMLHttpRequest();
     request.open('GET', `${window.location.href}api/config/interval`, false);
