@@ -13,7 +13,3 @@ services:
       - ~/Downloads:/resources:ro # should be read only
     ports:
       - "8080:8080"
-    environment:
-      WEATHER_ENABLED: "false"
-      RESOURCE_PATHS: "/resources"
-      CACHE_DIR: "/cache"

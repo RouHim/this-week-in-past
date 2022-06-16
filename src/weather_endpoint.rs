@@ -7,7 +7,7 @@ use crate::weather_processor;
 
 #[get("")]
 pub async fn get_is_weather_enabled() -> HttpResponse {
-    let is_weather_enabled = env::var("WEATHER_ENABLED").unwrap_or_else(|_| "true".to_string());
+    let is_weather_enabled = env::var("WEATHER_ENABLED").unwrap_or_else(|_| "false".to_string());
 
     HttpResponse::Ok()
         .content_type("plain/text")

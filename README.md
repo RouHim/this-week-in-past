@@ -12,6 +12,10 @@
     <i>Aggregate images taken this week, from previous years and presents them on a web page with slideshow.</i>
 </p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/RouHim/this-week-in-past/main/screenshot.jpg" width="500">
+</p>
+
 ## Motivation
 
 When I migrated my photo collection from google photos to a locally hosted instance of photoprism, I missed the
@@ -33,9 +37,6 @@ Example:
 
 ```bash
 docker run -p 8080:8080 \
-        -e RESOURCE_PATHS=/resources \
-        -e CACHE_DIR=/cache \
-        -e WEATHER_ENABLED=false \
         -v /path/to/pictures:/resources \
         rouhim/this-week-in-past
 ```
@@ -48,8 +49,8 @@ All configuration is done via environment parameter:
 |--------------------------|------------------------------------------------------------------------------------|---------------|
 | RESOURCE_PATHS           | Paths to the resources to load (comma separated)                                   |               |
 | CACHE_DIR                | Path to the caching to load, needs to read/write rights                            |               |
-| SLIDESHOW_INTERVAL       | Interval of the slideshow in milliseconds                                          | 10000         |
-| WEATHER_ENABLED          | Indicates if weather should be shown in the slideshow                              | true          |
+| SLIDESHOW_INTERVAL       | Interval of the slideshow in seconds                                               | 30            |
+| WEATHER_ENABLED          | Indicates if weather should be shown in the slideshow                              | false         |
 | BIGDATA_CLOUD_API_KEY    | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com |               |
 | OPEN_WEATHER_MAP_API_KEY | To receive weather live data. Obtain here: https://openweathermap.org/api          |               |
 | LOCATION_NAME            | Weather location                                                                   | Berlin        |

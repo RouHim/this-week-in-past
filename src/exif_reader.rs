@@ -23,6 +23,7 @@ pub fn get_exif_date(exif_data: &Exif) -> Option<NaiveDateTime> {
 }
 
 /// Reads the gps date from a given exif data entry
+/// The gps date is used to determine the date the image was taken
 fn get_gps_date(exif_data: &Exif) -> Option<NaiveDateTime> {
     exif_data
         .get_field(Tag::GPSDateStamp, In::PRIMARY)
@@ -62,6 +63,9 @@ pub fn load_exif(resource: &RemoteResource) -> Option<Exif> {
 }
 
 /// Augments the provided resource with meta information
+/// The meta information is extracted from the exif data
+/// If the exif data is not available, the meta information is extracted from the gps data
+/// If the gps data is not available, the meta information is extracted from the file name
 pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
     let mut augmented_resource = resource.clone();
 
@@ -149,6 +153,9 @@ fn detect_orientation(exif_data: &Exif) -> Option<ImageOrientation> {
     }
 }
 
+/// Detects the date from the file name
+/// If the date is not found, the date is set to None
+/// The chars '/', ' ', '.', '_' are replaced with '_'
 fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {
     let parsed: Vec<NaiveDate> = resource_path
         .replace('/', "_")
@@ -166,6 +173,8 @@ fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {
     }
 }
 
+/// Parses a string into a date
+/// Returns None if the string could not be parsed
 fn parse_from_str(shard: &str) -> Option<NaiveDate> {
     // https://docs.rs/chrono/latest/chrono/format/strftime/index.html
     let parse_results: Vec<NaiveDate> = vec![

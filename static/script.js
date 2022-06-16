@@ -113,7 +113,7 @@ function slideshowTick() {
     }
 }
 
-// Returns the slideshow interval
+// Returns the slideshow interval in seconds
 function getSlideshowInterval() {
     let request = new XMLHttpRequest();
     request.open('GET', `${window.location.href}api/config/interval`, false);
@@ -121,7 +121,7 @@ function getSlideshowInterval() {
     if (request.status === 200) {
         return request.responseText;
     }
-    return 10000;
+    return 30;
 }
 
 // Starts the slideshow
@@ -132,10 +132,10 @@ function startSlideshow(response) {
     slideshowTick();
 
     // Load slideshow interval
-    let timeout = getSlideshowInterval();
+    let intervalInSeconds = getSlideshowInterval();
 
     // Start image slideshow
-    setInterval(() => slideshowTick(), timeout);
+    setInterval(() => slideshowTick(), intervalInSeconds * 1000);
 }
 
 // Loads the available images from the server
