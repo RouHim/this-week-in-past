@@ -35,15 +35,19 @@ The application should be started as a container.
 
 Example:
 
-```bash
+```shell
 docker run -p 8080:8080 \
         -v /path/to/pictures:/resources \
+        -e SLIDESHOW_INTERVAL=10 \
+        -e WEATHER_ENABLED=true \
+        -e OPEN_WEATHER_MAP_API_KEY=<YOUR_KEY> \
+        -e BIGDATA_CLOUD_API_KEY=<YOUR_KEY> \
         rouhim/this-week-in-past
 ```
 
 ## Configuration
 
-All configuration is done via environment parameter:
+All configuration is done via environment variables:
 
 | Name                     | Description                                                                        | Default value |
 |--------------------------|------------------------------------------------------------------------------------|---------------|

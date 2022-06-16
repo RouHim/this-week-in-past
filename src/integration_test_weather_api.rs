@@ -56,6 +56,9 @@ async fn test_get_is_weather_enabled() {
     ))
     .await;
 
+    // AND the weather is enabled via env var
+    env::set_var("WEATHER_ENABLED", "true");
+
     // WHEN requesting if weather is enabled
     let response: String = String::from_utf8(
         test::call_and_read_body(
