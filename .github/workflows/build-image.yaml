@@ -210,8 +210,7 @@ jobs:
         run: docker load --input this-week-in-past.tar
 
       - name: Push image to Docker Hub
-        run: |
-          docker push rouhim/this-week-in-past:latest
+        run: docker push rouhim/this-week-in-past:latest
 
       - name: Update docker hub description
         uses: peter-evans/dockerhub-description@v3
