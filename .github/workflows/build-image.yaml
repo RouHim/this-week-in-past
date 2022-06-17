@@ -1,4 +1,4 @@
-name: Build container image
+name: CI/CD
 on:
   push:
   pull_request:
