@@ -9,9 +9,9 @@ pub async fn get_current_weather() -> Option<String> {
     }
 
     let api_key: String = env::var("OPEN_WEATHER_MAP_API_KEY").unwrap();
-    let city: String = env::var("LOCATION_NAME").unwrap_or_else(|_| "Berlin".to_string());
-    let units: String = env::var("UNITS").unwrap_or_else(|_| "metric".to_string());
-    let language: String = env::var("LANGUAGE").unwrap_or_else(|_| "en".to_string());
+    let city: String = env::var("WEATHER_LOCATION").unwrap_or_else(|_| "Berlin".to_string());
+    let units: String = env::var("WEATHER_UNIT").unwrap_or_else(|_| "metric".to_string());
+    let language: String = env::var("WEATHER_LANGUAGE").unwrap_or_else(|_| "en".to_string());
 
     let response = reqwest::get(format!(
         "https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units={units}&lang={language}"

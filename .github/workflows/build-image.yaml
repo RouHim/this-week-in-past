@@ -98,9 +98,30 @@ jobs:
       - name: Test code
         run: cargo test
 
+  check-dependencies:
+    name: Check for unmet dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
+
+      - name: Install cargo-udeps
+        run: cargo install cargo-udeps --locked
+
+      - name: Analyze dependencies
+        run: cargo +nightly udeps
+
   build:
     name: Build container image
-    needs: [ check-config, check-repo, check-code-style, check-code, test ]
+    needs: [ check-config, check-repo, check-code-style, check-code, test, check-dependencies ]
     runs-on: ubuntu-latest
     env:
       DOCKER_BUILDKIT: 1 # use the new docker build backend

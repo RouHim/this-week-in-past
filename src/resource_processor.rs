@@ -56,8 +56,16 @@ pub async fn build_display_value(
 
     // Append taken date
     if let Some(taken_date) = resource.taken {
-        display_value.push_str(taken_date.date().format("%d.%m.%Y").to_string().as_str());
-    }
+        let date_format: String =
+            env::var("DATE_FORMAT").unwrap_or_else(|_| "%d.%m.%Y".to_string());
+        display_value.push_str(
+            taken_date
+                .date()
+                .format(date_format.as_str())
+                .to_string()
+                .as_str(),
+        );
+    };
 
     // Append city name
     let city_name = get_city_name(resource, geo_location_cache_mutex.clone()).await;

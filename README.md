@@ -49,16 +49,18 @@ docker run -p 8080:8080 \
 
 All configuration is done via environment variables:
 
-| Name                     | Description                                                                                    | Default value |
-|--------------------------|------------------------------------------------------------------------------------------------|---------------|
-| RESOURCE_PATHS           | Paths to the resources to load (comma separated), must not be set when using container.        |               |
-| CACHE_DIR                | Path to the caching to load, needs to read/write rights, must not be set when using container. |               |
-| SLIDESHOW_INTERVAL       | Interval of the slideshow in seconds                                                           | 30            |
-| WEATHER_ENABLED          | Indicates if weather should be shown in the slideshow                                          | false         |
-| BIGDATA_CLOUD_API_KEY    | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com             |               |
-| OPEN_WEATHER_MAP_API_KEY | To receive weather live data. Obtain here: https://openweathermap.org/api                      |               |
-| LOCATION_NAME            | Weather location                                                                               | Berlin        |
-| LANGUAGE                 | Weather language                                                                               | en            |
-| HOME_ASSISTANT_BASE_URL  | Home assistant base url                                                                        |               |
-| HOME_ASSISTANT_ENTITY_ID | Home assistant entity id to load the weather from                                              |               |
-| HOME_ASSISTANT_API_TOKEN | Home assistant api access token                                                                |               |
+| Name                     | Description                                                                                           | Default value |
+|--------------------------|-------------------------------------------------------------------------------------------------------|---------------|
+| RESOURCE_PATHS           | Paths to the resources to load (comma separated), must not be set when using container.               |               |
+| CACHE_DIR                | Path to the caching to load, needs to read/write rights, must not be set when using container.        |               |
+| SLIDESHOW_INTERVAL       | Interval of the slideshow in seconds                                                                  | 30            |
+| DATE_FORMAT              | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html) | %d.%m.%Y      |
+| BIGDATA_CLOUD_API_KEY    | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com                    |               |
+| OPEN_WEATHER_MAP_API_KEY | To receive weather live data. Obtain here: https://openweathermap.org/api                             |               |
+| WEATHER_ENABLED          | Indicates if weather should be shown in the slideshow                                                 | false         |
+| WEATHER_LOCATION         | Weather location                                                                                      | Berlin        |
+| WEATHER_LANGUAGE         | Weather language                                                                                      | en            |
+| WEATHER_UNIT             | Weather units (metric or imperial)                                                                    | metric        |
+| HOME_ASSISTANT_BASE_URL  | Home assistant base url                                                                               |               |
+| HOME_ASSISTANT_ENTITY_ID | Home assistant entity id to load the weather from                                                     |               |
+| HOME_ASSISTANT_API_TOKEN | Home assistant api access token                                                                       |               |
