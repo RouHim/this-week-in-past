@@ -102,67 +102,6 @@ pub async fn get_resource_by_id_and_resolution(
     }
 }
 
-#[get("{resource_id}/{display_width}/{display_height}/base64")]
-pub async fn get_resource_base64_by_id_and_resolution(
-    path_variables: web::Path<(String, u32, u32)>,
-    kv_reader: web::Data<ReadHandle<String, String>>,
-    resource_reader: web::Data<ResourceReader>,
-) -> HttpResponse {
-    let path_params = path_variables.into_inner();
-    let resource_id = path_params.0.as_str();
-    let display_width = path_params.1;
-    let display_height = path_params.2;
-
-    // check cache
-    let cached_data = cacache::read(
-        resource_processor::get_cache_dir(),
-        format!("{resource_id}_{display_width}_{display_height}_base64"),
-    );
-    if let Ok(cached_data) = cached_data.await {
-        return HttpResponse::Ok()
-            .content_type("plain/text")
-            .body(cached_data);
-    }
-
-    // Read image from dir
-    let remote_resource = kv_reader
-        .get_one(resource_id)
-        .map(|value| value.to_string())
-        .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
-    let orientation = remote_resource
-        .clone()
-        .and_then(|remote_resource: RemoteResource| remote_resource.orientation);
-
-    let base64_image = remote_resource
-        .map(|remote_resource| resource_reader.read_resource_data(&remote_resource))
-        .map(|resource_data| {
-            image_processor::optimize_image(
-                resource_data.to_vec(),
-                display_width,
-                display_height,
-                orientation,
-            )
-        })
-        .map(|scaled_image| base64::encode(&scaled_image))
-        .map(|base64_string| format!("data:image/png;base64,{}", base64_string));
-
-    if let Some(base64_image) = base64_image {
-        cacache::write(
-            resource_processor::get_cache_dir(),
-            format!("{resource_id}_{display_width}_{display_height}_base64"),
-            base64_image.as_bytes(),
-        )
-        .await
-        .expect("writing to cache failed");
-
-        HttpResponse::Ok()
-            .content_type("plain/text")
-            .body(base64_image)
-    } else {
-        HttpResponse::InternalServerError().finish()
-    }
-}
-
 #[get("{resource_id}/metadata")]
 pub async fn get_resource_metadata_by_id(
     resources_id: web::Path<String>,

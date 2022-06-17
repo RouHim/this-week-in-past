@@ -5,7 +5,7 @@ use std::{env, fs};
 
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::{test, web, App, Error};
-use assertor::{assert_that, EqualityAssertion, StringAssertion, VecAssertion};
+use assertor::{assert_that, EqualityAssertion, VecAssertion};
 use chrono::{Local, NaiveDateTime};
 use evmap::{ReadHandle, WriteHandle};
 use rand::Rng;
@@ -174,44 +174,6 @@ async fn test_get_resource_by_id_and_resolution() {
 }
 
 #[actix_web::test]
-async fn test_get_resource_base64_by_id_and_resolution() {
-    // GIVEN is an exif image
-    let base_test_dir = create_temp_folder().await;
-    let test_image_1 =
-        create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
-    let test_image_1_id = resource_processor::md5(test_image_1.as_str());
-
-    // AND a running this-week-in-past instance
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-    let app_server = test::init_service(build_app(
-        kv_reader,
-        resource_reader::new(base_test_dir.to_str().unwrap()),
-        kv_writer_mutex.clone(),
-    ))
-    .await;
-
-    // WHEN requesting a random resource
-    let response: String = String::from_utf8(
-        test::call_and_read_body(
-            &app_server,
-            test::TestRequest::get()
-                .uri(format!("/api/resources/{test_image_1_id}/10/10/base64").as_str())
-                .to_request(),
-        )
-        .await
-        .to_vec(),
-    )
-    .unwrap();
-
-    // THEN the response should contain the resized image
-    assert_that!(response).starts_with("data:image/png;base64,");
-
-    // cleanup
-    cleanup(&base_test_dir).await;
-}
-
-#[actix_web::test]
 async fn test_get_resource_metadata_by_id() {
     // GIVEN is an exif image
     let base_test_dir = create_temp_folder().await;
@@ -328,7 +290,6 @@ fn build_app(
                 .service(resource_endpoint::list_this_week_resources)
                 .service(resource_endpoint::random_resource)
                 .service(resource_endpoint::get_resource_by_id_and_resolution)
-                .service(resource_endpoint::get_resource_base64_by_id_and_resolution)
                 .service(resource_endpoint::get_resource_metadata_by_id)
                 .service(resource_endpoint::get_resource_metadata_description_by_id),
         )

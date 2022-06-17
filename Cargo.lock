@@ -2256,7 +2256,6 @@ dependencies = [
  "actix-rt",
  "actix-web",
  "assertor",
- "base64 0.13.0",
  "cacache",
  "chrono",
  "clokwerk",

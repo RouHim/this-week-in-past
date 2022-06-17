@@ -73,19 +73,52 @@ function getCurrentTemperatureDataFromHomeAssistant() {
 
 // Sets the image and its meta information
 function setImage(resource_id) {
-    // set image
-    let photoDataRequest = new XMLHttpRequest();
-    photoDataRequest.open("GET",
-        `${window.location.href}api/resources/${resource_id}/${window.screen.availWidth}/${window.screen.availHeight}/base64`
-    );
-    photoDataRequest.send();
-    photoDataRequest.onload = () => document.getElementById("slideshow-image").src = photoDataRequest.response;
+    // build the image url
+    let imageUrl = `${window.location.href}api/resources/${resource_id}/${window.screen.availWidth}/${window.screen.availHeight}`;
 
-    // set image description
-    let photoMetadataRequest = new XMLHttpRequest();
-    photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resource_id + "/description");
-    photoMetadataRequest.send();
-    photoMetadataRequest.onload = () => document.getElementById("slideshow-metadata").innerText = photoMetadataRequest.response;
+    // obtain the image elements
+    let backgroundImage = document.getElementById('background-image');
+    let slideshowImage = document.getElementById("slideshow-image");
+    let slideShowMetadata = document.getElementById("slideshow-metadata");
+
+    // start the fade out animation
+    backgroundImage.classList.add("fade-out");
+    slideshowImage.classList.add("fade-out");
+    slideShowMetadata.classList.add("fade-out");
+
+    // wait for the fade out animation to end
+    sleep(1000).then(() => {
+
+        // when the image is loaded, start the fade in animation
+        slideshowImage.onload = () => {
+            // fade images in
+            backgroundImage.classList.add("fade-in");
+            backgroundImage.classList.remove("fade-out");
+
+            slideshowImage.classList.add("fade-in");
+            slideshowImage.classList.remove("fade-out");
+
+            slideShowMetadata.classList.add("fade-in");
+            slideShowMetadata.classList.remove("fade-out");
+
+            // wait for the fade in animation to end
+            sleep(1000).then(() => {
+                backgroundImage.classList.remove("fade-in");
+                slideshowImage.classList.remove("fade-in");
+                slideShowMetadata.classList.remove("fade-in");
+            });
+        }
+
+        // set image and blurred background image
+        backgroundImage.style.backgroundImage = `url(${imageUrl})`;
+        slideshowImage.src = imageUrl;
+
+        // set image description but fade in is done simultaneously with the fade in of the image, see above
+        let photoMetadataRequest = new XMLHttpRequest();
+        photoMetadataRequest.open("GET", window.location.href + "api/resources/" + resource_id + "/description");
+        photoMetadataRequest.send();
+        photoMetadataRequest.onload = () => slideShowMetadata.innerText = photoMetadataRequest.response;
+    })
 }
 
 // Returns a random resource
@@ -146,4 +179,9 @@ function loadAvailableImages() {
     http.send();
     http.responseType = "json"
     http.onload = () => startSlideshow(http.response);
+}
+
+// Sleeps for the given amount of milliseconds
+function sleep(ms) {
+    return new Promise(resolver => setTimeout(resolver, ms));
 }
