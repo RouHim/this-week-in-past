@@ -26,7 +26,6 @@ rand = "0.8.5"
 log = "0.4.17"
 mime_guess = "2.0.4"
 openssl = { version = "0.10.40", features = ["vendored"] }
-raytracer = "0.2.2"
 
 [dev-dependencies]
 assertor = "0.0.1"
