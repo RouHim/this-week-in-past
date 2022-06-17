@@ -115,7 +115,7 @@ jobs:
         continue-on-error: true # upload cache even if there are errors in this step
 
       - name: Install cargo-udeps
-        run: cargo install cargo-udeps --locked
+        run: cargo install cargo-udeps
 
       - name: Analyze dependencies
         run: cargo +nightly udeps
