@@ -9,7 +9,7 @@ on:
 jobs:
 
   check-config:
-    name: Check config files
+    name: Check docker file
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -26,7 +26,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
   check-repo:
-    name: Check repository
+    name: Check git repository
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -60,7 +60,7 @@ jobs:
         run: cargo fmt --all -- --check
 
   check-code:
-    name: Check code
+    name: Check rust code
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
