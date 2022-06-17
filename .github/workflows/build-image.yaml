@@ -109,7 +109,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: nightly
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
         continue-on-error: true # upload cache even if there are errors in this step
