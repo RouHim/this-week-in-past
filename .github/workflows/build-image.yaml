@@ -99,7 +99,7 @@ jobs:
         run: cargo test
 
   check-dependencies:
-    name: Check for unmet dependencies
+    name: Check for unused deps
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -112,6 +112,7 @@ jobs:
           toolchain: stable
 
       - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
+        continue-on-error: true # upload cache even if there are errors in this step
 
       - name: Install cargo-udeps
         run: cargo install cargo-udeps --locked
