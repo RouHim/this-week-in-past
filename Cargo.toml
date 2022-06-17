@@ -25,11 +25,7 @@ cacache = "10.0.1"
 rand = "0.8.5"
 log = "0.4.17"
 mime_guess = "2.0.4"
-
-# Pin openssl to the latest version to avoid known CVEs.
 openssl = { version = "0.10.40", features = ["vendored"] }
-openssl-src = "300.0.7+3.0.3"
-
 
 [dev-dependencies]
 assertor = "0.0.1"
