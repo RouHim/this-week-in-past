@@ -98,7 +98,7 @@ jobs:
       - name: Test code
         run: cargo test
 
-  check-dependencies:
+  check-unused-dependencies:
     name: Check for unused deps
     runs-on: ubuntu-latest
     steps:
@@ -122,7 +122,7 @@ jobs:
 
   build:
     name: Build container image
-    needs: [ check-config, check-repo, check-code-style, check-code, test, check-dependencies ]
+    needs: [ check-config, check-repo, check-code-style, check-code, test, check-unused-dependencies ]
     runs-on: ubuntu-latest
     env:
       DOCKER_BUILDKIT: 1 # use the new docker build backend
