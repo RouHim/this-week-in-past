@@ -115,14 +115,14 @@ jobs:
         continue-on-error: true # upload cache even if there are errors in this step
 
       - name: Install cargo-udeps
-        run: cargo install cargo-udeps
+        run: cargo install cargo-udeps --locked
 
       - name: Analyze dependencies
         run: cargo +nightly udeps
 
   build:
     name: Build container image
-    needs: [ check-config, check-repo, check-code-style, check-code, test, check-unused-dependencies ]
+    needs: [ check-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
     env:
       DOCKER_BUILDKIT: 1 # use the new docker build backend
