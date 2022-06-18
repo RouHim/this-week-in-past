@@ -52,8 +52,8 @@ All configuration is done via environment variables:
 
 | Name                     | Description                                                                                           | Default value |
 |--------------------------|-------------------------------------------------------------------------------------------------------|---------------|
-| RESOURCE_PATHS           | Paths to the resources to load (comma separated), must not be set when using container.               |               |
-| CACHE_DIR                | Path to the caching to load, needs to read/write rights, must not be set when using container.        |               |
+| RESOURCE_PATHS           | Paths to the resources to load (comma separated), container defaults this to `/resources`             |               |
+| CACHE_DIR                | Path to the caching to load, needs to read/write rights, must not be set when using container         |               |
 | SLIDESHOW_INTERVAL       | Interval of the slideshow in seconds                                                                  | 30            |
 | DATE_FORMAT              | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html) | %d.%m.%Y      |
 | BIGDATA_CLOUD_API_KEY    | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com                    |               |
