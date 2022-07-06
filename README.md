@@ -34,7 +34,7 @@ The first indexing when starting the application took about 6 seconds.
 
 The application should be started as a container.
 
-Example:
+Docker Example:
 
 ```shell
 docker run -p 8080:8080 \
@@ -44,6 +44,19 @@ docker run -p 8080:8080 \
         -e OPEN_WEATHER_MAP_API_KEY=<YOUR_KEY> \
         -e BIGDATA_CLOUD_API_KEY=<YOUR_KEY> \
         rouhim/this-week-in-past
+```
+
+Docker compose example:
+```shell
+version: "3.9"
+
+services:
+  this-week-in-past:
+    image: rouhim/this-week-in-past
+    volumes:
+      - ~/Pictures/:/resources:ro # should be read only
+    ports:
+      - "8080:8080"
 ```
 
 ## Configuration

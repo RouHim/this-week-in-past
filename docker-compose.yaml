@@ -1,15 +1,11 @@
 version: "3.9"
 
-volumes:
-  twip-cache:
-
 services:
-  server:
+  this-week-in-past:
     image: rouhim/this-week-in-past
     build:
       context: .
     volumes:
-      - twip-cache:/cache:rw  # needs read/write
-      - ~/Downloads:/resources:ro # should be read only
+      - ~/Pictures/:/resources:ro # should be read only
     ports:
       - "8080:8080"
