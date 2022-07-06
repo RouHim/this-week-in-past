@@ -2,6 +2,13 @@
 name = "this-week-in-past"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+authors = ["Rouven Himmelstein"]
+description = "Aggregate images taken this week, from previous years and presents them on a web page with slideshow."
+readme = "README.md"
+homepage = "https://github.com/RouHim/this-week-in-past"
+repository = "https://github.com/RouHim/this-week-in-past"
+keywords = ["image", "gallery", "slideshow", "this week"]
 
 [dependencies]
 lazy_static = "1.4.0"
