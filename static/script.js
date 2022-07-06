@@ -1,8 +1,16 @@
+/*
+Disclaimer:
+    Yes this is vanilla javascript, and no I'm not a professional web developer.
+*/
+
 let resources;
 let currentIndex = 0;
 let maxIndex = 0;
 
-// Initialize the slideshow
+// On page load, do the following things:
+// 1. Load the available images and initialize the slideshow with it
+// 2. Load and show the weather information
+// 3. Set a page reload interval for each hour
 window.onload = () => {
     loadAvailableImages();
     loadWeatherInformation();
@@ -11,7 +19,7 @@ window.onload = () => {
     setInterval(() => location.reload(), 3600000);
 };
 
-/// Checks if the weather information should be shown, if so load them
+// Checks if the weather information should be shown, if so load them
 function loadWeatherInformation() {
     fetch(`${window.location.href}api/weather`)
         .then(response => response.json())
@@ -22,7 +30,7 @@ function loadWeatherInformation() {
         });
 }
 
-// Shows the current weather on the slideshow
+// Loads the current weather from the rest api and shows it
 function loadCurrentWeather() {
     fetch(`${window.location.href}api/weather/current`)
         .then(response => response.json())
@@ -31,7 +39,10 @@ function loadCurrentWeather() {
         });
 }
 
-// Shows the current weather on the slideshow
+// Shows the actual weather on the frontend
+// If home assistant is enabled, the temperature is loaded from Home Assistant
+// The weather icon is loaded from OpenWeatherMap
+// @param data: the weather data
 function showCurrentWeather(data) {
     const weather = data.weather[0];
     const icon = weather.icon;
@@ -71,8 +82,11 @@ function getCurrentTemperatureDataFromHomeAssistant() {
     }
 }
 
-// Sets the image and its meta information
-function setImage(resource_id) {
+// Sets the image url and its meta information to the frontend
+// This is done by fading out the current image and fading in the new image
+// The sleep function is used to prevent the slideshow from flickering
+// @param resource_id: the id of the resource
+function setImageData(resource_id) {
     // build the image url
     let imageUrl = `${window.location.href}api/resources/${resource_id}/${window.screen.availWidth}/${window.screen.availHeight}`;
 
@@ -121,7 +135,7 @@ function setImage(resource_id) {
     })
 }
 
-// Returns a random resource
+// Returns a random resource from the backend API
 function getRandomResource() {
     let request = new XMLHttpRequest();
     request.open('GET', `${window.location.href}api/resources/random`, false);
@@ -131,14 +145,15 @@ function getRandomResource() {
     }
 }
 
-// Set the slideshow image and its meta information on tick interval
+// On slideshow tick interval
+// Set the slideshow image and its meta information
 function slideshowTick() {
     if (resources.length === 0) {
-        setImage(getRandomResource());
+        setImageData(getRandomResource());
         return;
     }
 
-    setImage(resources[currentIndex]);
+    setImageData(resources[currentIndex]);
 
     currentIndex++;
     if (currentIndex > maxIndex) {
@@ -146,7 +161,18 @@ function slideshowTick() {
     }
 }
 
-// Returns the slideshow interval in seconds
+// Loads the available images of this week from the backend API
+// The response is used to start the slideshow
+function loadAvailableImages() {
+    // load all images of this week in the past years
+    const http = new XMLHttpRequest();
+    http.open("GET", window.location.href + "api/resources/week");
+    http.send();
+    http.responseType = "json"
+    http.onload = () => startSlideshow(http.response);
+}
+
+// Returns the slideshow interval in seconds from the backend API
 function getSlideshowInterval() {
     let request = new XMLHttpRequest();
     request.open('GET', `${window.location.href}api/config/interval`, false);
@@ -157,7 +183,8 @@ function getSlideshowInterval() {
     return 30;
 }
 
-// Starts the slideshow
+// Starts the slideshow utilizing `setInterval`
+// The interval is set to the value returned from the backend API
 function startSlideshow(response) {
     resources = response;
 
@@ -171,17 +198,9 @@ function startSlideshow(response) {
     setInterval(() => slideshowTick(), intervalInSeconds * 1000);
 }
 
-// Loads the available images from the server
-function loadAvailableImages() {
-    // load all images of this week in the past years
-    const http = new XMLHttpRequest();
-    http.open("GET", window.location.href + "api/resources/week");
-    http.send();
-    http.responseType = "json"
-    http.onload = () => startSlideshow(http.response);
-}
-
-// Sleeps for the given amount of milliseconds
+// Sleeps for the given amount of milliseconds and returns a promise
+// that is resolved when the sleep is finished
+// @param ms: the amount of milliseconds to sleep
 function sleep(ms) {
     return new Promise(resolver => setTimeout(resolver, ms));
 }

@@ -10,6 +10,10 @@
     src: url(Roboto-Medium.ttf);
 }
 
+/* ========================     */
+/* STYLED IDs                   */
+/* ========================     */
+
 #slideshow-layout {
     width: 100vw;
     height: 100vh;
@@ -26,6 +30,21 @@
     height: auto;
     max-height: 100%;
 }
+
+#background-image {
+    z-index: -1;
+    filter: blur(20px);
+    -webkit-filter: blur(20px);
+    height: 200%;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    top: 50%;
+}
+
+/* ========================     */
+/* STYLE CLASSES                */
+/* ========================     */
 
 .label {
     position: absolute;
@@ -63,16 +82,9 @@
     background: transparent;
 }
 
-#background-image {
-    z-index: -1;
-    filter: blur(20px);
-    -webkit-filter: blur(20px);
-    height: 200%;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    top: 50%;
-}
+/* ========================     */
+/* FADE IN ANIMATION            */
+/* ========================     */
 
 .fade-in {
     animation: fadeIn ease 1s forwards;
@@ -126,6 +138,10 @@
         opacity: 1;
     }
 }
+
+/* ========================     */
+/* FADE OUT ANIMATION           */
+/* ========================     */
 
 .fade-out {
     animation: fadeOut ease 1s forwards;
