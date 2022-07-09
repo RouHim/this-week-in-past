@@ -32,7 +32,7 @@ cacache = "10.0.1"
 rand = "0.8.5"
 log = "0.4.17"
 mime_guess = "2.0.4"
-openssl = { version = "0.10.40", features = ["vendored"] }
+openssl = { version = "0.10.41", features = ["vendored"] }
 
 [dev-dependencies]
 assertor = "0.0.1"
