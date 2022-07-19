@@ -283,7 +283,7 @@ fn build_app(
         .app_data(web::Data::new(kv_reader))
         .app_data(web::Data::new(resource_reader))
         .app_data(web::Data::new(kv_writer_mutex))
-        .app_data(web::Data::new(geo_location_cache.clone()))
+        .app_data(web::Data::new(geo_location_cache))
         .service(
             web::scope("/api/resources")
                 .service(resource_endpoint::list_all_resources)

@@ -19,6 +19,8 @@ mod weather_endpoint;
 mod weather_processor;
 
 #[cfg(test)]
+mod integration_test_config_api;
+#[cfg(test)]
 mod integration_test_resources_api;
 #[cfg(test)]
 mod integration_test_weather_api;
@@ -77,7 +79,11 @@ async fn main() -> std::io::Result<()> {
                     .service(weather_endpoint::get_is_home_assistant_enabled)
                     .service(weather_endpoint::get_home_assistant_entity_data),
             )
-            .service(web::scope("/api/config").service(config_endpoint::get_slideshow_interval))
+            .service(
+                web::scope("/api/config")
+                    .service(config_endpoint::get_slideshow_interval)
+                    .service(config_endpoint::get_refresh_interval),
+            )
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./static/").index_file("index.html"))
     })
