@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use chrono::NaiveDateTime;
@@ -187,13 +187,8 @@ fn read_non_existent_folder() {
 }
 
 /// Creates a test image withing a folder
-fn create_test_image(
-    base_dir: &PathBuf,
-    sub_dir: &str,
-    file_name: &str,
-    image_url: &str,
-) -> String {
-    let target_dir = base_dir.clone().join(sub_dir);
+fn create_test_image(base_dir: &Path, sub_dir: &str, file_name: &str, image_url: &str) -> String {
+    let target_dir = base_dir.join(sub_dir);
 
     if !target_dir.exists() {
         fs::create_dir_all(&target_dir).unwrap();
@@ -222,8 +217,8 @@ fn cleanup(test_dir: &PathBuf) {
 }
 
 /// Creates a test file withing a folder
-fn create_test_file(base_dir: &PathBuf, sub_dir: &str, file_name: &str) -> String {
-    let target_dir = base_dir.clone().join(sub_dir);
+fn create_test_file(base_dir: &Path, sub_dir: &str, file_name: &str) -> String {
+    let target_dir = base_dir.join(sub_dir);
 
     if !target_dir.exists() {
         fs::create_dir_all(&target_dir).unwrap();

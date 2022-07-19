@@ -97,7 +97,6 @@ async fn get_city_name(
             .lock()
             .unwrap()
             .get(resource_location_string.as_str())
-            .map(|city_name| city_name.to_string())
     } else {
         // Get city name
         let city_name = geo_location::resolve_city_name(resource_location).await;

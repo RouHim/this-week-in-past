@@ -15,8 +15,9 @@ window.onload = () => {
     loadAvailableImages();
     loadWeatherInformation();
 
-    // Reload page every hour
-    setInterval(() => location.reload(), 3600000);
+    // Reload page every x minutes
+    let refreshIntervalInMinutes = getRefreshInterval();
+    setInterval(() => location.reload(), refreshIntervalInMinutes * 60000);
 };
 
 // Checks if the weather information should be shown, if so load them
@@ -175,12 +176,23 @@ function loadAvailableImages() {
 // Returns the slideshow interval in seconds from the backend API
 function getSlideshowInterval() {
     let request = new XMLHttpRequest();
-    request.open('GET', `${window.location.href}api/config/interval`, false);
+    request.open('GET', `${window.location.href}api/config/interval/slideshow`, false);
     request.send(null);
     if (request.status === 200) {
         return request.responseText;
     }
     return 30;
+}
+
+// Returns the refresh interval in minutes from the backend API
+function getRefreshInterval() {
+    let request = new XMLHttpRequest();
+    request.open('GET', `${window.location.href}api/config/interval/refresh`, false);
+    request.send(null);
+    if (request.status === 200) {
+        return request.responseText;
+    }
+    return 180;
 }
 
 // Starts the slideshow utilizing `setInterval`

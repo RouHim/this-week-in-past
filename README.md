@@ -76,6 +76,7 @@ All configuration is done via environment variables:
 | RESOURCE_PATHS           | Paths to the resources to load (comma separated), container defaults this to `/resources`             |               |
 | CACHE_DIR                | Path to the caching to load, needs to read/write rights, must not be set when using container         |               |
 | SLIDESHOW_INTERVAL       | Interval of the slideshow in seconds                                                                  | 30            |
+| REFRESH_INTERVAL         | Interval how of the page should be reloaded in minutes.                                               | 180           |
 | DATE_FORMAT              | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html) | %d.%m.%Y      |
 | BIGDATA_CLOUD_API_KEY    | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com                    |               |
 | OPEN_WEATHER_MAP_API_KEY | To receive weather live data. Obtain here: https://openweathermap.org/api                             |               |
