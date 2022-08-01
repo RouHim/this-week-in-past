@@ -42,4 +42,7 @@ reqwest = { version = "0.11.11", features = ["blocking"] }
 
 # Strip debug symbols in release mode
 [profile.release]
-strip = "symbols"
+panic = "abort" # Strip expensive panic clean-up logic
+codegen-units = 1 # Compile crates one after another so the compiler can optimize better
+lto = true # Enables link to optimizations
+strip = true # Strip debug symbols
