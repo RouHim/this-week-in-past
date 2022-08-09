@@ -167,7 +167,7 @@ async fn test_get_resource_by_id_and_resolution() {
     .await;
 
     // THEN the response should contain the resized image
-    assert_that!(response.len()).is_equal_to(299);
+    assert_that!(response.len()).is_equal_to(283);
 
     // cleanup
     cleanup(&base_test_dir).await;
