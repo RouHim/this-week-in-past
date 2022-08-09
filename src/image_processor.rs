@@ -26,7 +26,7 @@ pub fn optimize_image(
         .unwrap();
 
     // Resize the image to the needed display size
-    let resized = original_image.resize(display_width, display_height, FilterType::Nearest);
+    let resized = original_image.resize(display_width, display_height, FilterType::Lanczos3);
 
     // Rotate or flip the image if needed
     let fixed_orientation = if let Some(orientation) = image_orientation {
