@@ -54,7 +54,7 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
+      - uses: Swatinem/rust-cache@v2 # use /rust/cargo caching
 
       - name: Check the code style
         run: cargo fmt --all -- --check
@@ -72,7 +72,7 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
+      - uses: Swatinem/rust-cache@v2 # use /rust/cargo caching
 
       - name: Verify code
         run: cargo clippy
@@ -93,7 +93,7 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
+      - uses: Swatinem/rust-cache@v2 # use /rust/cargo caching
 
       - name: Test code
         run: cargo test
@@ -111,7 +111,7 @@ jobs:
           profile: minimal
           toolchain: nightly
 
-      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
+      - uses: Swatinem/rust-cache@v2 # use /rust/cargo caching
         continue-on-error: true # upload cache even if there are errors in this step
 
       - name: Install cargo-udeps
@@ -140,7 +140,7 @@ jobs:
           toolchain: stable
           target: x86_64-unknown-linux-musl
 
-      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
+      - uses: Swatinem/rust-cache@v2 # use /rust/cargo caching
 
       - name: Build application
         run: cargo build --release --target x86_64-unknown-linux-musl
