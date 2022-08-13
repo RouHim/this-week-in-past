@@ -14,7 +14,7 @@ keywords = ["image", "gallery", "slideshow", "this week"]
 lazy_static = "1.4.0"
 serde = { version = "1.0.143", features = ["derive"] }
 serde_json = "1.0.83"
-chrono = { version = "0.4.21", features = ["serde"] }
+chrono = { version = "0.4.22", features = ["serde"] }
 now = "0.1.2"
 time = "0.3.13"
 md5 = "0.7.0"
