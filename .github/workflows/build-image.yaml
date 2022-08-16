@@ -130,14 +130,14 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target-platform: [ x86_64-unknown-linux-musl, aarch64-unknown-linux-musl, armv7-unknown-linux-musleabi ]
+        target-platform: [ x86_64-unknown-linux-musl, aarch64-unknown-linux-musl, arm/v7-unknown-linux-musleabi ]
         include:
           - target-platform: x86_64-unknown-linux-musl
             container-image-arch: amd64
           - target-platform: aarch64-unknown-linux-musl
-            container-image-arch: arm64
-          - target-platform: armv7-unknown-linux-musleabi
-            container-image-arch: armv7
+            container-image-arch: arm64/v8
+          - target-platform: arm/v7-unknown-linux-musleabi
+            container-image-arch: arm/v7
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -184,7 +184,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        container-image-arch: [ amd64, arm64, armv7 ]
+        container-image-arch: [ amd64, arm64/v8, arm/v7 ]
     steps:
       - name: Download Container Image
         uses: actions/download-artifact@v3
@@ -210,7 +210,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        container-image-arch: [ amd64, arm64, armv7 ]
+        container-image-arch: [ amd64, arm64/v8, arm/v7 ]
     steps:
       - name: Download Container Image
         uses: actions/download-artifact@v3
@@ -242,7 +242,7 @@ jobs:
     if: github.ref_name == 'main' # only push the image if the branch is main
     strategy:
       matrix:
-        container-image-arch: [ amd64, arm64, armv7 ]
+        container-image-arch: [ amd64, arm64/v8, arm/v7 ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
