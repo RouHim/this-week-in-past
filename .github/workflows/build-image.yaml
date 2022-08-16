@@ -6,10 +6,14 @@ on:
       - opened
   workflow_dispatch: # allow manual execution
 
+env:
+  IMAGE_NAME: rouhim/this-week-in-past
+  TAG: latest
+
 jobs:
 
-  check-config:
-    name: Check docker file
+  check-oci-config:
+    name: Check Containerfile
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -120,18 +124,23 @@ jobs:
       - name: Analyze dependencies
         run: cargo +nightly udeps
 
-  build:
+  build-container-image:
     name: Build container image
-    needs: [ check-config, check-repo, check-code-style, check-code, test ]
+    needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
-    env:
-      DOCKER_BUILDKIT: 1 # use the new docker build backend
+    strategy:
+      matrix:
+        target-platform: [ x86_64-unknown-linux-musl, aarch64-unknown-linux-musl, armv7-unknown-linux-musleabi ]
+        include:
+          - target-platform: x86_64-unknown-linux-musl
+            container-image-arch: amd64
+          - target-platform: aarch64-unknown-linux-musl
+            container-image-arch: arm64
+          - target-platform: armv7-unknown-linux-musleabi
+            container-image-arch: armv7
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Prepare build environment
-        run: sudo apt update && sudo apt install -y musl-tools
 
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
@@ -142,29 +151,45 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2 # use /rust/cargo caching
 
+      - name: Prepare cross build environment
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
       - name: Build application
-        run: cargo build --release --target x86_64-unknown-linux-musl
+        run: cross build --release --target ${{ matrix.target-platform }}
 
       - name: Build container image
-        run: |
-          docker build -t rouhim/this-week-in-past:latest .
-          docker save rouhim/this-week-in-past:latest > this-week-in-past.tar
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: ${{ env.TAG }}
+          archs: ${{ matrix.container-image-arch }}
+          args: |
+            TARGET_PLATFORM=${{ matrix.target-platform }}
+          containerfiles: |
+            ./Containerfile
+          oci: true
+
+      - name: Save container image
+        run: podman save -o image.tar ${{ env.IMAGE_NAME }}:${{ env.TAG }}
 
       - name: Upload container image
         uses: actions/upload-artifact@v3
         with:
-          name: docker-artifact
-          path: this-week-in-past.tar
+          name: ${{ matrix.container-image-arch }}
+          path: image.tar
 
-  scan-container:
+  scan-container-image:
     name: Scan container for vulnerabilities
-    needs: build
+    needs: build-container-image
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container-image-arch: [ amd64, arm64, armv7 ]
     steps:
-      - name: Download Docker Image
+      - name: Download Container Image
         uses: actions/download-artifact@v3
         with:
-          name: docker-artifact
+          name: ${{ matrix.container-image-arch }}
           path: .
 
       - name: Restore docker image
@@ -179,15 +204,18 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
 
-  test-container:
+  test-container-image:
     name: Test container image
-    needs: build
+    needs: build-container-image
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container-image-arch: [ amd64, arm64, armv7 ]
     steps:
-      - name: Download Docker Image
+      - name: Download Container Image
         uses: actions/download-artifact@v3
         with:
-          name: docker-artifact
+          name: ${{ matrix.container-image-arch }}
           path: .
 
       - name: Restore docker image
@@ -199,40 +227,43 @@ jobs:
           wget https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg -O /tmp/test/DSCN0010.jpg          
 
       - name: Start test container
-        run: docker run -d --name test-container -p 8080:8080 -v /tmp/test:/resources rouhim/this-week-in-past:latest
+        run: podman run -d --name test-container -p 8080:8080 -v /tmp/test:/resources rouhim/this-week-in-past:latest
 
       - name: Test container web api
         run: wget -q -O /dev/null -t 1 -T 2 http://localhost:8080/api/health
 
       - name: Cleanup
-        run: docker kill test-container && docker rm test-container
+        run: podman kill test-container && podman rm test-container
 
   push-container:
     name: Push container image
-    needs: [ scan-container, test-container ]
+    needs: [ scan-container-image, test-container-image ]
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' # only push the image if the branch is main
+    strategy:
+      matrix:
+        container-image-arch: [ amd64, arm64, armv7 ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-      - name: Download Docker Image
+      - name: Download Container Image
         uses: actions/download-artifact@v3
         with:
-          name: docker-artifact
+          name: ${{ matrix.container-image-arch }}
           path: .
 
-      - name: Restore docker image
-        run: docker load --input this-week-in-past.tar
+      - name: Restore container image
+        run: podman load --input image.tar
 
-      - name: Push image to Docker Hub
-        run: docker push rouhim/this-week-in-past:latest
+      - name: Push To docker hub
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          tags: ${{ env.TAG }}
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Update docker hub description
         uses: peter-evans/dockerhub-description@v3
