@@ -141,11 +141,11 @@ jobs:
         target-platform: [ x86_64-unknown-linux-musl, aarch64-unknown-linux-musl, armv7-unknown-linux-musleabi ]
         include:
           - target-platform: x86_64-unknown-linux-musl
-            container-image-arch: linux/amd64
+            container-image-arch: amd64
           - target-platform: aarch64-unknown-linux-musl
-            container-image-arch: linux/arm64
+            container-image-arch: arm64
           - target-platform: armv7-unknown-linux-musleabi
-            container-image-arch: linux/arm/v7
+            container-image-arch: arm/v7
     steps:
       - name: Checkout code
         uses: actions/checkout@v3

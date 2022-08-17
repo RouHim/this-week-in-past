@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
@@ -197,9 +198,11 @@ fn create_test_image(base_dir: &Path, sub_dir: &str, file_name: &str, image_url:
     let test_image_path = target_dir.join(file_name);
 
     let mut image_data: Vec<u8> = vec![];
-    reqwest::blocking::get(image_url)
+    ureq::get(image_url)
+        .call()
         .unwrap()
-        .copy_to(&mut image_data)
+        .into_reader()
+        .read_to_end(&mut image_data)
         .unwrap();
     fs::write(&test_image_path, &image_data).unwrap_or_else(|_| {
         panic!(

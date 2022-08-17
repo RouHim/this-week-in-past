@@ -125,21 +125,24 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
         return None;
     }
 
-    let response = reqwest::get(format!(
+    let request_url = format!(
         "https://api.bigdatacloud.net/data/reverse-geocode?latitude={}&longitude={}&localityLanguage=de&key={}",
         geo_location.latitude,
         geo_location.longitude,
         env::var("BIGDATA_CLOUD_API_KEY").unwrap(),
-    )).await;
+    );
+
+    let response = ureq::get(request_url.as_str()).call();
 
     if response.is_err() {
         return None;
     }
 
-    let response_json =
-        response.unwrap().text().await.ok().and_then(|json_string| {
-            serde_json::from_str::<HashMap<String, Value>>(&json_string).ok()
-        });
+    let response_json = response
+        .unwrap()
+        .into_string()
+        .ok()
+        .and_then(|json_string| serde_json::from_str::<HashMap<String, Value>>(&json_string).ok());
 
     let mut city_name = response_json
         .as_ref()

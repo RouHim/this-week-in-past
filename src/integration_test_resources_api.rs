@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::{env, fs};
@@ -310,12 +311,15 @@ async fn create_test_image(
 
     let test_image_path = target_dir.join(file_name);
 
-    let data = reqwest::get(image_url)
-        .await
-        .unwrap()
-        .bytes()
-        .await
-        .unwrap();
+    let response = ureq::get(image_url).call().unwrap();
+
+    let len: usize = response.header("Content-Length").unwrap().parse().unwrap();
+
+    let mut data: Vec<u8> = Vec::with_capacity(len);
+    response
+        .into_reader()
+        .read_to_end(&mut data)
+        .expect("write fail");
 
     fs::write(&test_image_path, data).unwrap_or_else(|_| {
         panic!(
