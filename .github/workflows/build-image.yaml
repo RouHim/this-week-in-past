@@ -172,7 +172,7 @@ jobs:
         with:
           image: ${{ env.IMAGE_NAME }}
           tags: ${{ env.TAG }}
-          archs: ${{ matrix.container-image-arch }}
+          platforms: ${{ matrix.container-image-arch }}
           args: |
             TARGET_PLATFORM=${{ matrix.target-platform }}
           containerfiles: |
