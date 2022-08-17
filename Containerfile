@@ -6,11 +6,8 @@ FROM alpine as builder
 # Create a cache directory that will be copied into the final image
 RUN mkdir "/cache"
 
-# Update apk repo
-RUN apk update
-
 # Install ssl certificates that will also be copied into the final image
-RUN apk add --no-cache ca-certificates
+RUN apk update && apk add --no-cache ca-certificates
 
 # Install Rust toolchain
 RUN apk add --no-cache cargo
@@ -20,7 +17,7 @@ RUN mkdir /app
 WORKDIR /app
 
 # Copy app sources
-COPY Cargo.toml Cargo.lock /app
+COPY Cargo.toml Cargo.lock /app/
 COPY src/ /app/src
 
 # Build the application
