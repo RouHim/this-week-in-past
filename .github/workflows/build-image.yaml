@@ -58,7 +58,9 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2 # use /rust/cargo caching
+      - uses: Swatinem/rust-cache@v2 # use rust / cargo caching
+        with:
+          cache-on-failure: "true"
 
       - name: Check the code style
         run: cargo fmt --all -- --check
@@ -76,7 +78,9 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2 # use /rust/cargo caching
+      - uses: Swatinem/rust-cache@v2 # use rust / cargo caching
+        with:
+          cache-on-failure: "true"
 
       - name: Verify code
         run: cargo clippy
@@ -97,7 +101,9 @@ jobs:
           profile: minimal
           toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2 # use /rust/cargo caching
+      - uses: Swatinem/rust-cache@v2 # use rust / cargo caching
+        with:
+          cache-on-failure: "true"
 
       - name: Test code
         run: cargo test
@@ -115,8 +121,9 @@ jobs:
           profile: minimal
           toolchain: nightly
 
-      - uses: Swatinem/rust-cache@v2 # use /rust/cargo caching
-        continue-on-error: true # upload cache even if there are errors in this step
+      - uses: Swatinem/rust-cache@v2 # use rust / cargo caching
+        with:
+          cache-on-failure: "true"
 
       - name: Install cargo-udeps
         run: cargo install cargo-udeps --locked
@@ -150,7 +157,9 @@ jobs:
           toolchain: stable
           target: x86_64-unknown-linux-musl
 
-      - uses: Swatinem/rust-cache@v2 # use /rust/cargo caching
+      - uses: Swatinem/rust-cache@v2 # use rust / cargo caching
+        with:
+          cache-on-failure: "true"
 
       - name: Prepare cross build environment
         run: cargo install cross --git https://github.com/cross-rs/cross
