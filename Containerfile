@@ -43,7 +43,7 @@ COPY --chown=1337:1337 --from=builder /cache /cache
 COPY --chown=1337:1337 --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # Copy the built application from the host to the container
-COPY --chown=1337:1337 ./target/$TARGET_PLATFORM/release/this-week-in-past /this-week-in-past
+COPY --chown=1337:1337 --from=builder /app/target/release/this-week-in-past /this-week-in-past
 
 # Copy the static html website data from the host to the container
 COPY --chown=1337:1337 ./static /static
