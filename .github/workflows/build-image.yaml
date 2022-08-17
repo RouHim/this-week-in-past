@@ -129,15 +129,16 @@ jobs:
     needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         target-platform: [ x86_64-unknown-linux-musl, aarch64-unknown-linux-musl, armv7-unknown-linux-musleabi ]
         include:
           - target-platform: x86_64-unknown-linux-musl
-            container-image-arch: amd64
+            container-image-arch: linux/amd64
           - target-platform: aarch64-unknown-linux-musl
-            container-image-arch: arm64/v8
+            container-image-arch: linux/arm64
           - target-platform: armv7-unknown-linux-musleabi
-            container-image-arch: arm/v7
+            container-image-arch: linux/arm/v7
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -183,8 +184,9 @@ jobs:
     needs: build-container-image
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        container-image-arch: [ amd64, arm64/v8, arm/v7 ]
+        container-image-arch: [ linux/amd64, linux/arm64, linux/arm/v7 ]
     steps:
       - name: Download Container Image
         uses: actions/download-artifact@v3
@@ -209,8 +211,9 @@ jobs:
     needs: build-container-image
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        container-image-arch: [ amd64, arm64/v8, arm/v7 ]
+        container-image-arch: [ linux/amd64, linux/arm64, linux/arm/v7 ]
     steps:
       - name: Download Container Image
         uses: actions/download-artifact@v3
@@ -241,8 +244,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' # only push the image if the branch is main
     strategy:
+      fail-fast: false
       matrix:
-        container-image-arch: [ amd64, arm64/v8, arm/v7 ]
+        container-image-arch: [ linux/amd64, linux/arm64, linux/arm/v7 ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
