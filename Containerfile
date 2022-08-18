@@ -7,7 +7,7 @@ FROM alpine as builder
 RUN mkdir "/cache"
 
 # Install ssl certificates that will also be copied into the final image
-RUN apk update && apk add --no-cache ca-certificates
+RUN apk update && apk add --no-cache ca-certificates git
 
 # Install Rust toolchain
 RUN apk add --no-cache cargo
