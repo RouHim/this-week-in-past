@@ -135,6 +135,10 @@ jobs:
     name: Build container image
     needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        container-image-arch: [ amd64, arm64, arm ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -147,7 +151,7 @@ jobs:
         with:
           image: ${{ env.IMAGE_NAME }}
           tags: ${{ env.TAG }}
-          archs: amd64,arm64,arm
+          archs: ${{ matrix.container-image-arch }}
           containerfiles: |
             ./Containerfile
           oci: true
@@ -158,7 +162,7 @@ jobs:
       - name: Upload container image
         uses: actions/upload-artifact@v3
         with:
-          name: image
+          name: ${{ matrix.container-image-arch }}
           path: image.tar
 
   scan-container-image:
@@ -168,7 +172,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        container-image-arch: [ linux/amd64, linux/arm64, linux/arm/v7 ]
+        container-image-arch: [ amd64, arm64, arm ]
     steps:
       - name: Download Container Image
         uses: actions/download-artifact@v3
@@ -195,7 +199,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        container-image-arch: [ linux/amd64, linux/arm64, linux/arm/v7 ]
+        container-image-arch: [ amd64, arm64, arm ]
     steps:
       - name: Download Container Image
         uses: actions/download-artifact@v3
@@ -228,7 +232,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        container-image-arch: [ linux/amd64, linux/arm64, linux/arm/v7 ]
+        container-image-arch: [ amd64, arm64, arm ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
