@@ -7,15 +7,15 @@ FROM alpine as builder
 RUN mkdir "/cache"
 
 # Install ssl certificates that will also be copied into the final image
-RUN apk update && apk add --no-cache ca-certificates git
+RUN apk update && apk add --no-cache ca-certificates
 
 # Install Rust toolchain
-RUN apk add --no-cache cargo
+RUN apk add --no-cache cargo git
 
 # Update crates io index manuall, as an alpine arm bug workaround: https://github.com/pyca/cryptography/issues/6673#issuecomment-985943023
-#RUN cd ~/.cargo/registry/index
-#RUN git clone --bare https://github.com/rust-lang/crates.io-index.git github.com-1285ae84e5963aae
-RUN cargo search --limit 0
+RUN mkdir -p ~/.cargo/ 
+RUN echo "[net]" > ~/.cargo/config
+RUN echo "git-fetch-with-cli = true" >> ~/.cargo/config
 
 # Prepare build dir
 RUN mkdir /app
