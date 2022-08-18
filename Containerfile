@@ -13,8 +13,9 @@ RUN apk update && apk add --no-cache ca-certificates git
 RUN apk add --no-cache cargo
 
 # Update crates io index manuall, as an alpine arm bug workaround: https://github.com/pyca/cryptography/issues/6673#issuecomment-985943023
-RUN cd ~/.cargo/registry/index
-RUN git clone --bare https://github.com/rust-lang/crates.io-index.git github.com-1285ae84e5963aae
+#RUN cd ~/.cargo/registry/index
+#RUN git clone --bare https://github.com/rust-lang/crates.io-index.git github.com-1285ae84e5963aae
+RUN cargo search --limit 0
 
 # Prepare build dir
 RUN mkdir /app
