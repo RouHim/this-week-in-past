@@ -12,7 +12,7 @@ RUN apk update && apk add --no-cache ca-certificates
 # Install Rust toolchain
 RUN apk add --no-cache cargo git
 
-# Update crates io index manuall, as an alpine arm bug workaround: https://github.com/pyca/cryptography/issues/6673#issuecomment-985943023
+# Update crates io index via git cli, otherwise we'll an out of memory when building for arm https://github.com/rust-lang/cargo/issues/9167
 RUN mkdir -p ~/.cargo/ 
 RUN echo "[net]" > ~/.cargo/config
 RUN echo "git-fetch-with-cli = true" >> ~/.cargo/config
