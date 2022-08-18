@@ -169,24 +169,18 @@ jobs:
     name: Scan container for vulnerabilities
     needs: build-container-image
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        container-image-arch: [ amd64, arm64, arm ]
     steps:
       - name: Download Container Image
         uses: actions/download-artifact@v3
         with:
-          name: ${{ matrix.container-image-arch }}
+          name: amd64
           path: .
-
-      - name: Restore docker image
-        run: docker load --input image.tar
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'rouhim/this-week-in-past:latest'
+          scan-type: image
+          input: image.tar
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
@@ -196,15 +190,11 @@ jobs:
     name: Test container image
     needs: build-container-image
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        container-image-arch: [ amd64, arm64, arm ]
     steps:
       - name: Download Container Image
         uses: actions/download-artifact@v3
         with:
-          name: ${{ matrix.container-image-arch }}
+          name: amd64
           path: .
 
       - name: Restore docker image
