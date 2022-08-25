@@ -12,13 +12,12 @@ pub async fn get_current_weather() -> Option<String> {
     let city: String = env::var("WEATHER_LOCATION").unwrap_or_else(|_| "Berlin".to_string());
     let units: String = env::var("WEATHER_UNIT").unwrap_or_else(|_| "metric".to_string());
     let language: String = env::var("WEATHER_LANGUAGE").unwrap_or_else(|_| "en".to_string());
-
-    let response = reqwest::get(format!(
+    let response = ureq::get(format!(
         "https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units={units}&lang={language}"
-    )).await;
+    ).as_str()).call();
 
     if response.is_ok() {
-        response.unwrap().text().await.ok()
+        response.unwrap().into_string().ok()
     } else {
         None
     }
@@ -36,18 +35,16 @@ pub async fn get_home_assistant_data() -> Option<String> {
         return None;
     }
 
-    let response = reqwest::Client::new()
-        .get(format!(
-            "{}/api/states/{}",
-            base_url.unwrap(),
-            entity_id.unwrap()
-        ))
-        .bearer_auth(api_token.unwrap())
-        .send()
-        .await;
+    let response =
+        ureq::get(format!("{}/api/states/{}", base_url.unwrap(), entity_id.unwrap()).as_str())
+            .set(
+                "Authorization",
+                format!("Bearer {}", api_token.unwrap()).as_str(),
+            )
+            .call();
 
     if response.is_ok() {
-        response.unwrap().text().await.ok()
+        response.unwrap().into_string().ok()
     } else {
         None
     }
