@@ -220,10 +220,6 @@ jobs:
     needs: [ scan-container-image, test-container-image ]
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' # only push the image if the branch is main
-    strategy:
-      fail-fast: false
-      matrix:
-        container-image-arch: [ amd64, arm64, arm ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
