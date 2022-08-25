@@ -8,7 +8,7 @@ on:
 
 env:
   IMAGE_NAME: rouhim/this-week-in-past
-  TAG: latest
+  IMAGE_TAG: latest
 
 jobs:
 
@@ -146,37 +146,25 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
         with:
-          platforms: linux/${{ matrix.container-image-arch }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+          platforms: ${{ matrix.container-image-arch }}
 
       - name: Build container image
-        uses: docker/build-push-action@v3
+        uses: redhat-actions/buildah-build@v2
         with:
-          file: Containerfile
-          tags: ${{ env.IMAGE_NAME }}:${{ env.TAG }}
-          platforms: linux/${{ matrix.container-image-arch }}
-          outputs: type=oci,dest=image.tar
+          image: ${{ env.IMAGE_NAME }}
+          tags: ${{ env.IMAGE_TAG }}_${{ matrix.container-image-arch }}
+          archs: ${{ matrix.container-image-arch }}
+          containerfiles: |
+            ./Containerfile
 
-      #      - name: Build container image
-      #        uses: redhat-actions/buildah-build@v2
-      #        with:
-      #          image: ${{ env.IMAGE_NAME }}
-      #          tags: ${{ env.TAG }}
-      #          archs: ${{ matrix.container-image-arch }}
-      #          containerfiles: |
-      #            ./Containerfile
-      #          oci: true
-      #
-      #      - name: Save container image
-      #        run: podman save -o image.tar ${{ env.IMAGE_NAME }}:${{ env.TAG }}
+      - name: Save container image
+        run: podman save -o ${{ matrix.container-image-arch }}.tar ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_${{ matrix.container-image-arch }}
 
       - name: Upload container image
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.container-image-arch }}
-          path: image.tar
+          path: ${{ matrix.container-image-arch }}.tar
 
   scan-container-image:
     name: Scan container for vulnerabilities
@@ -193,7 +181,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: image
-          input: image.tar
+          input: amd64.tar
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
@@ -211,7 +199,7 @@ jobs:
           path: .
 
       - name: Restore docker image
-        run: docker load --input image.tar
+        run: docker load --input amd64.tar
 
       - name: Prepare test env
         run: |
@@ -240,27 +228,46 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download Container Image
+      - name: Download amd64 Container Image
         uses: actions/download-artifact@v3
         with:
-          name: ${{ matrix.container-image-arch }}
+          name: amd64
+          path: .
+      - name: Download arm64 Container Image
+        uses: actions/download-artifact@v3
+        with:
+          name: arm64
+          path: .
+      - name: Download arm Container Image
+        uses: actions/download-artifact@v3
+        with:
+          name: arm
           path: .
 
-      - name: Restore container image
-        run: podman load --input image.tar
+      - name: Restore container images
+        run: | 
+          podman load --input amd64.tar
+          podman load --input arm64.tar
+          podman load --input arm.tar
 
-      - name: Push To docker hub
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ env.IMAGE_NAME }}
-          tags: ${{ env.TAG }}
-          registry: docker.io
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Create container image manifest
+        run: buildah manifest create multiarch-manifest
+
+      - name: Add all architechtures to the manifest
+        run: | 
+          buildah manifest add multiarch-manifest ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_amd64
+          buildah manifest add multiarch-manifest ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_arm64
+          buildah manifest add multiarch-manifest ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_arm
+
+      - name: Login to docker hub
+        run: podman login docker.io --username ${{ secrets.DOCKERHUB_USERNAME }} --password ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Push multiarch manifest to docker hub
+        run: buildah manifest push --all multiarch-manifest docker://docker.io/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
       - name: Update docker hub description
         uses: peter-evans/dockerhub-description@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
-          repository: rouhim/this-week-in-past
+          repository: ${{ env.IMAGE_NAME }}
