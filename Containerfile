@@ -1,19 +1,20 @@
 # # # # # # # # # # # # # # # # # # # #
 # Builder
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM alpine as builder
+FROM docker.io/rust:alpine as builder
 
 # Create a cache directory that will be copied into the final image
 RUN mkdir "/cache"
 
 # Install ssl certificates that will also be copied into the final image
-RUN apk update && apk add --no-cache ca-certificates
+RUN apk update && apk add --no-cache ca-certificates musl-dev
 
 # Install Rust toolchain
-RUN apk add --no-cache cargo git
+#RUN apk add --no-cache cargo musl-dev git
+RUN rustup target add x86_64-unknown-linux-musl
 
 # Update crates io index via git cli, otherwise we'll an out of memory when building for arm https://github.com/rust-lang/cargo/issues/9167
-RUN mkdir -p ~/.cargo/ 
+RUN mkdir -p ~/.cargo/
 RUN echo "[net]" > ~/.cargo/config
 RUN echo "git-fetch-with-cli = true" >> ~/.cargo/config
 
@@ -26,12 +27,12 @@ COPY Cargo.toml Cargo.lock /app/
 COPY src/ /app/src
 
 # Build the application
-RUN cargo build --release
+RUN cargo build --release --target x86_64-unknown-linux-musl
 
 # # # # # # # # # # # # # # # # # # # #
 # Run image
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM scratch as runtime
+FROM alpine as runtime
 
 ENV CACHE_DIR "/cache"
 ENV RESOURCE_PATHS "/resources"
@@ -45,7 +46,7 @@ COPY --chown=1337:1337 --from=builder /cache /cache
 COPY --chown=1337:1337 --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # Copy the built application from the host to the container
-COPY --chown=1337:1337 --from=builder /app/target/release/this-week-in-past /this-week-in-past
+COPY --chown=1337:1337 --from=builder /app/target/x86_64-unknown-linux-musl/release/this-week-in-past /this-week-in-past
 
 # Copy the static html website data from the host to the container
 COPY --chown=1337:1337 ./static /static
