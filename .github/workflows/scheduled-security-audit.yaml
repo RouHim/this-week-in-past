@@ -5,38 +5,17 @@ on:
   workflow_dispatch: # allow manual execution
 
 jobs:
-  docker-audit:
-    name: Audit docker image
+  image-audit:
+    name: Audit container image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: default
-          toolchain: stable
-
-      - name: Prepare build environment
-        run: |
-          sudo apt update && sudo apt install -y musl-tools
-          rustup target add x86_64-unknown-linux-musl
-
-      - uses: Swatinem/rust-cache@v1 # use /rust/cargo caching
-
-      - name: Build application
-        run: |
-          cargo build --release --target x86_64-unknown-linux-musl
-
-      - name: Build container image
-        run: |
-          docker build -t rouhim/this-week-in-past:latest .
-
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'rouhim/this-week-in-past:latest'
+          image-ref: 'docker.io/rouhim/this-week-in-past:latest'
           format: 'sarif'
           output: 'trivy-results.sarif'
           exit-code: '1'
