@@ -210,7 +210,7 @@ jobs:
         run: podman run -d --name test-container -p 8080:8080 -v /tmp/test:/resources rouhim/this-week-in-past:latest
 
       - name: Test container web api
-        run: wget -q -O /dev/null -t 1 -T 2 http://localhost:8080/api/health
+        run: wget -q -O /dev/null --timeout 5 --tries 3 http://localhost:8080/api/health
 
       - name: Cleanup
         run: podman kill test-container && podman rm test-container

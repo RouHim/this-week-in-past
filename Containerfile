@@ -1,7 +1,7 @@
 # # # # # # # # # # # # # # # # # # # #
 # Builder
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM rust:alpine as builder
+FROM docker.io/rust:alpine as builder
 
 # Create a cache directory that will be copied into the final image
 RUN mkdir "/cache"
