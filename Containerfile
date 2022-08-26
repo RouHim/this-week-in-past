@@ -1,19 +1,16 @@
 # # # # # # # # # # # # # # # # # # # #
 # Builder
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM alpine as builder
+FROM docker.io/rust:alpine as builder
 
 # Create a cache directory that will be copied into the final image
 RUN mkdir "/cache"
 
 # Install ssl certificates that will also be copied into the final image
-RUN apk update && apk add --no-cache ca-certificates
-
-# Install Rust toolchain
-RUN apk add --no-cache cargo git
+RUN apk update && apk add --no-cache alpine-sdk ca-certificates
 
 # Update crates io index via git cli, otherwise we'll an out of memory when building for arm https://github.com/rust-lang/cargo/issues/9167
-RUN mkdir -p ~/.cargo/ 
+RUN mkdir -p ~/.cargo/
 RUN echo "[net]" > ~/.cargo/config
 RUN echo "git-fetch-with-cli = true" >> ~/.cargo/config
 
@@ -31,7 +28,7 @@ RUN cargo build --release
 # # # # # # # # # # # # # # # # # # # #
 # Run image
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM scratch as runtime
+FROM alpine as runtime
 
 ENV CACHE_DIR "/cache"
 ENV RESOURCE_PATHS "/resources"
