@@ -1,17 +1,13 @@
 # # # # # # # # # # # # # # # # # # # #
 # Builder
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM alpine:3 as builder
+FROM rust:alpine as builder
 
 # Create a cache directory that will be copied into the final image
 RUN mkdir "/cache"
 
 # Install ssl certificates that will also be copied into the final image
-RUN apk update && apk add --no-cache ca-certificates
-
-# Install Rust toolchain
-RUN apk add --no-cache build-base git curl
-RUN curl '=https' --tlsv1.2 https://sh.rustup.rs > /rustup.sh && sh /rustup.sh -y
+RUN apk update && apk add --no-cache alpine-sdk ca-certificates
 
 # Update crates io index via git cli, otherwise we'll an out of memory when building for arm https://github.com/rust-lang/cargo/issues/9167
 RUN mkdir -p ~/.cargo/
@@ -27,7 +23,7 @@ COPY Cargo.toml Cargo.lock /app/
 COPY src/ /app/src
 
 # Build the application
-RUN ~/.cargo/bin/cargo build --release
+RUN cargo build --release
 
 # # # # # # # # # # # # # # # # # # # #
 # Run image
