@@ -2,3 +2,5 @@
 .idea
 cache
 test.sh
+index-*
+content-*
