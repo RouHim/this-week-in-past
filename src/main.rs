@@ -9,8 +9,8 @@ use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 mod config_endpoint;
 mod exif_reader;
 mod geo_location;
-mod geo_location_cache;
 mod image_processor;
+mod in_memory_cache;
 mod resource_endpoint;
 mod resource_processor;
 mod resource_reader;
@@ -52,14 +52,14 @@ async fn main() -> std::io::Result<()> {
     scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex.clone());
 
     // Initialize geo location cache
-    let geo_location_cache = Arc::new(Mutex::new(geo_location_cache::init()));
+    let geo_location_cache = in_memory_cache::new();
 
     // Run the actual web server and hold the main thread here
     println!("Launching webserver 🚀");
     let http_server_result = HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(kv_reader.clone()))
             .app_data(web::Data::new(resource_reader.clone()))
+            .app_data(web::Data::new(kv_reader.clone()))
             .app_data(web::Data::new(kv_writer_mutex.clone()))
             .app_data(web::Data::new(geo_location_cache.clone()))
             .wrap(middleware::Logger::default()) // enable logger

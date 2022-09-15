@@ -1,11 +1,9 @@
-use std::sync::{Arc, Mutex};
-
 use actix_web::get;
 use actix_web::web;
 use actix_web::HttpResponse;
 use evmap::ReadHandle;
 
-use crate::geo_location_cache::GeoLocationCache;
+use crate::in_memory_cache::InMemoryCache;
 use crate::resource_reader::{RemoteResource, ResourceReader};
 use crate::{image_processor, resource_processor};
 
@@ -124,7 +122,7 @@ pub async fn get_resource_metadata_by_id(
 pub async fn get_resource_metadata_description_by_id(
     resources_id: web::Path<String>,
     kv_reader: web::Data<ReadHandle<String, String>>,
-    geo_location_cache_mutex: web::Data<Arc<Mutex<GeoLocationCache>>>,
+    geo_location_cache: web::Data<InMemoryCache>,
 ) -> HttpResponse {
     let resource = kv_reader
         .get_one(resources_id.as_str())
@@ -132,10 +130,7 @@ pub async fn get_resource_metadata_description_by_id(
         .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
 
     let display_value = resource.map(|resource| {
-        resource_processor::build_display_value(
-            resource,
-            geo_location_cache_mutex.get_ref().clone(),
-        )
+        resource_processor::build_display_value(resource, geo_location_cache.as_ref())
     });
 
     if let Some(display_value) = display_value {

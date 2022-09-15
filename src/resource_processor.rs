@@ -1,5 +1,4 @@
 use std::env;
-use std::sync::{Arc, Mutex};
 
 use evmap::ReadHandle;
 use rand::prelude::SliceRandom;
@@ -7,7 +6,7 @@ use rand::Rng;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::geo_location;
-use crate::geo_location_cache::GeoLocationCache;
+use crate::in_memory_cache::InMemoryCache;
 use crate::resource_reader::RemoteResource;
 
 pub fn md5(string: &str) -> String {
@@ -50,7 +49,7 @@ pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
 /// The display value contains the date and location of a resource
 pub async fn build_display_value(
     resource: RemoteResource,
-    geo_location_cache_mutex: Arc<Mutex<GeoLocationCache>>,
+    geo_location_cache: &InMemoryCache,
 ) -> String {
     let mut display_value: String = String::new();
 
@@ -68,7 +67,7 @@ pub async fn build_display_value(
     };
 
     // Append city name
-    let city_name = get_city_name(resource, geo_location_cache_mutex.clone()).await;
+    let city_name = get_city_name(resource, geo_location_cache).await;
     if let Some(city_name) = city_name {
         display_value.push_str(", ");
         display_value.push_str(city_name.as_str());
@@ -82,29 +81,23 @@ pub async fn build_display_value(
 /// If not, the city name is taken from the geo location service
 async fn get_city_name(
     resource: RemoteResource,
-    geo_location_cache_mutex: Arc<Mutex<GeoLocationCache>>,
+    geo_location_cache: &InMemoryCache,
 ) -> Option<String> {
     let resource_location = resource.location?;
     let resource_location_string = resource_location.to_string();
 
     // First check cache
-    if geo_location_cache_mutex
-        .lock()
-        .unwrap()
-        .contains_key(resource_location_string.as_str())
-    {
-        geo_location_cache_mutex
-            .lock()
-            .unwrap()
-            .get(resource_location_string.as_str())
+    if geo_location_cache.contains_key(resource_location_string.as_str()) {
+        println!("Cache hit for {}", resource_location_string.as_str());
+        geo_location_cache.get(resource_location_string.as_str())
     } else {
+        println!("Cache miss for {}", resource_location_string.as_str());
         // Get city name
         let city_name = geo_location::resolve_city_name(resource_location).await;
 
         if let Some(city_name) = &city_name {
             // Write to cache
-            let mut kv_writer = geo_location_cache_mutex.lock().unwrap();
-            kv_writer.insert(resource_location_string, city_name.clone());
+            geo_location_cache.insert(resource_location_string, city_name.clone());
         }
 
         city_name
