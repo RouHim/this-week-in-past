@@ -1487,9 +1487,9 @@ dependencies = [
 
 [[package]]
 name = "now"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84e240744647b9b9496ff378a31be1e89a44a8e867dd4c5c7c5be1f57694eedb"
+checksum = "6d89e9874397a1f0a52fc1f197a8effd9735223cb2390e9dcc83ac6cd02923d0"
 dependencies = [
  "chrono",
 ]
