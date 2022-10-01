@@ -2,24 +2,24 @@ use std::sync::{Arc, Mutex};
 
 use evmap::{ReadHandle, WriteHandle};
 
-/// Holds the cache reader and writer
+/// Provides an in memory kev value reader and writer
 /// Writer is stored as an arc mutex for protected shared writing
 #[derive(Clone)]
-pub struct InMemoryCache {
+pub struct KvStore {
     kv_reader: ReadHandle<String, String>,
     kv_writer: Arc<Mutex<WriteHandle<String, String>>>,
 }
 
 /// Initializes a thread safe in memory cache
-pub fn new() -> InMemoryCache {
+pub fn new() -> KvStore {
     let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    InMemoryCache {
+    KvStore {
         kv_reader,
         kv_writer: Arc::new(Mutex::new(kv_writer)),
     }
 }
 
-impl InMemoryCache {
+impl KvStore {
     /// Checks if the cache contains the given key
     /// Returns true if the key is present, false otherwise
     /// # Arguments
@@ -27,8 +27,8 @@ impl InMemoryCache {
     ///
     /// # Example
     /// ```
-    /// use in_memory_cache::InMemoryCache;
-    /// let mut in_memory_cache = InMemoryCache::init();
+    /// use cache::Cache;
+    /// let mut cache = Cache::init();
     /// let key = "key".to_string();
     /// in_memory_cache.insert(key.clone(), "value".to_string());
     /// assert_eq!(in_memory_cache.contains_key(key.as_str()), true);

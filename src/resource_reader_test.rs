@@ -66,8 +66,9 @@ fn read_jpg_with_exif_image_resource() {
     create_test_image(&base_test_dir, "", test_image_name, TEST_JPEG_EXIF_URL);
 
     // WHEN reading resources from a folder
-    let resources_read =
-        exif_reader::fill_exif_data(&resource_reader::read_all_local_files_recursive(&base_test_dir)[0]);
+    let resources_read = exif_reader::fill_exif_data(
+        &resource_reader::read_all_local_files_recursive(&base_test_dir)[0],
+    );
 
     // THEN the resource metadata should be correct
     assert_eq!(

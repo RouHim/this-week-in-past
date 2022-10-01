@@ -6,7 +6,7 @@ use rand::Rng;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::geo_location;
-use crate::in_memory_cache::InMemoryCache;
+use crate::kv_store::KvStore;
 use crate::resource_reader::RemoteResource;
 
 pub fn md5(string: &str) -> String {
@@ -47,10 +47,7 @@ pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
 
 /// Builds the display value for the specified resource
 /// The display value contains the date and location of a resource
-pub async fn build_display_value(
-    resource: RemoteResource,
-    geo_location_cache: &InMemoryCache,
-) -> String {
+pub async fn build_display_value(resource: RemoteResource, geo_location_cache: &KvStore) -> String {
     let mut display_value: String = String::new();
 
     // Append taken date
@@ -79,10 +76,7 @@ pub async fn build_display_value(
 /// Returns the city name for the specified resource
 /// The city name is taken from the cache, if available
 /// If not, the city name is taken from the geo location service
-async fn get_city_name(
-    resource: RemoteResource,
-    geo_location_cache: &InMemoryCache,
-) -> Option<String> {
+async fn get_city_name(resource: RemoteResource, geo_location_cache: &KvStore) -> Option<String> {
     let resource_location = resource.location?;
     let resource_location_string = resource_location.to_string();
 

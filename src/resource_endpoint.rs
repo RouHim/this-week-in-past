@@ -3,7 +3,7 @@ use actix_web::web;
 use actix_web::HttpResponse;
 use evmap::ReadHandle;
 
-use crate::in_memory_cache::InMemoryCache;
+use crate::kv_store::KvStore;
 use crate::resource_reader::{RemoteResource, ResourceReader};
 use crate::{image_processor, resource_processor};
 
@@ -122,7 +122,7 @@ pub async fn get_resource_metadata_by_id(
 pub async fn get_resource_metadata_description_by_id(
     resources_id: web::Path<String>,
     kv_reader: web::Data<ReadHandle<String, String>>,
-    geo_location_cache: web::Data<InMemoryCache>,
+    geo_location_cache: web::Data<KvStore>,
 ) -> HttpResponse {
     let resource = kv_reader
         .get_one(resources_id.as_str())

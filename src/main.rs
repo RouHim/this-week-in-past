@@ -10,7 +10,7 @@ mod config_endpoint;
 mod exif_reader;
 mod geo_location;
 mod image_processor;
-mod in_memory_cache;
+mod kv_store;
 mod resource_endpoint;
 mod resource_processor;
 mod resource_reader;
@@ -52,7 +52,7 @@ async fn main() -> std::io::Result<()> {
     scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex.clone());
 
     // Initialize geo location cache
-    let geo_location_cache = in_memory_cache::new();
+    let geo_location_cache = kv_store::new();
 
     // Run the actual web server and hold the main thread here
     println!("Launching webserver 🚀");

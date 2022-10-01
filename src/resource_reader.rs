@@ -11,9 +11,9 @@ use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
 
-use crate::{exif_reader, resource_processor};
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
+use crate::{exif_reader, resource_processor};
 
 /// A resource reader that reads available resources from the filesystem
 #[derive(Clone)]
@@ -29,9 +29,7 @@ impl ResourceReader {
     /// Returns the resource file data
     pub fn read_resource_data(&self, resource: &RemoteResource) -> Vec<u8> {
         match resource.resource_type {
-            RemoteResourceType::Local => {
-                fs::read(resource.path.clone()).unwrap()
-            }
+            RemoteResourceType::Local => fs::read(resource.path.clone()).unwrap(),
             RemoteResourceType::Samba => {
                 // TODO: implement me
                 vec![]
@@ -41,16 +39,18 @@ impl ResourceReader {
 
     /// Returns all available resources from the filesystem
     pub fn list_all_resources(&self) -> Vec<RemoteResource> {
-        let local_resources: Vec<RemoteResource> = self.local_resource_paths
+        let local_resources: Vec<RemoteResource> = self
+            .local_resource_paths
             .par_iter()
             .inspect(|x| println!(" ## local ## {x}")) // TODO: remove me
             .flat_map(|path| read_all_local_files_recursive(&PathBuf::from(path)))
             .map(|resource| exif_reader::fill_exif_data(&resource))
             .collect();
 
-        let samba_resources: Vec<RemoteResource> = self.samba_resource_paths
+        let samba_resources: Vec<RemoteResource> = self
+            .samba_resource_paths
             .par_iter()
-            .inspect(|x| println!(" ## remote ## {x}"))// TODO: remove me
+            .inspect(|x| println!(" ## remote ## {x}")) // TODO: remove me
             .flat_map(|path| read_all_samba_files_recursive(&PathBuf::from(path)))
             .map(|resource| exif_reader::fill_exif_data(&resource))
             .collect();
@@ -150,7 +150,7 @@ pub fn read_all_local_files_recursive(folder_path: &PathBuf) -> Vec<RemoteResour
 
 /// Reads all files of a samba folder and returns all found resources
 /// The folder is recursively searched
-pub fn read_all_samba_files_recursive(folder_path: &PathBuf) -> Vec<RemoteResource> {
+pub fn read_all_samba_files_recursive(_folder_path: &PathBuf) -> Vec<RemoteResource> {
     // TODO: implement me
     vec![]
 }
