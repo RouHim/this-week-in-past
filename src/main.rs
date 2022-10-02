@@ -8,13 +8,16 @@ use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 
 mod config_endpoint;
 mod exif_reader;
+mod filesystem_client;
 mod geo_location;
 mod image_processor;
 mod kv_store;
 mod resource_endpoint;
 mod resource_processor;
 mod resource_reader;
+mod samba_client;
 mod scheduler;
+mod utils;
 mod weather_endpoint;
 mod weather_processor;
 
