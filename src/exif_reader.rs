@@ -1,10 +1,11 @@
 use chrono::{NaiveDate, NaiveDateTime};
 use exif::{Exif, In, Tag};
+use pavao::SmbClient;
 
-use crate::geo_location;
+use crate::{AppConfig, filesystem_client, geo_location, samba_client};
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
-use crate::resource_reader::RemoteResource;
+use crate::resource_reader::{RemoteResource, RemoteResourceType};
 
 /// Reads the exif date from a given exif data entry
 /// Primarily the exif date is used to determine the date the image was taken
@@ -55,21 +56,25 @@ fn parse_exif_date(date: String) -> Option<NaiveDateTime> {
 }
 
 /// Reads the exif data from a given resource
-pub fn load_exif(resource: &RemoteResource) -> Option<Exif> {
-    let file = std::fs::File::open(&resource.path).unwrap();
-    let mut bufreader = std::io::BufReader::new(&file);
-    let exif_reader = exif::Reader::new();
-    exif_reader.read_from_container(&mut bufreader).ok()
+pub fn load_exif(resource: &RemoteResource, smb_client: &SmbClient) -> Option<Exif> {
+    match resource.resource_type {
+        RemoteResourceType::Samba => {
+            samba_client::read_exif(resource, smb_client)
+        }
+        RemoteResourceType::Local => {
+            filesystem_client::read_exif(&resource.path)
+        }
+    }
 }
 
 /// Augments the provided resource with meta information
 /// The meta information is extracted from the exif data
 /// If the exif data is not available, the meta information is extracted from the gps data
 /// If the gps data is not available, the meta information is extracted from the file name
-pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
+pub fn fill_exif_data(resource: &RemoteResource, smb_client: SmbClient) -> RemoteResource {
     let mut augmented_resource = resource.clone();
 
-    let maybe_exif_data = load_exif(resource);
+    let maybe_exif_data = load_exif(resource, smb_client);
 
     let mut taken_date = None;
     let mut location = None;
@@ -182,9 +187,9 @@ fn parse_from_str(shard: &str) -> Option<NaiveDate> {
         "%Y%m%d", // 20010708
         "signal-%Y-%m-%d-%Z",
     ]
-    .iter()
-    .filter_map(|format| NaiveDate::parse_from_str(shard, format).ok())
-    .collect();
+        .iter()
+        .filter_map(|format| NaiveDate::parse_from_str(shard, format).ok())
+        .collect();
 
     if parse_results.is_empty() {
         None

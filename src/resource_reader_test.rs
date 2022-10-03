@@ -67,7 +67,7 @@ fn read_jpg_with_exif_image_resource() {
 
     // WHEN reading resources from a folder
     let resources_read = exif_reader::fill_exif_data(
-        &filesystem_client::read_all_local_files_recursive(&base_test_dir)[0],
+        , create_smb_client(app_config.samba_resource_paths.get(resource.samba_client_index).unwrap()),
     );
 
     // THEN the resource metadata should be correct

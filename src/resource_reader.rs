@@ -1,65 +1,59 @@
+
+
 use std::fmt::{Display, Formatter};
 use std::fs;
 use std::path::PathBuf;
 
 use chrono::{Local, NaiveDateTime, TimeZone};
-
 use now::DateTimeNow;
 
+use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
 
+use crate::{AppConfig, exif_reader, filesystem_client, samba_client};
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
-use crate::{exif_reader, filesystem_client, samba_client};
 
-/// A resource reader that reads available resources from the filesystem
-#[derive(Clone)]
-pub struct ResourceReader {
-    /// Holds all specified local paths
-    pub local_resource_paths: Vec<String>,
-    /// Holds all specified local paths
-    pub samba_resource_paths: Vec<String>,
-}
-
-impl ResourceReader {
-    /// Reads the specified resource from the filesystem
-    /// Returns the resource file data
-    pub fn read_resource_data(&self, resource: &RemoteResource) -> Vec<u8> {
-        match resource.resource_type {
-            RemoteResourceType::Local => fs::read(resource.path.clone()).unwrap(),
-            RemoteResourceType::Samba => {
-                // TODO: implement me
-                vec![]
-            }
+/// Reads the specified resource from the filesystem
+/// Returns the resource file data
+pub fn read_resource_data(_app_config: &AppConfig, resource: &RemoteResource) -> Vec<u8> {
+    match resource.resource_type {
+        RemoteResourceType::Local => fs::read(resource.path.clone()).unwrap(),
+        RemoteResourceType::Samba => {
+            // TODO: implement me
+            vec![]
         }
     }
+}
 
-    /// Returns all available resources from the filesystem
-    pub fn list_all_resources(&self) -> Vec<RemoteResource> {
-        let local_resources: Vec<RemoteResource> = self
-            .local_resource_paths
-            .par_iter()
-            .flat_map(|path| {
-                filesystem_client::read_all_local_files_recursive(&PathBuf::from(path))
-            })
-            .map(|resource| exif_reader::fill_exif_data(&resource))
-            .collect();
+/// Returns all available resources from the filesystem
+pub fn list_all_resources(app_config: AppConfig) -> Vec<RemoteResource> {
+    let local_resources: Vec<RemoteResource> = app_config
+        .local_resource_paths
+        .par_iter()
+        .flat_map(|path| {
+            filesystem_client::read_all_local_files_recursive(&PathBuf::from(path))
+        })
+        .map(|resource| exif_reader::fill_exif_data(&resource, None)
+        .collect();
 
-        let samba_resources: Vec<RemoteResource> = self
-            .samba_resource_paths
-            .par_iter()
-            .flat_map(|smb_path| samba_client::read_all_samba_files(smb_path))
-            .map(|resource| exif_reader::fill_exif_data(&resource))
-            .collect();
+    // TODO: find a generic solution for this
 
-        [local_resources, samba_resources].concat()
-    }
+    let samba_resources: Vec<RemoteResource> = app_config
+        .samba_resource_paths
+        .par_iter()
+        .enumerate()
+        .flat_map(|(i, smb_path)| samba_client::read_all_samba_files(i,smb_path))
+        .map(|resource| exif_reader::fill_exif_data(&resource, samba_client::create_smb_client(app_config.samba_resource_paths.get(resource.samba_client_index).unwrap())))
+        .collect();
+
+    [local_resources, samba_resources].concat()
 }
 
 /// Instantiates a new resource reader for the given paths
-pub fn new(resource_folder_paths: &str) -> ResourceReader {
+pub fn build_app_config(resource_folder_paths: &str) -> AppConfig {
     let mut local_resource_paths = vec![];
     let mut samba_resource_paths = vec![];
 
@@ -71,7 +65,7 @@ pub fn new(resource_folder_paths: &str) -> ResourceReader {
         }
     }
 
-    ResourceReader {
+    AppConfig {
         local_resource_paths,
         samba_resource_paths,
     }
@@ -90,6 +84,7 @@ pub struct RemoteResource {
     pub location: Option<GeoLocation>,
     pub orientation: Option<ImageOrientation>,
     pub resource_type: RemoteResourceType,
+    pub samba_client_index: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

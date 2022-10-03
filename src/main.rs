@@ -1,10 +1,12 @@
 extern crate core;
 
+
 use std::env;
 use std::sync::{Arc, Mutex};
 
 use actix_files::Files;
-use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use actix_web::{App, HttpResponse, HttpServer, middleware, web};
+
 
 mod config_endpoint;
 mod exif_reader;
@@ -32,10 +34,19 @@ mod resource_processor_test;
 #[cfg(test)]
 mod resource_reader_test;
 
+#[derive(Clone)]
+pub struct AppConfig {
+    /// Holds all specified local paths
+    pub local_resource_paths: Vec<String>,
+
+    /// Holds all samba paths
+    pub samba_resource_paths: Vec<String>,
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Build remote resource client
-    let resource_reader = resource_reader::new(
+    // Build application state based on the provided parameter
+    let app_config = resource_reader::build_app_config(
         env::var("RESOURCE_PATHS")
             .expect("RESOURCE_PATHS is missing")
             .as_str(),
@@ -49,10 +60,10 @@ async fn main() -> std::io::Result<()> {
     // Start scheduler to run at midnight
     scheduler::init();
     let scheduler_handle =
-        scheduler::schedule_indexer(resource_reader.clone(), kv_writer_mutex.clone());
+        scheduler::schedule_indexer(app_config.clone(), kv_writer_mutex.clone());
 
     // Fetch resources for the first time
-    scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex.clone());
+    scheduler::fetch_resources( app_config.clone(), kv_writer_mutex.clone());
 
     // Initialize geo location cache
     let geo_location_cache = kv_store::new();
@@ -61,7 +72,7 @@ async fn main() -> std::io::Result<()> {
     println!("Launching webserver 🚀");
     let http_server_result = HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(resource_reader.clone()))
+            .app_data(web::Data::new(app_config.clone()))
             .app_data(web::Data::new(kv_reader.clone()))
             .app_data(web::Data::new(kv_writer_mutex.clone()))
             .app_data(web::Data::new(geo_location_cache.clone()))
@@ -90,15 +101,17 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./static/").index_file("index.html"))
     })
-    .bind("0.0.0.0:8080")?
-    .run()
-    .await;
+        .bind("0.0.0.0:8080")?
+        .run()
+        .await;
 
-    // If the http server is terminated, stop also the scheduler
-    println!("Stopping Scheduler 🕐️");
+    // If the http server is terminated
+
+    // Stop the scheduler
+    println!("Stopping scheduler 🕐️");
     scheduler_handle.stop();
 
-    println!("Stopping Application 😵️");
     // Done, let's get out here
+    println!("Stopping Application 😵️");
     http_server_result
 }

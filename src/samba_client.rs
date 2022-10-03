@@ -1,16 +1,17 @@
 use std::path::PathBuf;
 
+use exif::Exif;
 use lazy_static::lazy_static;
 use log::error;
-use pavao::{SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbOptions, SmbStat};
-use regex::{Captures, Regex};
+use pavao::{SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbOpenOptions, SmbOptions, SmbStat};
+use regex::Regex;
 
+use crate::{AppConfig, resource_processor, utils};
 use crate::resource_reader::{RemoteResource, RemoteResourceType};
-use crate::{resource_processor, utils};
 
 /// Reads all files of a samba folder and returns all found resources
 /// The folder is recursively searched
-pub fn read_all_samba_files(smb_path: &str) -> Vec<RemoteResource> {
+pub fn read_all_samba_files(samba_client_index: usize, smb_connection_string: &str) -> Vec<RemoteResource> {
     lazy_static! {
         static ref SAMBA_CONNECTION_PATTERN: Regex = Regex::new(
             // smb://user:passwd@192.168.0.1//share/photos
@@ -18,9 +19,36 @@ pub fn read_all_samba_files(smb_path: &str) -> Vec<RemoteResource> {
         ).unwrap();
     }
 
-    if let Some(samba_pattern_match) = SAMBA_CONNECTION_PATTERN.captures(smb_path) {
-        let smb_client: SmbClient = build_samba_client(samba_pattern_match);
-        let files = read_all_samba_files_recursive(&smb_client, "/");
+    if let Some(samba_pattern_match) = SAMBA_CONNECTION_PATTERN.captures(smb_connection_string) {
+        let server = format!(
+            "smb://{}",
+            samba_pattern_match
+                .name("server")
+                .expect("No samba server specified")
+                .as_str()
+        );
+        let share = samba_pattern_match
+            .name("path")
+            .expect("No samba path specified")
+            .as_str();
+        let username = samba_pattern_match
+            .name("user")
+            .expect("No username specified")
+            .as_str();
+        let password = samba_pattern_match
+            .name("password")
+            .expect("No password specified")
+            .as_str();
+        let smb_client: SmbClient = SmbClient::new(
+            SmbCredentials::default()
+                .server(server)
+                .share(share)
+                .username(username)
+                .password(password),
+            SmbOptions::default().one_share_per_server(true),
+        )
+            .unwrap();
+        let files = read_all_samba_files_recursive(samba_client_index, &smb_client, "/");
         drop(smb_client);
 
         files
@@ -29,7 +57,7 @@ pub fn read_all_samba_files(smb_path: &str) -> Vec<RemoteResource> {
     }
 }
 
-fn read_all_samba_files_recursive(client: &SmbClient, path: &str) -> Vec<RemoteResource> {
+fn read_all_samba_files_recursive(samba_client_index: usize, client: &SmbClient, path: &str) -> Vec<RemoteResource> {
     let smb_dir = client.list_dir(path);
 
     if smb_dir.is_err() {
@@ -46,15 +74,15 @@ fn read_all_samba_files_recursive(client: &SmbClient, path: &str) -> Vec<RemoteR
 
             if dir_entry.get_type() == SmbDirentType::File {
                 let file_metadata = client.stat(entry_path_str).unwrap();
-                read_samba_file(entry_path_str, dir_entry, file_metadata)
+                read_samba_file(samba_client_index, entry_path_str, dir_entry, file_metadata)
             } else {
-                read_all_samba_files_recursive(client, entry_path_str)
+                read_all_samba_files_recursive(samba_client_index, client, entry_path_str)
             }
         })
         .collect()
 }
 
-fn read_samba_file(path: &str, samba_file: &SmbDirent, samba_stat: SmbStat) -> Vec<RemoteResource> {
+fn read_samba_file(samba_client_index: usize, path: &str, samba_file: &SmbDirent, samba_stat: SmbStat) -> Vec<RemoteResource> {
     let file_name = samba_file.name();
     let mime_type: &str = mime_guess::from_path(file_name).first_raw().unwrap_or("");
 
@@ -74,37 +102,57 @@ fn read_samba_file(path: &str, samba_file: &SmbDirent, samba_stat: SmbStat) -> V
         location: None,
         orientation: None,
         resource_type: RemoteResourceType::Samba,
+        samba_client_index,
     }]
 }
 
-fn build_samba_client(captures: Captures) -> SmbClient {
-    let server = format!(
-        "smb://{}",
-        captures
-            .name("server")
-            .expect("No samba server specified")
-            .as_str()
-    );
-    let share = captures
-        .name("path")
-        .expect("No samba path specified")
-        .as_str();
-    let username = captures
-        .name("user")
-        .expect("No username specified")
-        .as_str();
-    let password = captures
-        .name("password")
-        .expect("No password specified")
-        .as_str();
+pub fn create_smb_client(smb_connection_string: &str) -> SmbClient {
+    lazy_static! {
+        static ref SAMBA_CONNECTION_PATTERN: Regex = Regex::new(
+            // Example: "smb://user:passwd@192.168.0.1//share/photos"
+            r"smb://(?P<user>.*):(?P<password>.*)@(?P<server>.*)/(?P<path>/.*)"
+        ).unwrap();
+    }
 
-    SmbClient::new(
-        SmbCredentials::default()
-            .server(server)
-            .share(share)
-            .username(username)
-            .password(password),
-        SmbOptions::default().one_share_per_server(true),
-    )
-    .unwrap()
+    if let Some(samba_pattern_match) = SAMBA_CONNECTION_PATTERN.captures(smb_connection_string) {
+        let server = format!(
+            "smb://{}",
+            samba_pattern_match
+                .name("server")
+                .expect("No samba server specified")
+                .as_str()
+        );
+        let share = samba_pattern_match
+            .name("path")
+            .expect("No samba path specified")
+            .as_str();
+        let username = samba_pattern_match
+            .name("user")
+            .expect("No username specified")
+            .as_str();
+        let password = samba_pattern_match
+            .name("password")
+            .expect("No password specified")
+            .as_str();
+
+        SmbClient::new(
+            SmbCredentials::default()
+                .server(server)
+                .share(share)
+                .username(username)
+                .password(password),
+            SmbOptions::default().one_share_per_server(true),
+        )
+            .unwrap()
+    } else {
+        panic!("Could not connect to {smb_connection_string}");
+    }
+}
+
+pub fn read_exif(resource: &RemoteResource, smb_client: &SmbClient) -> Option<Exif> {
+    let smb_file = smb_client.open_with(&resource.path, SmbOpenOptions::default().read(true)).unwrap();
+
+    let mut bufreader = std::io::BufReader::new(smb_file);
+    let exif_reader = exif::Reader::new();
+    exif_reader.read_from_container(&mut bufreader).ok()
 }

@@ -4,8 +4,7 @@ use std::time::{Duration, Instant};
 use clokwerk::{ScheduleHandle, Scheduler, TimeUnits};
 use evmap::WriteHandle;
 
-use crate::resource_processor;
-use crate::resource_reader::ResourceReader;
+use crate::{AppConfig, resource_processor, resource_reader};
 
 /// Initializes the scheduler by creating the cache directory
 pub fn init() {
@@ -19,7 +18,7 @@ pub fn init() {
 
 /// Schedules the cache indexer at every day at midnight
 pub fn schedule_indexer(
-    resource_reader: ResourceReader,
+    app_config: AppConfig,
     kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
 ) -> ScheduleHandle {
     let mut scheduler = Scheduler::new();
@@ -28,7 +27,7 @@ pub fn schedule_indexer(
     scheduler
         .every(1.day())
         .at("00:00")
-        .run(move || fetch_resources(resource_reader.clone(), kv_writer_mutex.clone()));
+        .run(move || fetch_resources(app_config.clone(), kv_writer_mutex.clone()));
 
     // Check the thread every minute
     scheduler.watch_thread(Duration::from_secs(60))
@@ -36,7 +35,7 @@ pub fn schedule_indexer(
 
 /// Fetches the resources from the configures paths and writes them to the cache
 pub fn fetch_resources(
-    resource_reader: ResourceReader,
+    app_config: AppConfig,
     kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
 ) {
     let s = Instant::now();
@@ -48,7 +47,7 @@ pub fn fetch_resources(
     kv_writer.purge();
 
     println!("Indexing resources, this may take some time depending on the amount of resources...");
-    let resources = resource_reader.list_all_resources();
+    let resources = resource_reader::list_all_resources(app_config);
     resources.iter().for_each(|x| println!("{}", x)); // TODO: remove me
 
     println!("Storing {} items", resources.len());
