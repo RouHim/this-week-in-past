@@ -1,6 +1,6 @@
 use core::option::Option::None;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use exif::Exif;
 use log::error;
@@ -10,7 +10,7 @@ use crate::resource_reader::{RemoteResource, RemoteResourceType};
 
 /// Reads all files of a folder and returns all found resources
 /// The folder is recursively searched
-pub fn read_all_local_files_recursive(path: &PathBuf) -> Vec<RemoteResource> {
+pub fn read_all_local_files_recursive(path: &Path) -> Vec<RemoteResource> {
     let maybe_folder_path = fs::File::open(path);
 
     if maybe_folder_path.is_err() {

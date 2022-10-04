@@ -9,8 +9,7 @@ use assertor::{assert_that, EqualityAssertion};
 use evmap::{ReadHandle, WriteHandle};
 use rand::Rng;
 
-use crate::resource_reader::ResourceReader;
-use crate::{config_endpoint, resource_reader, scheduler, AppConfig};
+use crate::{config_endpoint, resource_reader, scheduler, ResourceReader};
 
 const TEST_FOLDER_NAME: &str = "integration_test_config_api";
 
@@ -22,12 +21,12 @@ async fn test_get_slideshow_interval() {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::build_app_config(
+        resource_reader::new(
             base_test_dir.to_str().unwrap(),
         ),
         kv_writer_mutex.clone(),
     ))
-    .await;
+        .await;
 
     // AND slideshow interval is set
     let slideshow_interval: String = rand::thread_rng().gen::<u16>().to_string();
@@ -41,10 +40,10 @@ async fn test_get_slideshow_interval() {
                 .uri("/api/config/interval/slideshow")
                 .to_request(),
         )
-        .await
-        .to_vec(),
+            .await
+            .to_vec(),
     )
-    .unwrap();
+        .unwrap();
 
     // THEN the response should contain the correct interval
     assert_that!(response).is_equal_to(&slideshow_interval);
@@ -58,10 +57,10 @@ async fn test_get_refresh_interval() {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::build_app_config(base_test_dir.to_str().unwrap()),
+        resource_reader::new(base_test_dir.to_str().unwrap()),
         kv_writer_mutex.clone(),
     ))
-    .await;
+        .await;
 
     // AND refresh interval is set
     let refresh_interval: String = rand::thread_rng().gen::<u16>().to_string();
@@ -75,10 +74,10 @@ async fn test_get_refresh_interval() {
                 .uri("/api/config/interval/refresh")
                 .to_request(),
         )
-        .await
-        .to_vec(),
+            .await
+            .to_vec(),
     )
-    .unwrap();
+        .unwrap();
 
     // THEN the response should contain the correct interval
     assert_that!(response).is_equal_to(&refresh_interval);
@@ -91,14 +90,14 @@ fn build_app(
 ) -> App<
     impl ServiceFactory<
         ServiceRequest,
-        Config = (),
-        Response = ServiceResponse,
-        Error = Error,
-        InitError = (),
+        Config=(),
+        Response=ServiceResponse,
+        Error=Error,
+        InitError=(),
     >,
 > {
     scheduler::init();
-    scheduler::fetch_resources(, resource_reader.clone(), kv_writer_mutex);
+    scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex);
     App::new()
         .app_data(web::Data::new(kv_reader))
         .app_data(web::Data::new(resource_reader))

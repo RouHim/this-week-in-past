@@ -6,7 +6,7 @@ use log::error;
 use pavao::{SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbOpenOptions, SmbOptions, SmbStat};
 use regex::Regex;
 
-use crate::{AppConfig, resource_processor, utils};
+use crate::{resource_processor, utils};
 use crate::resource_reader::{RemoteResource, RemoteResourceType};
 
 /// Reads all files of a samba folder and returns all found resources
@@ -69,7 +69,7 @@ fn read_all_samba_files_recursive(samba_client_index: usize, client: &SmbClient,
     smb_dir
         .iter()
         .flat_map(|dir_entry| {
-            let entry_path = PathBuf::from(path).join(PathBuf::from(dir_entry.name()));
+            let entry_path = PathBuf::from(path.to_string()).join(PathBuf::from(dir_entry.name()));
             let entry_path_str = entry_path.as_path().to_str().unwrap();
 
             if dir_entry.get_type() == SmbDirentType::File {

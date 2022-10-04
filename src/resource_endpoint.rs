@@ -3,7 +3,7 @@ use actix_web::HttpResponse;
 use actix_web::web;
 use evmap::ReadHandle;
 
-use crate::{AppConfig, image_processor, resource_processor, resource_reader};
+use crate::{ResourceReader, image_processor, resource_processor, resource_reader};
 use crate::kv_store::KvStore;
 use crate::resource_reader::RemoteResource;
 
@@ -44,7 +44,7 @@ pub async fn random_resource(kv_reader: web::Data<ReadHandle<String, String>>) -
 pub async fn get_resource_by_id_and_resolution(
     resources_id: web::Path<(String, u32, u32)>,
     kv_reader: web::Data<ReadHandle<String, String>>,
-    app_config: web::Data<AppConfig>,
+    app_config: web::Data<ResourceReader>,
 ) -> HttpResponse {
     let path_params = resources_id.into_inner();
     let resource_id = path_params.0.as_str();
