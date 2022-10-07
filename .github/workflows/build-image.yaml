@@ -243,7 +243,7 @@ jobs:
       - name: Create container image manifest
         run: buildah manifest create multiarch-manifest
 
-      - name: Add all architechtures to the manifest
+      - name: Add all architectures to the manifest
         run: | 
           buildah manifest add multiarch-manifest ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_amd64
           buildah manifest add multiarch-manifest ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_arm64
