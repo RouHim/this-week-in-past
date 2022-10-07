@@ -13,9 +13,8 @@ use evmap::{ReadHandle, WriteHandle};
 use rand::Rng;
 
 use crate::geo_location::GeoLocation;
-use crate::resource_reader::{RemoteResource, ResourceReader};
 use crate::{
-    kv_store, resource_endpoint, resource_processor, resource_reader, scheduler, AppConfig,
+    kv_store, resource_endpoint, resource_processor, resource_reader, scheduler, ResourceReader,
 };
 
 const TEST_JPEG_EXIF_URL: &str =
@@ -47,8 +46,8 @@ async fn test_get_all_resources() {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::build_app_config(
-            &mut AppConfig {
+        resource_reader::new(
+            &mut ResourceReader {
                 samba_connection_urls: HashMap::new(),
             },
             base_test_dir.to_str().unwrap(),
@@ -92,8 +91,8 @@ async fn test_this_week_in_past_resources() {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::build_app_config(
-            &mut AppConfig {
+        resource_reader::new(
+            &mut ResourceReader {
                 samba_connection_urls: HashMap::new(),
             },
             base_test_dir.to_str().unwrap(),
@@ -130,8 +129,8 @@ async fn test_get_random_resources() {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::build_app_config(
-            &mut AppConfig {
+        resource_reader::new(
+            &mut ResourceReader {
                 samba_connection_urls: HashMap::new(),
             },
             base_test_dir.to_str().unwrap(),
@@ -169,8 +168,8 @@ async fn test_get_resource_by_id_and_resolution() {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::build_app_config(
-            &mut AppConfig {
+        resource_reader::new(
+            &mut ResourceReader {
                 samba_connection_urls: HashMap::new(),
             },
             base_test_dir.to_str().unwrap(),
@@ -209,8 +208,8 @@ async fn test_get_resource_metadata_by_id() {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::build_app_config(
-            &mut AppConfig {
+        resource_reader::new(
+            &mut ResourceReader {
                 samba_connection_urls: HashMap::new(),
             },
             base_test_dir.to_str().unwrap(),
@@ -265,8 +264,8 @@ async fn test_get_resource_description_by_id() {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::build_app_config(
-            &mut AppConfig {
+        resource_reader::new(
+            &mut ResourceReader {
                 samba_connection_urls: HashMap::new(),
             },
             base_test_dir.to_str().unwrap(),
@@ -309,7 +308,7 @@ fn build_app(
     >,
 > {
     scheduler::init();
-    scheduler::fetch_resources(, resource_reader.clone(), kv_writer_mutex.clone());
+    scheduler::fetch_resources( resource_reader.clone(), kv_writer_mutex.clone());
     let geo_location_cache = kv_store::new();
     App::new()
         .app_data(web::Data::new(kv_reader))

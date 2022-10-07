@@ -8,6 +8,7 @@ use actix_files::Files;
 use actix_web::{App, HttpResponse, HttpServer, middleware, web};
 
 
+
 mod config_endpoint;
 mod exif_reader;
 mod filesystem_client;
@@ -35,7 +36,7 @@ mod resource_processor_test;
 mod resource_reader_test;
 
 #[derive(Clone)]
-pub struct AppConfig {
+pub struct ResourceReader {
     /// Holds all specified local paths
     pub local_resource_paths: Vec<String>,
 
@@ -46,7 +47,7 @@ pub struct AppConfig {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Build application state based on the provided parameter
-    let app_config = resource_reader::build_app_config(
+    let app_config = resource_reader::new(
         env::var("RESOURCE_PATHS")
             .expect("RESOURCE_PATHS is missing")
             .as_str(),
