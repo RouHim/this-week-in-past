@@ -198,8 +198,8 @@ jobs:
           name: amd64
           path: .
 
-      - name: Restore docker image
-        run: docker load --input amd64.tar
+      - name: Restore container image
+        run: podman load --input amd64.tar
 
       - name: Prepare test env
         run: |
