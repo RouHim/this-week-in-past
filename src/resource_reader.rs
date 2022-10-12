@@ -3,7 +3,9 @@ use std::fs;
 use std::path::{Path};
 
 use chrono::{Local, NaiveDateTime, TimeZone};
+use exif::Exif;
 use now::DateTimeNow;
+use pavao::SmbClient;
 
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
@@ -38,80 +40,27 @@ impl ResourceReader {
             .flat_map(|path| {
                 filesystem_client::read_all_local_files_recursive(path)
             })
-            .map(|resource| self.fill_exif_data(&resource))
+            .map(|resource| filesystem_client::fill_exif_data(&resource))
             .collect();
 
-        // TODO: find a generic solution for this
+        // TODO: find a generic solution for this or make this prettier
 
+        // Create smb clients
+        let smb_clients: Vec<SmbClient> = self.samba_resource_paths
+            .iter().map(|connection_string| create_smb_client(connection_string))
+            .collect();
+        // Process resources
         let samba_resources: Vec<RemoteResource> = self
             .samba_resource_paths
-            .par_iter()
+            .iter()
             .enumerate()
-            .flat_map(|(i, smb_path)| samba_client::read_all_samba_files(i, smb_path.as_str()))
-            .map(|resource| self.fill_exif_data(&resource))
+            .flat_map(|(i, _)| samba_client::read_all_samba_files(i, smb_clients.get(i).unwrap()))
+            .map(|resource| samba_client::fill_exif_data(&resource, smb_clients.get(resource.samba_client_index).unwrap()))
             .collect();
+        // Drop smb clients
+        smb_clients.iter().for_each(drop);
 
         [local_resources, samba_resources].concat()
-    }
-
-
-    /// Augments the provided resource with meta information
-    /// The meta information is extracted from the exif data
-    /// If the exif data is not available, the meta information is extracted from the gps data
-    /// If the gps data is not available, the meta information is extracted from the file name
-    pub fn fill_exif_data(&self, resource: &RemoteResource) -> RemoteResource {
-        let maybe_exif_data = match resource.resource_type {
-            RemoteResourceType::Samba => {
-                let smb_client = create_smb_client(self.samba_resource_paths.get(resource.samba_client_index).unwrap());
-                samba_client::read_exif(
-                    resource,
-                    &smb_client,
-                )
-            }
-            RemoteResourceType::Local => {
-                filesystem_client::read_exif(resource.path.as_str())
-            }
-        };
-
-        let mut taken_date = None;
-        let mut location = None;
-        let mut orientation = None;
-
-        if let Some(exif_data) = maybe_exif_data {
-            taken_date = exif_reader::get_exif_date(&exif_data);
-            location = exif_reader::detect_location(&exif_data);
-            orientation = exif_reader::detect_orientation(&exif_data);
-        }
-
-        if taken_date.is_none() {
-            taken_date = exif_reader::detect_date_by_name(&resource.path);
-        }
-
-        let mut augmented_resource = resource.clone();
-        augmented_resource.taken = taken_date;
-        augmented_resource.location = location;
-        augmented_resource.orientation = orientation;
-
-        augmented_resource
-    }
-}
-
-/// Instantiates a new resource reader for the given paths
-pub fn new(resource_folder_paths: &str) -> ResourceReader {
-    let mut local_resource_paths = vec![];
-    let mut samba_resource_paths = vec![];
-
-    for resource_folder in resource_folder_paths.split(',').map(|s| s.to_string()) {
-        if resource_folder.starts_with("smb://") {
-            samba_resource_paths.push(resource_folder);
-        } else {
-            local_resource_paths.push(resource_folder);
-        }
-    }
-
-    ResourceReader {
-        local_resource_paths,
-        samba_resource_paths,
     }
 }
 
@@ -179,5 +128,51 @@ impl Display for RemoteResource {
             self.location,
             self.resource_type,
         )
+    }
+}
+
+/// Augments the provided resource with meta information
+/// The meta information is extracted from the exif data
+/// If the exif data is not available, the meta information is extracted from the gps data
+/// If the gps data is not available, the meta information is extracted from the file name
+pub fn fill_exif_data(resource: &RemoteResource, maybe_exif_data: Option<Exif>) -> RemoteResource {
+    let mut taken_date = None;
+    let mut location = None;
+    let mut orientation = None;
+
+    if let Some(exif_data) = maybe_exif_data {
+        taken_date = exif_reader::get_exif_date(&exif_data);
+        location = exif_reader::detect_location(&exif_data);
+        orientation = exif_reader::detect_orientation(&exif_data);
+    }
+
+    if taken_date.is_none() {
+        taken_date = exif_reader::detect_date_by_name(&resource.path);
+    }
+
+    let mut augmented_resource = resource.clone();
+    augmented_resource.taken = taken_date;
+    augmented_resource.location = location;
+    augmented_resource.orientation = orientation;
+
+    augmented_resource
+}
+
+/// Instantiates a new resource reader for the given paths
+pub fn new(resource_folder_paths: &str) -> ResourceReader {
+    let mut local_resource_paths = vec![];
+    let mut samba_resource_paths = vec![];
+
+    for resource_folder in resource_folder_paths.split(',').map(|s| s.to_string()) {
+        if resource_folder.starts_with("smb://") {
+            samba_resource_paths.push(resource_folder);
+        } else {
+            local_resource_paths.push(resource_folder);
+        }
+    }
+
+    ResourceReader {
+        local_resource_paths,
+        samba_resource_paths,
     }
 }

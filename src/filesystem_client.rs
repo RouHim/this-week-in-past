@@ -5,8 +5,9 @@ use std::path::{Path, PathBuf};
 use exif::Exif;
 use log::error;
 
-use crate::{resource_processor, utils};
+use crate::{filesystem_client, resource_processor, resource_reader, samba_client, utils};
 use crate::resource_reader::{RemoteResource, RemoteResourceType};
+use crate::samba_client::create_smb_client;
 
 /// Reads all files of a folder and returns all found resources
 /// The folder is recursively searched
@@ -74,10 +75,12 @@ fn read_local_file(file_path: &PathBuf) -> Vec<RemoteResource> {
     }]
 }
 
-/// Reads the exif data from a given file
-pub fn read_exif(file_path: &str) -> Option<Exif> {
+pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
+    let file_path = resource.path.as_str();
     let file = std::fs::File::open(&file_path).unwrap();
     let mut bufreader = std::io::BufReader::new(&file);
     let exif_reader = exif::Reader::new();
-    exif_reader.read_from_container(&mut bufreader).ok()
+    let maybe_exif_data = exif_reader.read_from_container(&mut bufreader).ok();
+
+    resource_reader::fill_exif_data(resource, maybe_exif_data)
 }
