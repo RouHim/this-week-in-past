@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install required dependencies
-        run: apt install -y libsmbclient-dev libsmbclient
+        run: sudo apt install -y libsmbclient-dev libsmbclient
 
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
@@ -76,7 +76,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install required dependencies
-        run: apt install -y libsmbclient-dev libsmbclient
+        run: sudo apt install -y libsmbclient-dev libsmbclient
 
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
@@ -102,7 +102,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install required dependencies
-        run: apt install -y libsmbclient-dev libsmbclient
+        run: sudo apt install -y libsmbclient-dev libsmbclient
 
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
@@ -125,7 +125,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install required dependencies
-        run: apt install -y libsmbclient-dev libsmbclient
+        run: sudo apt install -y libsmbclient-dev libsmbclient
 
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
@@ -156,7 +156,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install required dependencies
-        run: apt install -y libsmbclient-dev libsmbclient
+        run: sudo apt install -y libsmbclient-dev libsmbclient
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
