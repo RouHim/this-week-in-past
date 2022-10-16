@@ -1,22 +1,30 @@
+use std::io::Read;
 use std::path::PathBuf;
 
-use exif::Exif;
 use lazy_static::lazy_static;
-use log::{error, info};
-use pavao::{SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbOpenOptions, SmbOptions, SmbStat};
+use log::error;
+use pavao::{
+    SmbClient, SmbCredentials, SmbDirent, SmbDirentType, SmbOpenOptions, SmbOptions, SmbStat,
+};
 use regex::Regex;
 
-use crate::{filesystem_client, resource_processor, resource_reader, samba_client, utils};
 use crate::resource_reader::{RemoteResource, RemoteResourceType};
+use crate::{resource_processor, resource_reader, utils};
 
 /// Reads all files of a samba folder and returns all found resources
 /// The folder is recursively searched
-pub fn read_all_samba_files(samba_client_index: usize, samba_client: &SmbClient) -> Vec<RemoteResource> {
-    let files = read_all_samba_files_recursive(samba_client_index, samba_client, "/");
-    files
+pub fn read_all_samba_files(
+    samba_client_index: usize,
+    samba_client: &SmbClient,
+) -> Vec<RemoteResource> {
+    read_all_samba_files_recursive(samba_client_index, samba_client, "/")
 }
 
-fn read_all_samba_files_recursive(samba_client_index: usize, client: &SmbClient, path: &str) -> Vec<RemoteResource> {
+fn read_all_samba_files_recursive(
+    samba_client_index: usize,
+    client: &SmbClient,
+    path: &str,
+) -> Vec<RemoteResource> {
     let smb_dir = client.list_dir(path);
 
     if smb_dir.is_err() {
@@ -41,7 +49,12 @@ fn read_all_samba_files_recursive(samba_client_index: usize, client: &SmbClient,
         .collect()
 }
 
-fn read_samba_file(samba_client_index: usize, path: &str, samba_file: &SmbDirent, samba_stat: SmbStat) -> Vec<RemoteResource> {
+fn read_samba_file(
+    samba_client_index: usize,
+    path: &str,
+    samba_file: &SmbDirent,
+    samba_stat: SmbStat,
+) -> Vec<RemoteResource> {
     let file_name = samba_file.name();
     let mime_type: &str = mime_guess::from_path(file_name).first_raw().unwrap_or("");
 
@@ -102,18 +115,35 @@ pub fn create_smb_client(smb_connection_string: &str) -> SmbClient {
                 .password(password),
             SmbOptions::default(),
         )
-            .unwrap()
+        .unwrap()
     } else {
         panic!("Could not connect to {smb_connection_string}");
     }
 }
 
 pub fn fill_exif_data(resource: &RemoteResource, smb_client: &SmbClient) -> RemoteResource {
-    let smb_file = smb_client.open_with(&resource.path, SmbOpenOptions::default().read(true)).unwrap();
+    let smb_file = smb_client
+        .open_with(&resource.path, SmbOpenOptions::default().read(true))
+        .unwrap();
 
     let mut bufreader = std::io::BufReader::new(smb_file);
     let exif_reader = exif::Reader::new();
     let maybe_exif_data = exif_reader.read_from_container(&mut bufreader).ok();
 
     resource_reader::fill_exif_data(resource, maybe_exif_data)
+}
+
+pub fn read(smb_connection_url: &str, resource: &RemoteResource) -> Vec<u8> {
+    let smb_client = create_smb_client(smb_connection_url);
+
+    let mut smb_file = smb_client
+        .open_with(&resource.path, SmbOpenOptions::default().read(true))
+        .unwrap();
+    let mut file_data = Vec::new();
+    smb_file
+        .read_to_end(&mut file_data)
+        .unwrap_or_else(|_| panic!("Can't read samba file: {}", resource.path));
+    drop(smb_file);
+    drop(smb_client);
+    file_data
 }

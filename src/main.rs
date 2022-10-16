@@ -1,13 +1,10 @@
 extern crate core;
 
-
 use std::env;
 use std::sync::{Arc, Mutex};
 
 use actix_files::Files;
-use actix_web::{App, HttpResponse, HttpServer, middleware, web};
-
-
+use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 
 mod config_endpoint;
 mod exif_reader;
@@ -60,11 +57,10 @@ async fn main() -> std::io::Result<()> {
 
     // Start scheduler to run at midnight
     scheduler::init();
-    let scheduler_handle =
-        scheduler::schedule_indexer(app_config.clone(), kv_writer_mutex.clone());
+    let scheduler_handle = scheduler::schedule_indexer(app_config.clone(), kv_writer_mutex.clone());
 
     // Fetch resources for the first time
-    scheduler::fetch_resources( app_config.clone(), kv_writer_mutex.clone());
+    scheduler::fetch_resources(app_config.clone(), kv_writer_mutex.clone());
 
     // Initialize geo location cache
     let geo_location_cache = kv_store::new();
@@ -102,9 +98,9 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./static/").index_file("index.html"))
     })
-        .bind("0.0.0.0:8080")?
-        .run()
-        .await;
+    .bind("0.0.0.0:8080")?
+    .run()
+    .await;
 
     // If the http server is terminated
 

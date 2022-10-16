@@ -24,7 +24,7 @@ RUN cargo build --release
 # # # # # # # # # # # # # # # # # # # #
 # Run image
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM alpine as runtime
+FROM alpine:3 as runtime
 
 ENV CACHE_DIR "/cache"
 ENV RESOURCE_PATHS "/resources"

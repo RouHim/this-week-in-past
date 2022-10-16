@@ -7,7 +7,7 @@ use rand::Rng;
 
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
-use crate::{exif_reader, filesystem_client, resource_processor, resource_reader};
+use crate::{filesystem_client, resource_processor};
 
 const TEST_JPEG_EXIF_URL: &str =
     "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
@@ -63,35 +63,35 @@ fn read_jpg_with_exif_image_resource() {
     // GIVEN is a folder with one jpg image with exif and gps metadata
     let base_test_dir = create_temp_folder();
     let test_image_name = "test_image_1.jpg";
-    // create_test_image(&base_test_dir, "", test_image_name, TEST_JPEG_EXIF_URL);
+    create_test_image(&base_test_dir, "", test_image_name, TEST_JPEG_EXIF_URL);
 
     // WHEN reading resources from a folder
-    // let resources_read = resource_reader::new(base_test_dir).fill_exif_data(
-    //     create_smb_client(app_config.samba_resource_paths.get(resource.samba_client_index).unwrap()),
-    // );// TODO: fixme
+    let resources_read = filesystem_client::fill_exif_data(
+        &filesystem_client::read_all_local_files_recursive(&base_test_dir)[0],
+    );
 
     // THEN the resource metadata should be correct
-    // assert_eq!(
-    //     resources_read.taken,
-    //     Some(NaiveDateTime::parse_from_str("2008-11-01T21:15:07", "%Y-%m-%dT%H:%M:%S").unwrap())
-    // );
-    // assert_eq!(
-    //     resources_read.orientation,
-    //     Some(ImageOrientation {
-    //         rotation: 0,
-    //         mirror_vertically: false,
-    //     })
-    // );
-    // assert_eq!(
-    //     resources_read.location,
-    //     Some(GeoLocation {
-    //         latitude: 43.46745,
-    //         longitude: 11.885126,
-    //     })
-    // );
-    //
-    // // cleanup
-    // cleanup(&base_test_dir);
+    assert_eq!(
+        resources_read.taken,
+        Some(NaiveDateTime::parse_from_str("2008-11-01T21:15:07", "%Y-%m-%dT%H:%M:%S").unwrap())
+    );
+    assert_eq!(
+        resources_read.orientation,
+        Some(ImageOrientation {
+            rotation: 0,
+            mirror_vertically: false,
+        })
+    );
+    assert_eq!(
+        resources_read.location,
+        Some(GeoLocation {
+            latitude: 43.46745,
+            longitude: 11.885126,
+        })
+    );
+
+    // cleanup
+    cleanup(&base_test_dir);
 }
 
 #[test]
@@ -189,7 +189,7 @@ fn read_non_existent_folder() {
 }
 
 /// Creates a test image withing a folder
-fn create_test_image(base_dir: &PathBuf, sub_dir: &str, file_name: &str, image_url: &str) -> String {
+fn create_test_image(base_dir: &Path, sub_dir: &str, file_name: &str, image_url: &str) -> String {
     let target_dir = base_dir.join(sub_dir);
 
     if !target_dir.exists() {

@@ -2,12 +2,10 @@ use core::option::Option::None;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use exif::Exif;
 use log::error;
 
-use crate::{filesystem_client, resource_processor, resource_reader, samba_client, utils};
 use crate::resource_reader::{RemoteResource, RemoteResourceType};
-use crate::samba_client::create_smb_client;
+use crate::{resource_processor, resource_reader, utils};
 
 /// Reads all files of a folder and returns all found resources
 /// The folder is recursively searched

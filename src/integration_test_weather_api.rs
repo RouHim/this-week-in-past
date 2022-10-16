@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::{env, fs};
@@ -9,7 +8,6 @@ use assertor::{assert_that, StringAssertion};
 use evmap::{ReadHandle, WriteHandle};
 use rand::Rng;
 
-use crate::resource_reader::ResourceReader;
 use crate::{resource_reader, scheduler, weather_endpoint, ResourceReader};
 
 const TEST_FOLDER_NAME: &str = "integration_test_weather_api";
@@ -22,12 +20,7 @@ async fn test_get_weather_current() {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::new(
-            &mut ResourceReader {
-                samba_connection_urls: HashMap::new(),
-            },
-            base_test_dir.to_str().unwrap(),
-        ),
+        resource_reader::new(base_test_dir.to_str().unwrap()),
         kv_writer_mutex.clone(),
     ))
     .await;
@@ -57,12 +50,7 @@ async fn test_get_is_weather_enabled() {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
     let app_server = test::init_service(build_app(
         kv_reader,
-        resource_reader::new(
-            &mut ResourceReader {
-                samba_connection_urls: HashMap::new(),
-            },
-            base_test_dir.to_str().unwrap(),
-        ),
+        resource_reader::new(base_test_dir.to_str().unwrap()),
         kv_writer_mutex.clone(),
     ))
     .await;
@@ -99,7 +87,7 @@ fn build_app(
     >,
 > {
     scheduler::init();
-    scheduler::fetch_resources( resource_reader.clone(), kv_writer_mutex);
+    scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex);
     App::new()
         .app_data(web::Data::new(kv_reader))
         .app_data(web::Data::new(resource_reader))

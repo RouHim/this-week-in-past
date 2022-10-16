@@ -1,11 +1,11 @@
 use actix_web::get;
-use actix_web::HttpResponse;
 use actix_web::web;
+use actix_web::HttpResponse;
 use evmap::ReadHandle;
 
-use crate::{ResourceReader, image_processor, resource_processor, resource_reader};
 use crate::kv_store::KvStore;
 use crate::resource_reader::RemoteResource;
+use crate::{image_processor, resource_processor, resource_reader, ResourceReader};
 
 #[get("")]
 pub async fn list_all_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
@@ -73,7 +73,9 @@ pub async fn get_resource_by_id_and_resolution(
         .and_then(|remote_resource: RemoteResource| remote_resource.orientation);
 
     let resource_data = remote_resource
-        .map(|remote_resource| resource_reader::read_resource_data(app_config.as_ref(), &remote_resource))
+        .map(|remote_resource| {
+            resource_reader::read_resource_data(app_config.as_ref(), &remote_resource)
+        })
         .map(|resource_data| {
             image_processor::optimize_image(
                 resource_data,
@@ -89,8 +91,8 @@ pub async fn get_resource_by_id_and_resolution(
             format!("{resource_id}_{display_width}_{display_height}"),
             &resource_data,
         )
-            .await
-            .expect("writing to cache failed");
+        .await
+        .expect("writing to cache failed");
 
         HttpResponse::Ok()
             .content_type("image/png")

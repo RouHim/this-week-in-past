@@ -1,34 +1,35 @@
 use std::fmt::{Display, Formatter};
 use std::fs;
-use std::path::{Path};
+use std::path::Path;
 
 use chrono::{Local, NaiveDateTime, TimeZone};
 use exif::Exif;
 use now::DateTimeNow;
 use pavao::SmbClient;
 
-use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
 
-use crate::{ResourceReader, exif_reader, filesystem_client, samba_client};
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
 use crate::samba_client::create_smb_client;
+use crate::{exif_reader, filesystem_client, samba_client, ResourceReader};
 
 /// Reads the specified resource from the filesystem
 /// Returns the resource file data
-pub fn read_resource_data(_app_config: &ResourceReader, resource: &RemoteResource) -> Vec<u8> {
+pub fn read_resource_data(resource_reader: &ResourceReader, resource: &RemoteResource) -> Vec<u8> {
     match resource.resource_type {
         RemoteResourceType::Local => fs::read(resource.path.clone()).unwrap(),
         RemoteResourceType::Samba => {
-            // TODO: implement me
-            vec![]
+            let smb_connection_path = resource_reader
+                .samba_resource_paths
+                .get(resource.samba_client_index)
+                .unwrap();
+            samba_client::read(smb_connection_path, resource)
         }
     }
 }
-
 
 /// Returns all available resources
 impl ResourceReader {
@@ -37,17 +38,17 @@ impl ResourceReader {
             .local_resource_paths
             .par_iter()
             .map(|path_str| Path::new(path_str.as_str()))
-            .flat_map(|path| {
-                filesystem_client::read_all_local_files_recursive(path)
-            })
+            .flat_map(filesystem_client::read_all_local_files_recursive)
             .map(|resource| filesystem_client::fill_exif_data(&resource))
             .collect();
 
         // TODO: find a generic solution for this or make this prettier
 
         // Create smb clients
-        let smb_clients: Vec<SmbClient> = self.samba_resource_paths
-            .iter().map(|connection_string| create_smb_client(connection_string))
+        let smb_clients: Vec<SmbClient> = self
+            .samba_resource_paths
+            .iter()
+            .map(|connection_string| create_smb_client(connection_string))
             .collect();
         // Process resources
         let samba_resources: Vec<RemoteResource> = self
@@ -55,7 +56,12 @@ impl ResourceReader {
             .iter()
             .enumerate()
             .flat_map(|(i, _)| samba_client::read_all_samba_files(i, smb_clients.get(i).unwrap()))
-            .map(|resource| samba_client::fill_exif_data(&resource, smb_clients.get(resource.samba_client_index).unwrap()))
+            .map(|resource| {
+                samba_client::fill_exif_data(
+                    &resource,
+                    smb_clients.get(resource.samba_client_index).unwrap(),
+                )
+            })
             .collect();
         // Drop smb clients
         smb_clients.iter().for_each(drop);

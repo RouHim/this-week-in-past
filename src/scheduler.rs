@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use clokwerk::{ScheduleHandle, Scheduler, TimeUnits};
 use evmap::WriteHandle;
 
-use crate::{ResourceReader, resource_processor};
+use crate::{resource_processor, ResourceReader};
 
 /// Initializes the scheduler by creating the cache directory
 pub fn init() {
@@ -48,7 +48,6 @@ pub fn fetch_resources(
 
     println!("Indexing resources, this may take some time depending on the amount of resources...");
     let resources = resource_reader.list_all_resources();
-    resources.iter().for_each(|x| println!("{}", x)); // TODO: remove me
 
     println!("Storing {} items", resources.len());
     for resource in resources {

@@ -1,11 +1,9 @@
 use chrono::{NaiveDate, NaiveDateTime};
 use exif::{Exif, In, Tag};
 
-
-use crate::{geo_location};
+use crate::geo_location;
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
-
 
 /// Reads the exif date from a given exif data entry
 /// Primarily the exif date is used to determine the date the image was taken
@@ -145,9 +143,9 @@ fn parse_from_str(shard: &str) -> Option<NaiveDate> {
         "%Y%m%d", // 20010708
         "signal-%Y-%m-%d-%Z",
     ]
-        .iter()
-        .filter_map(|format| NaiveDate::parse_from_str(shard, format).ok())
-        .collect();
+    .iter()
+    .filter_map(|format| NaiveDate::parse_from_str(shard, format).ok())
+    .collect();
 
     if parse_results.is_empty() {
         None
