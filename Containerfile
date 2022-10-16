@@ -8,7 +8,8 @@ RUN mkdir "/cache"
 
 # Install alpine-sdk that provides build dependencies
 # Install ssl certificates that will also be copied into the final image
-RUN apk update && apk add --no-cache alpine-sdk ca-certificates
+# Install pavao (smb client) required dependencies
+RUN apk update && apk add --no-cache alpine-sdk ca-certificates samba-dev
 
 # Prepare build dir
 RUN mkdir /app
@@ -24,7 +25,7 @@ RUN cargo build --release
 # # # # # # # # # # # # # # # # # # # #
 # Run image
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM alpine:3 as runtime
+FROM scratch as runtime
 
 ENV CACHE_DIR "/cache"
 ENV RESOURCE_PATHS "/resources"
