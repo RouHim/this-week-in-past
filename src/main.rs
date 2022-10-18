@@ -96,7 +96,7 @@ async fn main() -> std::io::Result<()> {
                     .service(config_endpoint::get_refresh_interval),
             )
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
-            .service(Files::new("/", "./static/").index_file("index.html"))
+            .service(Files::new("/", "./web-app/").index_file("index.html"))
     })
     .bind("0.0.0.0:8080")?
     .run()

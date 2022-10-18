@@ -251,7 +251,7 @@ jobs:
           path: .
 
       - name: Restore container images
-        run: | 
+        run: |
           podman load --input amd64.tar
           podman load --input arm64.tar
 
@@ -259,7 +259,7 @@ jobs:
         run: buildah manifest create multiarch-manifest
 
       - name: Add all architectures to the manifest
-        run: | 
+        run: |
           buildah manifest add multiarch-manifest ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_amd64
           buildah manifest add multiarch-manifest ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_arm64
 
