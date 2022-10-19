@@ -150,7 +150,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        container-image-arch: [ amd64, arm64 ]
+        container-image-arch: [ amd64, arm64, arm ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -249,11 +249,17 @@ jobs:
         with:
           name: arm64
           path: .
+      - name: Download arm Container Image
+        uses: actions/download-artifact@v3
+        with:
+          name: arm
+          path: .
 
       - name: Restore container images
         run: |
           podman load --input amd64.tar
           podman load --input arm64.tar
+          podman load --input arm.tar
 
       - name: Create container image manifest
         run: buildah manifest create multiarch-manifest
@@ -262,6 +268,7 @@ jobs:
         run: |
           buildah manifest add multiarch-manifest ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_amd64
           buildah manifest add multiarch-manifest ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_arm64
+          buildah manifest add multiarch-manifest ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_arm
 
       - name: Login to docker hub
         run: podman login docker.io --username ${{ secrets.DOCKERHUB_USERNAME }} --password ${{ secrets.DOCKERHUB_PASSWORD }}
