@@ -4,6 +4,9 @@ use image::imageops::FilterType;
 use image::io::Reader;
 use serde::{Deserialize, Serialize};
 
+/// Represents the orientation of an image in two dimensions
+/// rotation:               0, 90, 180 or 270
+/// mirror_vertically:      true, if the image is mirrored vertically
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ImageOrientation {
     pub rotation: u16,

@@ -9,10 +9,6 @@ use crate::geo_location;
 use crate::kv_store::KvStore;
 use crate::resource_reader::RemoteResource;
 
-pub fn md5(string: &str) -> String {
-    format!("{:x}", md5::compute(string.as_bytes()))
-}
-
 /// Returns resources that was taken this week in the past
 /// The resources are shuffled, to the result is not deterministic
 pub fn get_this_week_in_past(kv_reader: &ReadHandle<String, String>) -> Vec<String> {

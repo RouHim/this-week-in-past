@@ -13,9 +13,7 @@ use rand::Rng;
 
 use crate::geo_location::GeoLocation;
 use crate::resource_reader::RemoteResource;
-use crate::{
-    kv_store, resource_endpoint, resource_processor, resource_reader, scheduler, ResourceReader,
-};
+use crate::{kv_store, resource_endpoint, resource_reader, scheduler, utils, ResourceReader};
 
 const TEST_JPEG_EXIF_URL: &str =
     "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
@@ -60,8 +58,8 @@ async fn test_get_all_resources() {
 
     // THEN the response should contain the two resources
     assert_that!(response).contains_exactly(vec![
-        resource_processor::md5(test_image_1.as_str()),
-        resource_processor::md5(test_image_2.as_str()),
+        utils::md5(test_image_1.as_str()),
+        utils::md5(test_image_2.as_str()),
     ]);
 
     // cleanup
@@ -101,7 +99,7 @@ async fn test_this_week_in_past_resources() {
     .await;
 
     // THEN the response should contain the two resources
-    assert_that!(response).contains_exactly(vec![resource_processor::md5(test_image_1.as_str())]);
+    assert_that!(response).contains_exactly(vec![utils::md5(test_image_1.as_str())]);
 
     // cleanup
     cleanup(&base_test_dir).await;
@@ -134,7 +132,7 @@ async fn test_get_random_resources() {
     .await;
 
     // THEN the response should contain the random resources
-    assert_that!(response).is_equal_to(resource_processor::md5(test_image_1.as_str()));
+    assert_that!(response).is_equal_to(utils::md5(test_image_1.as_str()));
 
     // cleanup
     cleanup(&base_test_dir).await;
@@ -146,7 +144,7 @@ async fn test_get_resource_by_id_and_resolution() {
     let base_test_dir = create_temp_folder().await;
     let test_image_1 =
         create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
-    let test_image_1_id = resource_processor::md5(test_image_1.as_str());
+    let test_image_1_id = utils::md5(test_image_1.as_str());
 
     // AND a running this-week-in-past instance
     let (kv_reader, kv_writer) = evmap::new::<String, String>();
@@ -180,7 +178,7 @@ async fn test_get_resource_metadata_by_id() {
     let base_test_dir = create_temp_folder().await;
     let test_image_1 =
         create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
-    let test_image_1_id = resource_processor::md5(test_image_1.as_str());
+    let test_image_1_id = utils::md5(test_image_1.as_str());
     let test_image_1_path = format!("{}/{}", base_test_dir.to_str().unwrap(), test_image_1);
 
     // AND a running this-week-in-past instance
@@ -232,7 +230,7 @@ async fn test_get_resource_description_by_id() {
     let base_test_dir = create_temp_folder().await;
     let test_image_1 =
         create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
-    let test_image_1_id = resource_processor::md5(test_image_1.as_str());
+    let test_image_1_id = utils::md5(test_image_1.as_str());
 
     // AND a running this-week-in-past instance
     let (kv_reader, kv_writer) = evmap::new::<String, String>();

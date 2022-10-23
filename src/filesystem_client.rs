@@ -5,11 +5,11 @@ use std::path::{Path, PathBuf};
 use log::error;
 
 use crate::resource_reader::{RemoteResource, RemoteResourceType};
-use crate::{resource_processor, resource_reader, utils};
+use crate::{resource_reader, utils};
 
 /// Reads all files of a folder and returns all found resources
 /// The folder is recursively searched
-pub fn read_all_local_files_recursive(path: &Path) -> Vec<RemoteResource> {
+pub fn read_files_recursive(path: &Path) -> Vec<RemoteResource> {
     let maybe_folder_path = fs::File::open(path);
 
     if maybe_folder_path.is_err() {
@@ -35,9 +35,9 @@ pub fn read_all_local_files_recursive(path: &Path) -> Vec<RemoteResource> {
             let metadata = dir_entry.metadata().expect("Failed to read metadata");
 
             if metadata.is_file() {
-                read_local_file(&dir_entry.path())
+                read_resource(&dir_entry.path())
             } else {
-                read_all_local_files_recursive(&dir_entry.path())
+                read_files_recursive(&dir_entry.path())
             }
         })
         .collect()
@@ -45,7 +45,7 @@ pub fn read_all_local_files_recursive(path: &Path) -> Vec<RemoteResource> {
 
 /// Reads a single file and returns the found resource
 /// Checks if the file is a supported resource currently all image types
-fn read_local_file(file_path: &PathBuf) -> Vec<RemoteResource> {
+fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
     let file = std::fs::File::open(file_path).unwrap();
     let metadata = file.metadata().expect("Failed to read metadata");
     let file_name = file_path.as_path().file_name().unwrap().to_str().unwrap();
@@ -59,7 +59,7 @@ fn read_local_file(file_path: &PathBuf) -> Vec<RemoteResource> {
     }
 
     vec![RemoteResource {
-        id: resource_processor::md5(file_name),
+        id: utils::md5(file_name),
         path: file_path.to_str().unwrap().to_string(),
         content_type: mime_type.to_string(),
         name: file_name.to_string(),
@@ -73,9 +73,11 @@ fn read_local_file(file_path: &PathBuf) -> Vec<RemoteResource> {
     }]
 }
 
+/// Reads the exif data from the file and augments the remote resource with this information
 pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
     let file_path = resource.path.as_str();
     let file = std::fs::File::open(&file_path).unwrap();
+
     let mut bufreader = std::io::BufReader::new(&file);
     let exif_reader = exif::Reader::new();
     let maybe_exif_data = exif_reader.read_from_container(&mut bufreader).ok();

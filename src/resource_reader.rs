@@ -26,7 +26,7 @@ pub fn read_resource_data(resource_reader: &ResourceReader, resource: &RemoteRes
                 .samba_resource_paths
                 .get(resource.samba_client_index)
                 .unwrap();
-            samba_client::read(smb_connection_path, resource)
+            samba_client::read_file(smb_connection_path, resource)
         }
     }
 }
@@ -38,7 +38,7 @@ impl ResourceReader {
             .local_resource_paths
             .par_iter()
             .map(|path_str| Path::new(path_str.as_str()))
-            .flat_map(filesystem_client::read_all_local_files_recursive)
+            .flat_map(filesystem_client::read_files_recursive)
             .map(|resource| filesystem_client::fill_exif_data(&resource))
             .collect();
 
@@ -103,12 +103,14 @@ impl RemoteResource {
     }
 }
 
+/// Represents the type of an resource, either on the local computer or a samba resource.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum RemoteResourceType {
     Local,
     Samba,
 }
 
+/// Prints either Local or Samba depending on the RemoteResourceType
 impl Display for RemoteResourceType {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {

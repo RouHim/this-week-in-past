@@ -9,7 +9,7 @@ use pavao::{
 use regex::Regex;
 
 use crate::resource_reader::{RemoteResource, RemoteResourceType};
-use crate::{resource_processor, resource_reader, utils};
+use crate::{resource_reader, utils};
 
 /// Reads all files of a samba folder and returns all found resources
 /// The folder is recursively searched
@@ -20,6 +20,8 @@ pub fn read_all_samba_files(
     read_all_samba_files_recursive(samba_client_index, samba_client, "/")
 }
 
+/// Reads all files of a samba folder and returns all found resources
+/// The specified folder is recursively searched
 fn read_all_samba_files_recursive(
     samba_client_index: usize,
     client: &SmbClient,
@@ -41,7 +43,7 @@ fn read_all_samba_files_recursive(
 
             if dir_entry.get_type() == SmbDirentType::File {
                 let file_metadata = client.stat(entry_path_str).unwrap();
-                read_samba_file(samba_client_index, entry_path_str, dir_entry, file_metadata)
+                read_resource(samba_client_index, entry_path_str, dir_entry, file_metadata)
             } else {
                 read_all_samba_files_recursive(samba_client_index, client, entry_path_str)
             }
@@ -49,7 +51,9 @@ fn read_all_samba_files_recursive(
         .collect()
 }
 
-fn read_samba_file(
+/// Reads a single file and returns the found resource
+/// Checks if the file is a supported resource currently all image types
+fn read_resource(
     samba_client_index: usize,
     path: &str,
     samba_file: &SmbDirent,
@@ -64,7 +68,7 @@ fn read_samba_file(
     }
 
     vec![RemoteResource {
-        id: resource_processor::md5(file_name),
+        id: utils::md5(file_name),
         path: path.to_string(),
         content_type: mime_type.to_string(),
         name: file_name.to_string(),
@@ -78,6 +82,9 @@ fn read_samba_file(
     }]
 }
 
+/// Creates a new samba client based on the specified connection string
+/// If construction fails, the application will panic
+/// Example connection string: `smb://user:passwd@192.168.0.1//share/photos`
 pub fn create_smb_client(smb_connection_string: &str) -> SmbClient {
     lazy_static! {
         static ref SAMBA_CONNECTION_PATTERN: Regex = Regex::new(
@@ -121,6 +128,7 @@ pub fn create_smb_client(smb_connection_string: &str) -> SmbClient {
     }
 }
 
+/// Reads the exif data from the file and augments the remote resource with this information
 pub fn fill_exif_data(resource: &RemoteResource, smb_client: &SmbClient) -> RemoteResource {
     let smb_file = smb_client
         .open_with(&resource.path, SmbOpenOptions::default().read(true))
@@ -133,17 +141,22 @@ pub fn fill_exif_data(resource: &RemoteResource, smb_client: &SmbClient) -> Remo
     resource_reader::fill_exif_data(resource, maybe_exif_data)
 }
 
-pub fn read(smb_connection_url: &str, resource: &RemoteResource) -> Vec<u8> {
+/// Reads a single file based on a connection string and a remote resource
+/// It will create and connect a new samba client, read the file and then close the connection
+pub fn read_file(smb_connection_url: &str, resource: &RemoteResource) -> Vec<u8> {
     let smb_client = create_smb_client(smb_connection_url);
 
     let mut smb_file = smb_client
         .open_with(&resource.path, SmbOpenOptions::default().read(true))
         .unwrap();
+
     let mut file_data = Vec::new();
     smb_file
         .read_to_end(&mut file_data)
         .unwrap_or_else(|_| panic!("Can't read samba file: {}", resource.path));
+
     drop(smb_file);
     drop(smb_client);
+
     file_data
 }
