@@ -1,13 +1,11 @@
-use std::sync::{Arc, Mutex};
-
 use actix_web::get;
 use actix_web::web;
 use actix_web::HttpResponse;
 use evmap::ReadHandle;
 
-use crate::geo_location_cache::GeoLocationCache;
-use crate::resource_reader::{RemoteResource, ResourceReader};
-use crate::{image_processor, resource_processor};
+use crate::kv_store::KvStore;
+use crate::resource_reader::RemoteResource;
+use crate::{image_processor, resource_processor, resource_reader, ResourceReader};
 
 #[get("")]
 pub async fn list_all_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
@@ -46,7 +44,7 @@ pub async fn random_resource(kv_reader: web::Data<ReadHandle<String, String>>) -
 pub async fn get_resource_by_id_and_resolution(
     resources_id: web::Path<(String, u32, u32)>,
     kv_reader: web::Data<ReadHandle<String, String>>,
-    resource_reader: web::Data<ResourceReader>,
+    app_config: web::Data<ResourceReader>,
 ) -> HttpResponse {
     let path_params = resources_id.into_inner();
     let resource_id = path_params.0.as_str();
@@ -75,7 +73,9 @@ pub async fn get_resource_by_id_and_resolution(
         .and_then(|remote_resource: RemoteResource| remote_resource.orientation);
 
     let resource_data = remote_resource
-        .map(|remote_resource| resource_reader.read_resource_data(&remote_resource))
+        .map(|remote_resource| {
+            resource_reader::read_resource_data(app_config.as_ref(), &remote_resource)
+        })
         .map(|resource_data| {
             image_processor::optimize_image(
                 resource_data,
@@ -124,7 +124,7 @@ pub async fn get_resource_metadata_by_id(
 pub async fn get_resource_metadata_description_by_id(
     resources_id: web::Path<String>,
     kv_reader: web::Data<ReadHandle<String, String>>,
-    geo_location_cache_mutex: web::Data<Arc<Mutex<GeoLocationCache>>>,
+    geo_location_cache: web::Data<KvStore>,
 ) -> HttpResponse {
     let resource = kv_reader
         .get_one(resources_id.as_str())
@@ -132,10 +132,7 @@ pub async fn get_resource_metadata_description_by_id(
         .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
 
     let display_value = resource.map(|resource| {
-        resource_processor::build_display_value(
-            resource,
-            geo_location_cache_mutex.get_ref().clone(),
-        )
+        resource_processor::build_display_value(resource, geo_location_cache.as_ref())
     });
 
     if let Some(display_value) = display_value {

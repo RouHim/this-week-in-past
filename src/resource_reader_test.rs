@@ -7,7 +7,7 @@ use rand::Rng;
 
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
-use crate::{exif_reader, resource_processor, resource_reader};
+use crate::{filesystem_client, utils};
 
 const TEST_JPEG_EXIF_URL: &str =
     "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
@@ -25,7 +25,7 @@ fn read_dir_recursive() {
     create_test_file(&base_test_dir, "sub2", "test_file.txt");
 
     // WHEN reading resources from a folder
-    let resources_read = resource_reader::read_folder(&base_test_dir);
+    let resources_read = filesystem_client::read_files_recursive(&base_test_dir);
 
     // THEN two resources should be found
     assert_eq!(resources_read.len(), 2);
@@ -42,14 +42,11 @@ fn read_jpg_image_resource() {
     let test_image_1_path = create_test_image(&base_test_dir, "", test_image_name, TEST_JPEG_URL);
 
     // WHEN reading resources from a folder
-    let resources_read = resource_reader::read_folder(&base_test_dir);
+    let resources_read = filesystem_client::read_files_recursive(&base_test_dir);
 
     // THEN the resource info should be correct
     assert_eq!(resources_read.len(), 1);
-    assert_eq!(
-        resources_read[0].id,
-        resource_processor::md5(test_image_name)
-    );
+    assert_eq!(resources_read[0].id, utils::md5(test_image_name));
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/jpeg");
     assert_eq!(resources_read[0].name, test_image_name);
@@ -66,8 +63,9 @@ fn read_jpg_with_exif_image_resource() {
     create_test_image(&base_test_dir, "", test_image_name, TEST_JPEG_EXIF_URL);
 
     // WHEN reading resources from a folder
-    let resources_read =
-        exif_reader::fill_exif_data(&resource_reader::read_folder(&base_test_dir)[0]);
+    let resources_read = filesystem_client::fill_exif_data(
+        &filesystem_client::read_files_recursive(&base_test_dir)[0],
+    );
 
     // THEN the resource metadata should be correct
     assert_eq!(
@@ -101,14 +99,11 @@ fn read_png_image_resource() {
     let test_image_1_path = create_test_image(&base_test_dir, "", test_image_name, TEST_PNG_URL);
 
     // WHEN reading resources from a folder
-    let resources_read = resource_reader::read_folder(&base_test_dir);
+    let resources_read = filesystem_client::read_files_recursive(&base_test_dir);
 
     // THEN the resource info should be correct
     assert_eq!(resources_read.len(), 1);
-    assert_eq!(
-        resources_read[0].id,
-        resource_processor::md5(test_image_name)
-    );
+    assert_eq!(resources_read[0].id, utils::md5(test_image_name));
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/png");
     assert_eq!(resources_read[0].name, test_image_name);
@@ -125,14 +120,11 @@ fn read_gif_image_resource() {
     let test_image_1_path = create_test_image(&base_test_dir, "", test_image_name, TEST_GIF_URL);
 
     // WHEN reading resources from a folder
-    let resources_read = resource_reader::read_folder(&base_test_dir);
+    let resources_read = filesystem_client::read_files_recursive(&base_test_dir);
 
     // THEN the resource info should be correct
     assert_eq!(resources_read.len(), 1);
-    assert_eq!(
-        resources_read[0].id,
-        resource_processor::md5(test_image_name)
-    );
+    assert_eq!(resources_read[0].id, utils::md5(test_image_name));
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/gif");
     assert_eq!(resources_read[0].name, test_image_name);
@@ -148,7 +140,7 @@ fn read_no_images_dir() {
     create_test_file(&base_test_dir, "", "test_file.txt");
 
     // WHEN reading resources from a folder
-    let resources_read = resource_reader::read_folder(&base_test_dir);
+    let resources_read = filesystem_client::read_files_recursive(&base_test_dir);
 
     // THEN two resources should be found
     assert_eq!(resources_read.len(), 0);
@@ -163,7 +155,7 @@ fn read_empty_dir() {
     let base_test_dir = create_temp_folder();
 
     // WHEN reading resources from a folder
-    let resources_read = resource_reader::read_folder(&base_test_dir);
+    let resources_read = filesystem_client::read_files_recursive(&base_test_dir);
 
     // THEN two resources should be found
     assert_eq!(resources_read.len(), 0);
@@ -178,7 +170,7 @@ fn read_non_existent_folder() {
     let base_test_dir = PathBuf::from("/some/non/existent/path");
 
     // WHEN reading resources from a folder
-    let resources_read = resource_reader::read_folder(&base_test_dir);
+    let resources_read = filesystem_client::read_files_recursive(&base_test_dir);
 
     // THEN two resources should be found
     assert_eq!(resources_read.len(), 0);

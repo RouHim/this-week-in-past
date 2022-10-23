@@ -7,7 +7,7 @@
     <a href="https://github.com/RouHim/this-week-in-past/actions/workflows/scheduled-security-audit.yaml"><img src="https://github.com/RouHim/this-week-in-past/actions/workflows/scheduled-security-audit.yaml/badge.svg" alt="CI"></a>
     <a href="https://hub.docker.com/r/rouhim/this-week-in-past"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/rouhim/this-week-in-past"></a>
     <a href="https://hub.docker.com/r/rouhim/this-week-in-past/tags"><img alt="Docker Image Size (tag)" src="https://img.shields.io/docker/image-size/rouhim/this-week-in-past/latest"></a>
-    <a href="https://hub.docker.com/r/rouhim/this-week-in-past/tags"><img src="https://img.shields.io/badge/ARCH-amd64_•_arm64-blueviolet" alt="os-arch"></a>
+    <a href="https://hub.docker.com/r/rouhim/this-week-in-past/tags"><img src="https://img.shields.io/badge/ARCH-amd64_•_arm64•_armv7-blueviolet" alt="os-arch"></a>
     <a href="http://152.70.175.46/"><img alt="Online demo" src="https://img.shields.io/static/v1?label=Demo&message=available&color=teal"></a>    
     <a href="https://buymeacoffee.com/rouhim"><img alt="Donate me" src="https://img.shields.io/badge/-buy_me_a%C2%A0coffee-gray?logo=buy-me-a-coffee"></a>  </p>
 
@@ -72,19 +72,19 @@ services:
 
 All configuration is done via environment variables:
 
-| Name                     | Description                                                                                           | Default value |
-|--------------------------|-------------------------------------------------------------------------------------------------------|---------------|
-| RESOURCE_PATHS           | Paths to the resources to load (comma separated), container defaults this to `/resources`             |               |
-| CACHE_DIR                | Path to the caching to load, needs to read/write rights, must not be set when using container         |               |
-| SLIDESHOW_INTERVAL       | Interval of the slideshow in seconds                                                                  | 30            |
-| REFRESH_INTERVAL         | Interval how of the page should be reloaded in minutes.                                               | 180           |
-| DATE_FORMAT              | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html) | %d.%m.%Y      |
-| BIGDATA_CLOUD_API_KEY    | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com                    |               |
-| OPEN_WEATHER_MAP_API_KEY | To receive weather live data. Obtain here: https://openweathermap.org/api                             |               |
-| WEATHER_ENABLED          | Indicates if weather should be shown in the slideshow                                                 | false         |
-| WEATHER_LOCATION         | Weather location                                                                                      | Berlin        |
-| WEATHER_LANGUAGE         | Weather language                                                                                      | en            |
-| WEATHER_UNIT             | Weather units (metric or imperial)                                                                    | metric        |
-| HOME_ASSISTANT_BASE_URL  | Home assistant base url                                                                               |               |
-| HOME_ASSISTANT_ENTITY_ID | Home assistant entity id to load the weather from                                                     |               |
-| HOME_ASSISTANT_API_TOKEN | Home assistant api access token                                                                       |               |
+| Name                     | Description                                                                                                                                                                                                    | Default value                 |
+|--------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|
+| RESOURCE_PATHS           | A list of folders from which the images should be loaded (comma separated). Either a local path e.g.: `/home/user/Pictures,/mnt/hdd/images` or a samba url e.g.: `smb://user:passwd@192.168.0.1//share/photos` | `/resources` (Container only) |
+| CACHE_DIR                | Path to a folder where the cache should be stored, needs to read/write access                                                                                                                                  | `/cache` (Container only)     |
+| SLIDESHOW_INTERVAL       | Interval of the slideshow in seconds                                                                                                                                                                           | 30                            |
+| REFRESH_INTERVAL         | Interval how often the page should be reloaded in minutes                                                                                                                                                      | 180                           |
+| DATE_FORMAT              | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html)                                                                                                          | %d.%m.%Y                      |
+| BIGDATA_CLOUD_API_KEY    | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com                                                                                                                             |                               |
+| OPEN_WEATHER_MAP_API_KEY | To receive weather live data. Obtain here: https://openweathermap.org/api                                                                                                                                      |                               |
+| WEATHER_ENABLED          | Indicates if weather should be shown in the slideshow                                                                                                                                                          | false                         |
+| WEATHER_LOCATION         | Name of a city                                                                                                                                                                                                 | Berlin                        |
+| WEATHER_LANGUAGE         | Weather language ([ISO_639-1](https://en.wikipedia.org/wiki/ISO_639-1))                                                                                                                                        | en                            |
+| WEATHER_UNIT             | Weather units (`metric` or `imperial`)                                                                                                                                                                         | metric                        |
+| HOME_ASSISTANT_BASE_URL  | Home assistant base url (e.g.: `http://192.168.0.123:8123`)                                                                                                                                                    |                               |
+| HOME_ASSISTANT_ENTITY_ID | Home assistant entity id to load the weather from (e.g.: `sensor.outside_temperature`)                                                                                                                         |                               |
+| HOME_ASSISTANT_API_TOKEN | Home assistant api access token                                                                                                                                                                                |                               |

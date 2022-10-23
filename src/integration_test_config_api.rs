@@ -8,8 +8,7 @@ use assertor::{assert_that, EqualityAssertion};
 use evmap::{ReadHandle, WriteHandle};
 use rand::Rng;
 
-use crate::resource_reader::ResourceReader;
-use crate::{config_endpoint, resource_reader, scheduler};
+use crate::{config_endpoint, resource_reader, scheduler, ResourceReader};
 
 const TEST_FOLDER_NAME: &str = "integration_test_config_api";
 

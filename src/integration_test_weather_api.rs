@@ -8,8 +8,7 @@ use assertor::{assert_that, StringAssertion};
 use evmap::{ReadHandle, WriteHandle};
 use rand::Rng;
 
-use crate::resource_reader::ResourceReader;
-use crate::{resource_reader, scheduler, weather_endpoint};
+use crate::{resource_reader, scheduler, weather_endpoint, ResourceReader};
 
 const TEST_FOLDER_NAME: &str = "integration_test_weather_api";
 

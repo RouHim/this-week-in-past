@@ -4,7 +4,6 @@ use exif::{Exif, In, Tag};
 use crate::geo_location;
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
-use crate::resource_reader::RemoteResource;
 
 /// Reads the exif date from a given exif data entry
 /// Primarily the exif date is used to determine the date the image was taken
@@ -54,47 +53,9 @@ fn parse_exif_date(date: String) -> Option<NaiveDateTime> {
     NaiveDateTime::parse_from_str(date.as_str(), "%F %T").ok()
 }
 
-/// Reads the exif data from a given resource
-pub fn load_exif(resource: &RemoteResource) -> Option<Exif> {
-    let file = std::fs::File::open(&resource.path).unwrap();
-    let mut bufreader = std::io::BufReader::new(&file);
-    let exif_reader = exif::Reader::new();
-    exif_reader.read_from_container(&mut bufreader).ok()
-}
-
-/// Augments the provided resource with meta information
-/// The meta information is extracted from the exif data
-/// If the exif data is not available, the meta information is extracted from the gps data
-/// If the gps data is not available, the meta information is extracted from the file name
-pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
-    let mut augmented_resource = resource.clone();
-
-    let maybe_exif_data = load_exif(resource);
-
-    let mut taken_date = None;
-    let mut location = None;
-    let mut orientation = None;
-
-    if let Some(exif_data) = maybe_exif_data {
-        taken_date = get_exif_date(&exif_data);
-        location = detect_location(&exif_data);
-        orientation = detect_orientation(&exif_data);
-    }
-
-    if taken_date.is_none() {
-        taken_date = detect_date_by_name(&resource.path);
-    }
-
-    augmented_resource.taken = taken_date;
-    augmented_resource.location = location;
-    augmented_resource.orientation = orientation;
-
-    augmented_resource
-}
-
 /// Detects the location from the exif data
 /// If the location is not found, the location is set to None
-fn detect_location(exif_data: &Exif) -> Option<GeoLocation> {
+pub fn detect_location(exif_data: &Exif) -> Option<GeoLocation> {
     let maybe_latitude = exif_data.get_field(Tag::GPSLatitude, In::PRIMARY);
     let maybe_longitude = exif_data.get_field(Tag::GPSLongitude, In::PRIMARY);
 
@@ -111,7 +72,7 @@ fn detect_location(exif_data: &Exif) -> Option<GeoLocation> {
 /// Detects the orientation from the exif data
 /// If the orientation is not found, the orientation is set to None
 /// Possible rotations are: 0, 90, 180, 270
-fn detect_orientation(exif_data: &Exif) -> Option<ImageOrientation> {
+pub fn detect_orientation(exif_data: &Exif) -> Option<ImageOrientation> {
     let maybe_orientation = exif_data
         .get_field(Tag::Orientation, In::PRIMARY)
         .and_then(|field| field.value.get_uint(0));
@@ -156,7 +117,7 @@ fn detect_orientation(exif_data: &Exif) -> Option<ImageOrientation> {
 /// Detects the date from the file name
 /// If the date is not found, the date is set to None
 /// The chars '/', ' ', '.', '_' are replaced with '_'
-fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {
+pub fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {
     let parsed: Vec<NaiveDate> = resource_path
         .replace('/', "_")
         .replace(' ', "_")
