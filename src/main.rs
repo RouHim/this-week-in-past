@@ -1,10 +1,9 @@
 extern crate core;
 
-use std::env;
-use std::sync::{Arc, Mutex};
-
 use actix_files::Files;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use std::env;
+use std::sync::{Arc, Mutex};
 
 mod config_endpoint;
 mod exif_reader;
@@ -50,7 +49,7 @@ async fn main() -> std::io::Result<()> {
             .as_str(),
     );
 
-    // Initialize kv_store reader and writer
+    // Initialize in memory kv_store reader and writer
     let (kv_reader, kv_writer) = evmap::new::<String, String>();
     // Build arc mutex of kv_store writer, we need this exact instance (cause, we have multiple writer)
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
@@ -81,7 +80,8 @@ async fn main() -> std::io::Result<()> {
                     .service(resource_endpoint::random_resource)
                     .service(resource_endpoint::get_resource_by_id_and_resolution)
                     .service(resource_endpoint::get_resource_metadata_by_id)
-                    .service(resource_endpoint::get_resource_metadata_description_by_id),
+                    .service(resource_endpoint::get_resource_metadata_description_by_id)
+                    .service(resource_endpoint::set_resource_hidden),
             )
             .service(
                 web::scope("/api/weather")
@@ -93,7 +93,8 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api/config")
                     .service(config_endpoint::get_slideshow_interval)
-                    .service(config_endpoint::get_refresh_interval),
+                    .service(config_endpoint::get_refresh_interval)
+                    .service(config_endpoint::get_hide_button_enabled),
             )
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./web-app/").index_file("index.html"))

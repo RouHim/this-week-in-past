@@ -22,7 +22,7 @@ const TEST_FOLDER_NAME: &str = "integration_test_rest_api";
 
 #[actix_web::test]
 async fn test_get_all_resources() {
-    // GIVEN is a folder structure with two images and another file type
+    // GIVEN is a folder structure with two assets and another file type
     let base_test_dir = create_temp_folder().await;
     let test_image_1 = create_test_image(
         &base_test_dir,
@@ -68,7 +68,7 @@ async fn test_get_all_resources() {
 
 #[actix_web::test]
 async fn test_this_week_in_past_resources() {
-    // GIVEN is one image images
+    // GIVEN is one image assets
     let base_test_dir = create_temp_folder().await;
     let today_date_string = Local::now().date().format("%Y%m%d").to_string();
     let test_image_1 = create_test_image(

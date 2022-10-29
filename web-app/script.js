@@ -6,19 +6,44 @@ Disclaimer:
 let resources;
 let currentIndex = 0;
 let maxIndex = 0;
+let current_resource_id;
 
 // On page load, do the following things:
 // 1. Load the available images and initialize the slideshow with it
 // 2. Load and show the weather information
+
 // 3. Set a page reload interval for each hour
 window.onload = () => {
     loadAvailableImages();
     loadWeatherInformation();
+    initHideButton();
 
     // Reload page every x minutes
     let refreshIntervalInMinutes = getRefreshInterval();
     setInterval(() => location.reload(), refreshIntervalInMinutes * 60000);
 };
+
+function initHideButton() {
+    fetch(`${window.location.href}api/config/show-hide-button`)
+        .then(response => response.json())
+        .then(showHideButton => {
+            if (showHideButton === true) {
+                console.log("building show button!")
+                let hideCurrentImageBtn = document.getElementById("hide-current-image");
+                hideCurrentImageBtn.style.visibility = "visible";
+                hideCurrentImageBtn.addEventListener("click", hideCurrentImage)
+            }
+        });
+}
+
+function hideCurrentImage() {
+    let hideResourceRequest = new XMLHttpRequest();
+    hideResourceRequest.open("POST", window.location.href + "api/resources/hide/" + current_resource_id);
+    hideResourceRequest.send();
+
+    // Reload page if the resource is set to hidden
+    hideResourceRequest.onload = () => location.reload();
+}
 
 // Checks if the weather information should be shown, if so load them
 function loadWeatherInformation() {
@@ -88,6 +113,8 @@ function getCurrentTemperatureDataFromHomeAssistant() {
 // The sleep function is used to prevent the slideshow from flickering
 // @param resource_id: the id of the resource
 function setImageData(resource_id) {
+    current_resource_id = resource_id;
+
     // build the image url
     let imageUrl = `${window.location.href}api/resources/${resource_id}/${window.screen.availWidth}/${window.screen.availHeight}`;
 

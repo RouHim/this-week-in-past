@@ -1,11 +1,12 @@
 use actix_web::get;
-use actix_web::web;
 use actix_web::HttpResponse;
+use actix_web::post;
+use actix_web::web;
 use evmap::ReadHandle;
 
+use crate::{image_processor, resource_processor, resource_reader, ResourceReader};
 use crate::kv_store::KvStore;
 use crate::resource_reader::RemoteResource;
-use crate::{image_processor, resource_processor, resource_reader, ResourceReader};
 
 #[get("")]
 pub async fn list_all_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
@@ -91,8 +92,8 @@ pub async fn get_resource_by_id_and_resolution(
             format!("{resource_id}_{display_width}_{display_height}"),
             &resource_data,
         )
-        .await
-        .expect("writing to cache failed");
+            .await
+            .expect("writing to cache failed");
 
         HttpResponse::Ok()
             .content_type("image/png")
@@ -142,4 +143,13 @@ pub async fn get_resource_metadata_description_by_id(
     } else {
         HttpResponse::InternalServerError().finish()
     }
+}
+
+
+#[post("/hide/{resource_id}")]
+pub async fn set_resource_hidden(
+    resources_id: web::Path<String>,
+) -> HttpResponse {
+    println!("Hiding resource {resources_id}");
+    HttpResponse::Ok().finish()
 }

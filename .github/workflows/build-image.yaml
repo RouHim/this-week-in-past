@@ -255,7 +255,7 @@ jobs:
           name: arm
           path: .
 
-      - name: Restore container images
+      - name: Restore container assets
         run: |
           podman load --input amd64.tar
           podman load --input arm64.tar
