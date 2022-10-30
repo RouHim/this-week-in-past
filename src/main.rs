@@ -14,6 +14,7 @@ mod kv_store;
 mod resource_endpoint;
 mod resource_processor;
 mod resource_reader;
+mod resource_store;
 mod samba_client;
 mod scheduler;
 mod utils;
@@ -49,6 +50,9 @@ async fn main() -> std::io::Result<()> {
             .as_str(),
     );
 
+    // Initialize database
+    let resource_store = resource_store::initialize();
+
     // Initialize in memory kv_store reader and writer
     let (kv_reader, kv_writer) = evmap::new::<String, String>();
     // Build arc mutex of kv_store writer, we need this exact instance (cause, we have multiple writer)
@@ -68,6 +72,7 @@ async fn main() -> std::io::Result<()> {
     println!("Launching webserver 🚀");
     let http_server_result = HttpServer::new(move || {
         App::new()
+            .app_data(web::Data::new(resource_store.clone()))
             .app_data(web::Data::new(app_config.clone()))
             .app_data(web::Data::new(kv_reader.clone()))
             .app_data(web::Data::new(kv_writer_mutex.clone()))
@@ -75,13 +80,15 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Logger::default()) // enable logger
             .service(
                 web::scope("/api/resources")
-                    .service(resource_endpoint::list_all_resources)
-                    .service(resource_endpoint::list_this_week_resources)
+                    .service(resource_endpoint::get_all_resources)
+                    .service(resource_endpoint::get_this_week_resources)
                     .service(resource_endpoint::random_resource)
                     .service(resource_endpoint::get_resource_by_id_and_resolution)
                     .service(resource_endpoint::get_resource_metadata_by_id)
                     .service(resource_endpoint::get_resource_metadata_description_by_id)
-                    .service(resource_endpoint::set_resource_hidden),
+                    .service(resource_endpoint::get_all_hidden_resources)
+                    .service(resource_endpoint::set_resource_hidden)
+                    .service(resource_endpoint::delete_resource_hidden),
             )
             .service(
                 web::scope("/api/weather")

@@ -1,15 +1,17 @@
+use actix_web::delete;
 use actix_web::get;
-use actix_web::HttpResponse;
 use actix_web::post;
 use actix_web::web;
+use actix_web::HttpResponse;
 use evmap::ReadHandle;
 
-use crate::{image_processor, resource_processor, resource_reader, ResourceReader};
 use crate::kv_store::KvStore;
 use crate::resource_reader::RemoteResource;
+use crate::resource_store::ResourceStore;
+use crate::{image_processor, resource_processor, resource_reader, ResourceReader};
 
 #[get("")]
-pub async fn list_all_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
+pub async fn get_all_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
     let keys: Vec<String> = resource_processor::get_all(kv_reader.as_ref());
 
     HttpResponse::Ok()
@@ -18,7 +20,7 @@ pub async fn list_all_resources(kv_reader: web::Data<ReadHandle<String, String>>
 }
 
 #[get("week")]
-pub async fn list_this_week_resources(
+pub async fn get_this_week_resources(
     kv_reader: web::Data<ReadHandle<String, String>>,
 ) -> HttpResponse {
     let keys: Vec<String> = resource_processor::get_this_week_in_past(kv_reader.as_ref());
@@ -92,8 +94,8 @@ pub async fn get_resource_by_id_and_resolution(
             format!("{resource_id}_{display_width}_{display_height}"),
             &resource_data,
         )
-            .await
-            .expect("writing to cache failed");
+        .await
+        .expect("writing to cache failed");
 
         HttpResponse::Ok()
             .content_type("image/png")
@@ -145,11 +147,22 @@ pub async fn get_resource_metadata_description_by_id(
     }
 }
 
-
 #[post("/hide/{resource_id}")]
-pub async fn set_resource_hidden(
-    resources_id: web::Path<String>,
-) -> HttpResponse {
+pub async fn set_resource_hidden(resources_id: web::Path<String>) -> HttpResponse {
     println!("Hiding resource {resources_id}");
     HttpResponse::Ok().finish()
+}
+
+#[delete("/hide/{resource_id}")]
+pub async fn delete_resource_hidden(resources_id: web::Path<String>) -> HttpResponse {
+    println!("make resource {resources_id} visible again");
+    HttpResponse::Ok().finish()
+}
+
+#[get("/hide")]
+pub async fn get_all_hidden_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
+    let hidden_ids: Vec<String> = resource_store.as_ref().get_all_hidden();
+    HttpResponse::Ok()
+        .content_type("application/json")
+        .body(serde_json::to_string(&hidden_ids).unwrap())
 }
