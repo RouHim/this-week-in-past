@@ -148,14 +148,22 @@ pub async fn get_resource_metadata_description_by_id(
 }
 
 #[post("/hide/{resource_id}")]
-pub async fn set_resource_hidden(resources_id: web::Path<String>) -> HttpResponse {
-    println!("Hiding resource {resources_id}");
+pub async fn set_resource_hidden(
+    resources_id: web::Path<String>,
+    resource_store: web::Data<ResourceStore>,
+) -> HttpResponse {
+    resource_store.get_ref().add_hidden(resources_id.as_str());
     HttpResponse::Ok().finish()
 }
 
 #[delete("/hide/{resource_id}")]
-pub async fn delete_resource_hidden(resources_id: web::Path<String>) -> HttpResponse {
-    println!("make resource {resources_id} visible again");
+pub async fn delete_resource_hidden(
+    resources_id: web::Path<String>,
+    resource_store: web::Data<ResourceStore>,
+) -> HttpResponse {
+    resource_store
+        .get_ref()
+        .remove_hidden(resources_id.as_str());
     HttpResponse::Ok().finish()
 }
 
