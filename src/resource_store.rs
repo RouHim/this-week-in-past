@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, fs};
 use std::path::PathBuf;
 
 use r2d2::Pool;
@@ -41,15 +41,31 @@ impl ResourceStore {
             .unwrap();
         stmt.execute([resource_id]).unwrap();
     }
+
+    /// Checks if the specified resource id is hidden
+    pub fn is_hidden(&self, resource_id: &str) -> bool {
+        let connection = self.connection_pool.get().unwrap();
+        let mut stmt = connection
+            .prepare("SELECT COUNT(id) FROM hidden WHERE id = ?")
+            .unwrap();
+        let mut rows = stmt.query([resource_id]).unwrap();
+
+        let count: i32 = rows.next().unwrap().unwrap().get(0).unwrap();
+
+        count == 1
+    }
 }
 
 /// Initializes a new datastore in the $DATA_FOLDER folder and returns the instance
 /// If no $DATA_FOLDER env var is configured, ./data/ is used
+/// Creates data folder if it does not exists
 /// Also creates all tables if needed
 pub fn initialize() -> ResourceStore {
-    let database_path = env::var("DATA_FOLDER").unwrap_or_else(|_| "./data".to_string());
-    let resources_path = PathBuf::from(database_path).join("resources.db");
-    let manager = SqliteConnectionManager::file(resources_path).with_flags(OpenFlags::default());
+    let data_folder = env::var("DATA_FOLDER").unwrap_or_else(|_| "./data".to_string());
+    fs::create_dir_all(&data_folder).unwrap_or_else(|_| panic!("Could not create {}", data_folder));
+    let database_path = PathBuf::from(data_folder).join("resources.db");
+
+    let manager = SqliteConnectionManager::file(database_path).with_flags(OpenFlags::default());
     let connection_pool = Pool::new(manager).expect("Pool creation failed");
 
     create_table_hidden(&connection_pool);

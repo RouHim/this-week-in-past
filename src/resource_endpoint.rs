@@ -22,8 +22,10 @@ pub async fn get_all_resources(kv_reader: web::Data<ReadHandle<String, String>>)
 #[get("week")]
 pub async fn get_this_week_resources(
     kv_reader: web::Data<ReadHandle<String, String>>,
+    resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
-    let keys: Vec<String> = resource_processor::get_this_week_in_past(kv_reader.as_ref());
+    let keys: Vec<String> =
+        resource_processor::get_this_week_in_past(kv_reader.as_ref(), resource_store.as_ref());
 
     HttpResponse::Ok()
         .content_type("application/json")
@@ -31,8 +33,12 @@ pub async fn get_this_week_resources(
 }
 
 #[get("random")]
-pub async fn random_resource(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
-    let resource_id: Option<String> = resource_processor::random_entry(kv_reader.as_ref());
+pub async fn random_resource(
+    kv_reader: web::Data<ReadHandle<String, String>>,
+    resource_store: web::Data<ResourceStore>,
+) -> HttpResponse {
+    let resource_id: Option<String> =
+        resource_processor::random_entry(kv_reader.as_ref(), resource_store);
 
     if let Some(resource_id) = resource_id {
         HttpResponse::Ok()
