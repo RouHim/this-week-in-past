@@ -1,5 +1,5 @@
-use std::{env, fs};
 use std::path::PathBuf;
+use std::{env, fs};
 
 use r2d2::Pool;
 use r2d2_sqlite::rusqlite::OpenFlags;

@@ -14,7 +14,10 @@ use crate::resource_store::ResourceStore;
 /// Returns resources that was taken this week in the past
 /// The resources are shuffled, to the result is not deterministic
 /// Excluded are hidden resources
-pub fn get_this_week_in_past(kv_reader: &ReadHandle<String, String>, resource_store: &ResourceStore) -> Vec<String> {
+pub fn get_this_week_in_past(
+    kv_reader: &ReadHandle<String, String>,
+    resource_store: &ResourceStore,
+) -> Vec<String> {
     let hidden_resources = resource_store.get_all_hidden();
 
     let mut resource_ids: Vec<String> = kv_reader
@@ -100,7 +103,10 @@ async fn get_city_name(resource: RemoteResource, geo_location_cache: &KvStore) -
 
 /// Selects a random, not hidden, resource
 /// The id of the resource is returned
-pub fn random_entry(kv_reader: &ReadHandle<String, String>, resource_store: Data<ResourceStore>) -> Option<String> {
+pub fn random_entry(
+    kv_reader: &ReadHandle<String, String>,
+    resource_store: Data<ResourceStore>,
+) -> Option<String> {
     let entry_count = kv_reader.read().unwrap().len();
     if entry_count == 0 {
         return None;
@@ -116,7 +122,11 @@ pub fn random_entry(kv_reader: &ReadHandle<String, String>, resource_store: Data
         println!("{tries}");
     }
 
-    if tries == 100 { None } else { Some(resource_id) }
+    if tries == 100 {
+        None
+    } else {
+        Some(resource_id)
+    }
 }
 
 /// Reads a random resource from data store
