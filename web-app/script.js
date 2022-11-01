@@ -194,6 +194,7 @@ function slideshowTick() {
         return;
     }
 
+    // Proceeds with the regular "this week" slideshow
     setImage(resourcesThisWeek[currentIndex]);
 
     currentIndex++;
