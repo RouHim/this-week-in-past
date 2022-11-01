@@ -1,6 +1,7 @@
 /target
 .idea
 cache
+data
 test.sh
 test-image.sh
 index-*

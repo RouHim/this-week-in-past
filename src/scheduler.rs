@@ -49,7 +49,7 @@ pub fn fetch_resources(
     println!("Indexing resources, this may take some time depending on the amount of resources...");
     let resources = resource_reader.list_all_resources();
 
-    println!("Storing {} items", resources.len());
+    println!("Found {} resources", resources.len());
     for resource in resources {
         kv_writer.insert(
             resource.id.clone(),

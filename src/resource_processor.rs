@@ -76,12 +76,10 @@ async fn get_city_name(resource: RemoteResource, geo_location_cache: &KvStore) -
     let resource_location = resource.location?;
     let resource_location_string = resource_location.to_string();
 
-    // First check cache
+    // Check if cache contains resource location
     if geo_location_cache.contains_key(resource_location_string.as_str()) {
-        println!("Cache hit for {}", resource_location_string.as_str());
         geo_location_cache.get(resource_location_string.as_str())
     } else {
-        println!("Cache miss for {}", resource_location_string.as_str());
         // Get city name
         let city_name = geo_location::resolve_city_name(resource_location).await;
 
