@@ -99,7 +99,7 @@ async fn test_this_week_in_past_resources() {
     )
     .await;
 
-    // THEN the response should contain the two resources
+    // THEN the response should contain the resource
     assert_that!(response).contains_exactly(vec![utils::md5(test_image_1.as_str())]);
 
     // cleanup
@@ -379,10 +379,13 @@ fn build_app(
         InitError = (),
     >,
 > {
-    scheduler::init();
-    scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex.clone());
-    let geo_location_cache = kv_store::new();
     let resource_store = resource_store::initialize();
+    scheduler::fetch_resources(
+        resource_reader.clone(),
+        kv_writer_mutex.clone(),
+        resource_store.clone(),
+    );
+    let geo_location_cache = kv_store::new();
     App::new()
         .app_data(web::Data::new(resource_store))
         .app_data(web::Data::new(kv_reader))
@@ -440,7 +443,7 @@ async fn create_test_image(
 
 /// Removes the test folder after test run
 async fn cleanup(test_dir: &PathBuf) {
-    let _ = fs::remove_dir_all(&test_dir);
+    let _ = fs::remove_dir_all(test_dir);
 }
 
 /// Creates a temp folder with the given name and returns its full path
@@ -458,8 +461,8 @@ async fn create_temp_folder() -> PathBuf {
     let cache_dir = test_dir.join("cache");
     let data_dir = test_dir.join("data");
 
-    env::set_var("CACHE_DIR", &cache_dir.as_path().to_str().unwrap());
-    env::set_var("DATA_FOLDER", &data_dir.as_path().to_str().unwrap());
+    env::set_var("CACHE_DIR", cache_dir.as_path().to_str().unwrap());
+    env::set_var("DATA_FOLDER", data_dir.as_path().to_str().unwrap());
 
     fs::create_dir_all(&cache_dir).unwrap();
     fs::create_dir_all(&data_dir).unwrap();

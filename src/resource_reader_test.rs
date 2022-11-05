@@ -208,7 +208,7 @@ fn create_test_image(base_dir: &Path, sub_dir: &str, file_name: &str, image_url:
 
 /// Removes the test folder after test run
 fn cleanup(test_dir: &PathBuf) {
-    let _ = fs::remove_dir_all(&test_dir);
+    let _ = fs::remove_dir_all(test_dir);
 }
 
 /// Creates a test file withing a folder

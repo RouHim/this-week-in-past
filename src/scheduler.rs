@@ -4,30 +4,25 @@ use std::time::{Duration, Instant};
 use clokwerk::{ScheduleHandle, Scheduler, TimeUnits};
 use evmap::WriteHandle;
 
-use crate::{resource_processor, ResourceReader};
-
-/// Initializes the scheduler by creating the cache directory
-pub fn init() {
-    // create cache dir
-    std::fs::create_dir_all(resource_processor::get_cache_dir()).expect("Creating cache dir");
-
-    // Check if cache is writeable
-    cacache::write_sync(resource_processor::get_cache_dir(), "test", b"test")
-        .expect("Cache is not writeable");
-}
+use crate::resource_store::ResourceStore;
+use crate::ResourceReader;
 
 /// Schedules the cache indexer at every day at midnight
 pub fn schedule_indexer(
     app_config: ResourceReader,
     kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
+    resource_store: ResourceStore,
 ) -> ScheduleHandle {
     let mut scheduler = Scheduler::new();
 
     // Fetch resources at midnight
-    scheduler
-        .every(1.day())
-        .at("00:00")
-        .run(move || fetch_resources(app_config.clone(), kv_writer_mutex.clone()));
+    scheduler.every(1.day()).at("00:00").run(move || {
+        fetch_resources(
+            app_config.clone(),
+            kv_writer_mutex.clone(),
+            resource_store.clone(),
+        )
+    });
 
     // Check the thread every minute
     scheduler.watch_thread(Duration::from_secs(60))
@@ -37,6 +32,7 @@ pub fn schedule_indexer(
 pub fn fetch_resources(
     resource_reader: ResourceReader,
     kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
+    resource_store: ResourceStore,
 ) {
     let s = Instant::now();
     println!("Begin fetch_images");
@@ -59,7 +55,7 @@ pub fn fetch_resources(
     kv_writer.refresh();
 
     println!("Cleanup cache");
-    let _ = cacache::clear_sync(resource_processor::get_cache_dir());
+    resource_store.clear_image_cache();
 
     println!("Job done in {}s!", s.elapsed().as_secs());
 }

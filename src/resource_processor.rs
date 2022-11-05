@@ -18,6 +18,7 @@ pub fn get_this_week_in_past(
     kv_reader: &ReadHandle<String, String>,
     resource_store: &ResourceStore,
 ) -> Vec<String> {
+    // TODO: solve this with a select statement, when kv store is migrated to sqlite
     let hidden_resources = resource_store.get_all_hidden();
 
     let mut resource_ids: Vec<String> = kv_reader
@@ -29,7 +30,7 @@ pub fn get_this_week_in_past(
         .par_iter()
         .filter(|resource| resource.is_this_week())
         .map(|resource| resource.clone().id)
-        .filter(|resource_id| hidden_resources.contains(resource_id))
+        .filter(|resource_id| !hidden_resources.contains(resource_id))
         .collect();
 
     // shuffle resource keys
@@ -139,9 +140,4 @@ fn get_random_resource(kv_reader: &ReadHandle<String, String>, entry_count: usiz
         .nth(random_index)
         .map(|(key, _)| key.clone())
         .unwrap()
-}
-
-/// Reads the directory to store the cache into, needs write rights
-pub fn get_cache_dir() -> String {
-    env::var("CACHE_DIR").expect("CACHE_DIR is missing")
 }

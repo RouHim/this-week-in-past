@@ -8,7 +8,7 @@ use assertor::{assert_that, EqualityAssertion};
 use evmap::{ReadHandle, WriteHandle};
 use rand::Rng;
 
-use crate::{config_endpoint, resource_reader, scheduler, ResourceReader};
+use crate::{config_endpoint, resource_reader, resource_store, scheduler, ResourceReader};
 
 const TEST_FOLDER_NAME: &str = "integration_test_config_api";
 
@@ -93,8 +93,8 @@ fn build_app(
         InitError = (),
     >,
 > {
-    scheduler::init();
-    scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex);
+    let resource_store = resource_store::initialize();
+    scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex, resource_store);
     App::new()
         .app_data(web::Data::new(kv_reader))
         .app_data(web::Data::new(resource_reader))

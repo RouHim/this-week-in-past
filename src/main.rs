@@ -59,11 +59,18 @@ async fn main() -> std::io::Result<()> {
     let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
 
     // Start scheduler to run at midnight
-    scheduler::init();
-    let scheduler_handle = scheduler::schedule_indexer(app_config.clone(), kv_writer_mutex.clone());
+    let scheduler_handle = scheduler::schedule_indexer(
+        app_config.clone(),
+        kv_writer_mutex.clone(),
+        resource_store.clone(),
+    );
 
     // Fetch resources for the first time
-    scheduler::fetch_resources(app_config.clone(), kv_writer_mutex.clone());
+    scheduler::fetch_resources(
+        app_config.clone(),
+        kv_writer_mutex.clone(),
+        resource_store.clone(),
+    );
 
     // Initialize geo location cache
     let geo_location_cache = kv_store::new();

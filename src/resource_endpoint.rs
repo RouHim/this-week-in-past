@@ -54,6 +54,7 @@ pub async fn get_resource_by_id_and_resolution(
     resources_id: web::Path<(String, u32, u32)>,
     kv_reader: web::Data<ReadHandle<String, String>>,
     app_config: web::Data<ResourceReader>,
+    resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
     let path_params = resources_id.into_inner();
     let resource_id = path_params.0.as_str();
@@ -61,11 +62,11 @@ pub async fn get_resource_by_id_and_resolution(
     let display_height = path_params.2;
 
     // check cache
-    let cached_data = cacache::read(
-        resource_processor::get_cache_dir(),
-        format!("{resource_id}_{display_width}_{display_height}"),
-    );
-    if let Ok(cached_data) = cached_data.await {
+    let cached_data = resource_store
+        .get_ref()
+        .get_image_cache_entry(format!("{resource_id}_{display_width}_{display_height}"));
+
+    if let Some(cached_data) = cached_data {
         return HttpResponse::Ok()
             .content_type("image/png")
             .body(cached_data);
@@ -95,13 +96,10 @@ pub async fn get_resource_by_id_and_resolution(
         });
 
     if let Some(resource_data) = resource_data {
-        cacache::write(
-            resource_processor::get_cache_dir(),
+        resource_store.get_ref().add_image_cache_entry(
             format!("{resource_id}_{display_width}_{display_height}"),
             &resource_data,
-        )
-        .await
-        .expect("writing to cache failed");
+        );
 
         HttpResponse::Ok()
             .content_type("image/png")
