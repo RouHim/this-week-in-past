@@ -1,13 +1,11 @@
 use std::env;
 
 use actix_web::web::Data;
-use evmap::ReadHandle;
 use rand::prelude::SliceRandom;
-use rand::Rng;
+
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::geo_location;
-use crate::kv_store::KvStore;
 use crate::resource_reader::RemoteResource;
 use crate::resource_store::ResourceStore;
 
@@ -15,21 +13,16 @@ use crate::resource_store::ResourceStore;
 /// The resources are shuffled, to the result is not deterministic
 /// Excluded are hidden resources
 pub fn get_this_week_in_past(
-    kv_reader: &ReadHandle<String, String>,
     resource_store: &ResourceStore,
 ) -> Vec<String> {
     // TODO: solve this with a select statement, when kv store is migrated to sqlite
     let hidden_resources = resource_store.get_all_hidden();
 
-    let mut resource_ids: Vec<String> = kv_reader
-        .read()
-        .unwrap()
-        .iter()
-        .map(|(_, v)| serde_json::from_str::<RemoteResource>(v.get_one().unwrap()).unwrap())
-        .collect::<Vec<RemoteResource>>()
+    let mut resource_ids: Vec<String> = resource_store.get_all_resource_values()
         .par_iter()
+        .map(|resource_json_string| serde_json::from_str::<RemoteResource>(resource_json_string.as_str()).unwrap_or_else(|_| panic!("Parsing of '{resource_json_string}' failed!")))
         .filter(|resource| resource.is_this_week())
-        .map(|resource| resource.clone().id)
+        .map(|resource| resource.id)
         .filter(|resource_id| !hidden_resources.contains(resource_id))
         .collect();
 
@@ -40,20 +33,9 @@ pub fn get_this_week_in_past(
     resource_ids
 }
 
-/// Returns all resources in the same order
-pub fn get_all(kv_reader: &ReadHandle<String, String>) -> Vec<String> {
-    kv_reader
-        .read()
-        .unwrap()
-        .iter()
-        .map(|(_, v)| serde_json::from_str::<RemoteResource>(v.get_one().unwrap()).unwrap())
-        .map(|resource| resource.id)
-        .collect()
-}
-
 /// Builds the display value for the specified resource
 /// The display value contains the date and location of a resource
-pub async fn build_display_value(resource: RemoteResource, geo_location_cache: &KvStore) -> String {
+pub async fn build_display_value(resource: RemoteResource, resource_store: &ResourceStore) -> String {
     let mut display_value: String = String::new();
 
     // Append taken date
@@ -70,7 +52,7 @@ pub async fn build_display_value(resource: RemoteResource, geo_location_cache: &
     };
 
     // Append city name
-    let city_name = get_city_name(resource, geo_location_cache).await;
+    let city_name = get_city_name(resource, resource_store).await;
     if let Some(city_name) = city_name {
         display_value.push_str(", ");
         display_value.push_str(city_name.as_str());
@@ -82,20 +64,20 @@ pub async fn build_display_value(resource: RemoteResource, geo_location_cache: &
 /// Returns the city name for the specified resource
 /// The city name is taken from the cache, if available
 /// If not, the city name is taken from the geo location service
-async fn get_city_name(resource: RemoteResource, geo_location_cache: &KvStore) -> Option<String> {
+async fn get_city_name(resource: RemoteResource, resource_store: &ResourceStore) -> Option<String> {
     let resource_location = resource.location?;
     let resource_location_string = resource_location.to_string();
 
     // Check if cache contains resource location
-    if geo_location_cache.contains_key(resource_location_string.as_str()) {
-        geo_location_cache.get(resource_location_string.as_str())
+    if resource_store.location_exists(resource_location_string.as_str()) {
+        resource_store.get_location(resource_location_string.as_str())
     } else {
         // Get city name
         let city_name = geo_location::resolve_city_name(resource_location).await;
 
         if let Some(city_name) = &city_name {
             // Write to cache
-            geo_location_cache.insert(resource_location_string, city_name.clone());
+            resource_store.add_location(resource_location_string, city_name.clone());
         }
 
         city_name
@@ -105,20 +87,18 @@ async fn get_city_name(resource: RemoteResource, geo_location_cache: &KvStore) -
 /// Selects a random, not hidden, resource
 /// The id of the resource is returned
 pub fn random_entry(
-    kv_reader: &ReadHandle<String, String>,
     resource_store: Data<ResourceStore>,
 ) -> Option<String> {
-    let entry_count = kv_reader.read().unwrap().len();
-    if entry_count == 0 {
-        return None;
-    }
+    // TODO: improve this by joining hidden table with resources table
+
+    resource_store.get_random_resource()?;
+
+    let mut resource_id = resource_store.get_random_resource().unwrap();
 
     let mut tries = 0;
-    let mut resource_id = get_random_resource(kv_reader, entry_count);
-
     // Try at most 100 times to get a new random image, otherwise show nothing
     while tries < 100 && resource_store.is_hidden(resource_id.as_str()) {
-        resource_id = get_random_resource(kv_reader, entry_count);
+        resource_id = resource_store.get_random_resource().unwrap();
         tries += 1;
         println!("{tries}");
     }
@@ -128,16 +108,4 @@ pub fn random_entry(
     } else {
         Some(resource_id)
     }
-}
-
-/// Reads a random resource from data store
-fn get_random_resource(kv_reader: &ReadHandle<String, String>, entry_count: usize) -> String {
-    let random_index = rand::thread_rng().gen_range(0..entry_count);
-    kv_reader
-        .read()
-        .unwrap()
-        .iter()
-        .nth(random_index)
-        .map(|(key, _)| key.clone())
-        .unwrap()
 }

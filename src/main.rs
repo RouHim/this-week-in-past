@@ -3,14 +3,13 @@ extern crate core;
 use actix_files::Files;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use std::env;
-use std::sync::{Arc, Mutex};
+
 
 mod config_endpoint;
 mod exif_reader;
 mod filesystem_client;
 mod geo_location;
 mod image_processor;
-mod kv_store;
 mod resource_endpoint;
 mod resource_processor;
 mod resource_reader;
@@ -50,30 +49,14 @@ async fn main() -> std::io::Result<()> {
             .as_str(),
     );
 
-    // Initialize database
+    // Initialize databases
     let resource_store = resource_store::initialize();
 
-    // Initialize in memory kv_store reader and writer
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    // Build arc mutex of kv_store writer, we need this exact instance (cause, we have multiple writer)
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-
     // Start scheduler to run at midnight
-    let scheduler_handle = scheduler::schedule_indexer(
-        app_config.clone(),
-        kv_writer_mutex.clone(),
-        resource_store.clone(),
-    );
+    let scheduler_handle = scheduler::schedule_indexer(app_config.clone(), resource_store.clone());
 
     // Fetch resources for the first time
-    scheduler::fetch_resources(
-        app_config.clone(),
-        kv_writer_mutex.clone(),
-        resource_store.clone(),
-    );
-
-    // Initialize geo location cache
-    let geo_location_cache = kv_store::new();
+    scheduler::fetch_resources(app_config.clone(), resource_store.clone());
 
     // Run the actual web server and hold the main thread here
     println!("Launching webserver 🚀");
@@ -81,9 +64,6 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(resource_store.clone()))
             .app_data(web::Data::new(app_config.clone()))
-            .app_data(web::Data::new(kv_reader.clone()))
-            .app_data(web::Data::new(kv_writer_mutex.clone()))
-            .app_data(web::Data::new(geo_location_cache.clone()))
             .wrap(middleware::Logger::default()) // enable logger
             .service(
                 web::scope("/api/resources")

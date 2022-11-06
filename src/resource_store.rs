@@ -1,5 +1,7 @@
-use std::path::PathBuf;
 use std::{env, fs};
+
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -55,21 +57,21 @@ impl ResourceStore {
         count == 1
     }
 
-    /// Adds a image cache entry
-    pub fn add_image_cache_entry(&self, id: String, data: &Vec<u8>) {
+    /// Adds a image cache entry, if an entry already exists it gets updated
+    pub fn add_data_cache_entry(&self, id: String, data: &Vec<u8>) {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
-            .prepare("INSERT OR IGNORE INTO image_cache(id, data) VALUES(?, ?)")
+            .prepare("INSERT OR REPLACE INTO data_cache(id, data) VALUES(?, ?)")
             .unwrap();
         stmt.execute((&id, data))
             .unwrap_or_else(|_| panic!("Insertion of {id} failed"));
     }
 
     /// Get a image cache entry
-    pub fn get_image_cache_entry(&self, id: String) -> Option<Vec<u8>> {
+    pub fn get_data_cache_entry(&self, id: String) -> Option<Vec<u8>> {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
-            .prepare("SELECT data FROM image_cache WHERE id = ?")
+            .prepare("SELECT data FROM data_cache WHERE id = ?")
             .unwrap();
         let mut rows = stmt.query([id]).unwrap();
 
@@ -85,11 +87,137 @@ impl ResourceStore {
     }
 
     /// Clears the complete image cache
-    pub fn clear_image_cache(&self) {
+    pub fn clear_data_cache(&self) {
         let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection.prepare("DELETE FROM image_cache").unwrap();
+        let mut stmt = connection.prepare("DELETE FROM data_cache").unwrap();
         stmt.execute(())
-            .unwrap_or_else(|_| panic!("Deletion of table 'image_cache' failed"));
+            .unwrap_or_else(|_| panic!("Deletion of table 'data_cache' failed"));
+    }
+
+    /// Returns an id list of all resources, including hidden resources
+    pub fn get_all_resource_ids(&self) -> Vec<String> {
+        let connection = self.in_memory_pool.get().unwrap();
+        let mut stmt = connection.prepare("SELECT id FROM resources").unwrap();
+        let mut rows = stmt.query([]).unwrap();
+        let mut ids: Vec<String> = Vec::new();
+        while let Some(row) = rows.next().unwrap() {
+            ids.push(row.get(0).unwrap());
+        }
+        ids
+    }
+
+    /// Returns an list of all resources json strings, including hidden resources
+    pub fn get_all_resource_values(&self) -> Vec<String> {
+        let connection = self.in_memory_pool.get().unwrap();
+        let mut stmt = connection.prepare("SELECT value FROM resources").unwrap();
+        let mut rows = stmt.query([]).unwrap();
+        let mut ids: Vec<String> = Vec::new();
+        while let Some(row) = rows.next().unwrap() {
+            ids.push(row.get(0).unwrap());
+        }
+        ids
+    }
+
+    /// Get a resource value by id entry
+    pub fn get_resource(&self, id: &str) -> Option<String> {
+        let connection = self.in_memory_pool.get().unwrap();
+        let mut stmt = connection
+            .prepare("SELECT value FROM resources WHERE id = ?")
+            .unwrap();
+        let mut rows = stmt.query([id]).unwrap();
+
+        let first_entry = rows.next();
+
+        if let Ok(first_entry) = first_entry {
+            first_entry
+                .map(|entry| entry.get(0))
+                .and_then(|entry| entry.ok())
+        } else {
+            None
+        }
+    }
+
+    /// Get a resource value by id entry
+    pub fn get_random_resource(&self) -> Option<String> {
+        let connection = self.in_memory_pool.get().unwrap();
+        let mut stmt = connection
+            .prepare("SELECT id FROM resources ORDER BY RANDOM() LIMIT 1")
+            .unwrap();
+        let mut rows = stmt.query([]).unwrap();
+
+        let first_entry = rows.next();
+
+        if let Ok(first_entry) = first_entry {
+            first_entry
+                .map(|entry| entry.get(0))
+                .and_then(|entry| entry.ok())
+        } else {
+            None
+        }
+    }
+
+    /// Clears the complete resources cache
+    pub fn clear_resources(&self) {
+        let connection = self.in_memory_pool.get().unwrap();
+        let mut stmt = connection.prepare("DELETE FROM resources").unwrap();
+        stmt.execute(())
+            .unwrap_or_else(|_| panic!("Deletion of table 'resources' failed"));
+    }
+
+    /// Batch inserts resources
+    pub fn add_resources(&self, resources: HashMap<String, String>) {
+        let mut connection = self.in_memory_pool.get().unwrap();
+        let tx = connection.transaction().expect("Failed to create transaction");
+
+        resources.iter().for_each(|(id, value)| {
+            tx.execute("INSERT OR REPLACE INTO resources(id, value) VALUES(?, ?)",
+                       (id.as_str(), value.as_str()))
+                .unwrap_or_else(|_| panic!("Insertion of {id} failed"));
+        });
+
+        tx.commit().expect("Transaction commit failed");
+    }
+
+    /// Adds a geo location cache entry, if an entry already exists it gets updated
+    pub fn add_location(&self, id: String, value: String) {
+        let connection = self.persistent_file_store_pool.get().unwrap();
+        let mut stmt = connection
+            .prepare("INSERT OR REPLACE INTO geo_location_cache(id, value) VALUES(?, ?)")
+            .unwrap();
+        stmt.execute((&id, value))
+            .unwrap_or_else(|_| panic!("Insertion of {id} failed"));
+    }
+
+    /// Get a geo location entry by id entry
+    pub fn get_location(&self, id: &str) -> Option<String> {
+        let connection = self.persistent_file_store_pool.get().unwrap();
+        let mut stmt = connection
+            .prepare("SELECT value FROM geo_location_cache WHERE id = ?")
+            .unwrap();
+        let mut rows = stmt.query([id]).unwrap();
+
+        let first_entry = rows.next();
+
+        if let Ok(first_entry) = first_entry {
+            first_entry
+                .map(|entry| entry.get(0))
+                .and_then(|entry| entry.ok())
+        } else {
+            None
+        }
+    }
+
+    /// Checks if the specified geo location entry exists
+    pub fn location_exists(&self, id: &str) -> bool {
+        let connection = self.persistent_file_store_pool.get().unwrap();
+        let mut stmt = connection
+            .prepare("SELECT COUNT(id) FROM geo_location_cache WHERE id = ?")
+            .unwrap();
+        let mut rows = stmt.query([id]).unwrap();
+
+        let count: i32 = rows.next().unwrap().unwrap().get(0).unwrap();
+
+        count == 1
     }
 }
 
@@ -103,18 +231,20 @@ pub fn initialize() -> ResourceStore {
     let database_path = PathBuf::from(data_folder).join("resources.db");
 
     // Create persistent file store
-    let file_store_pool = Pool::new(SqliteConnectionManager::file(database_path))
+    let persistent_file_store_pool = Pool::new(SqliteConnectionManager::file(database_path))
         .expect("persistent storage pool creation failed");
 
     // Create in memory store
     let in_memory_pool =
         Pool::new(SqliteConnectionManager::memory()).expect("In memory pool creation failed");
 
-    create_table_hidden(&file_store_pool);
-    create_table_image_cache(&file_store_pool);
+    create_table_hidden(&persistent_file_store_pool);
+    create_table_data_cache(&persistent_file_store_pool);
+    create_table_geo_location_cache(&persistent_file_store_pool);
+    create_table_resources(&in_memory_pool);
 
     ResourceStore {
-        persistent_file_store_pool: file_store_pool,
+        persistent_file_store_pool,
         in_memory_pool,
     }
 }
@@ -130,13 +260,35 @@ fn create_table_hidden(pool: &Pool<SqliteConnectionManager>) {
         .expect("table creation of 'hidden' failed");
 }
 
-/// Creates the "image_cache" database table
-fn create_table_image_cache(pool: &Pool<SqliteConnectionManager>) {
+/// Creates the "data_cache" database table
+fn create_table_data_cache(pool: &Pool<SqliteConnectionManager>) {
     pool.get()
         .unwrap()
         .execute(
-            "CREATE TABLE IF NOT EXISTS image_cache (id TEXT PRIMARY KEY, data BLOB);",
+            "CREATE TABLE IF NOT EXISTS data_cache (id TEXT PRIMARY KEY, data BLOB);",
             (),
         )
-        .expect("table creation of 'image_cache' failed");
+        .expect("table creation of 'data_cache' failed");
+}
+
+/// Creates the "geo_location_cache" database table
+fn create_table_geo_location_cache(pool: &Pool<SqliteConnectionManager>) {
+    pool.get()
+        .unwrap()
+        .execute(
+            "CREATE TABLE IF NOT EXISTS geo_location_cache (id TEXT PRIMARY KEY, value TEXT);",
+            (),
+        )
+        .expect("table creation of 'geo_location_cache' failed");
+}
+
+/// Creates the "resources" database table
+fn create_table_resources(pool: &Pool<SqliteConnectionManager>) {
+    pool.get()
+        .unwrap()
+        .execute(
+            "CREATE TABLE IF NOT EXISTS resources (id TEXT PRIMARY KEY, value TEXT);",
+            (),
+        )
+        .expect("table creation of 'resources' failed");
 }

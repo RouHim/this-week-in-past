@@ -3,16 +3,14 @@ use actix_web::get;
 use actix_web::post;
 use actix_web::web;
 use actix_web::HttpResponse;
-use evmap::ReadHandle;
 
-use crate::kv_store::KvStore;
 use crate::resource_reader::RemoteResource;
 use crate::resource_store::ResourceStore;
 use crate::{image_processor, resource_processor, resource_reader, ResourceReader};
 
 #[get("")]
-pub async fn get_all_resources(kv_reader: web::Data<ReadHandle<String, String>>) -> HttpResponse {
-    let keys: Vec<String> = resource_processor::get_all(kv_reader.as_ref());
+pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
+    let keys: Vec<String> = resource_store.get_ref().get_all_resource_ids();
 
     HttpResponse::Ok()
         .content_type("application/json")
@@ -21,11 +19,10 @@ pub async fn get_all_resources(kv_reader: web::Data<ReadHandle<String, String>>)
 
 #[get("week")]
 pub async fn get_this_week_resources(
-    kv_reader: web::Data<ReadHandle<String, String>>,
     resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
     let keys: Vec<String> =
-        resource_processor::get_this_week_in_past(kv_reader.as_ref(), resource_store.as_ref());
+        resource_processor::get_this_week_in_past(resource_store.as_ref());
 
     HttpResponse::Ok()
         .content_type("application/json")
@@ -34,11 +31,10 @@ pub async fn get_this_week_resources(
 
 #[get("random")]
 pub async fn random_resource(
-    kv_reader: web::Data<ReadHandle<String, String>>,
     resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
     let resource_id: Option<String> =
-        resource_processor::random_entry(kv_reader.as_ref(), resource_store);
+        resource_processor::random_entry(resource_store);
 
     if let Some(resource_id) = resource_id {
         HttpResponse::Ok()
@@ -52,7 +48,6 @@ pub async fn random_resource(
 #[get("{resource_id}/{display_width}/{display_height}")]
 pub async fn get_resource_by_id_and_resolution(
     resources_id: web::Path<(String, u32, u32)>,
-    kv_reader: web::Data<ReadHandle<String, String>>,
     app_config: web::Data<ResourceReader>,
     resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
@@ -64,7 +59,7 @@ pub async fn get_resource_by_id_and_resolution(
     // check cache
     let cached_data = resource_store
         .get_ref()
-        .get_image_cache_entry(format!("{resource_id}_{display_width}_{display_height}"));
+        .get_data_cache_entry(format!("{resource_id}_{display_width}_{display_height}"));
 
     if let Some(cached_data) = cached_data {
         return HttpResponse::Ok()
@@ -73,9 +68,8 @@ pub async fn get_resource_by_id_and_resolution(
     }
 
     // if no cache, fetch from remote
-    let remote_resource = kv_reader
-        .get_one(resource_id)
-        .map(|value| value.to_string())
+    let remote_resource = resource_store
+        .get_resource(resource_id)
         .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
 
     let orientation = remote_resource
@@ -96,7 +90,7 @@ pub async fn get_resource_by_id_and_resolution(
         });
 
     if let Some(resource_data) = resource_data {
-        resource_store.get_ref().add_image_cache_entry(
+        resource_store.get_ref().add_data_cache_entry(
             format!("{resource_id}_{display_width}_{display_height}"),
             &resource_data,
         );
@@ -111,12 +105,10 @@ pub async fn get_resource_by_id_and_resolution(
 
 #[get("{resource_id}/metadata")]
 pub async fn get_resource_metadata_by_id(
-    resources_id: web::Path<String>,
-    kv_reader: web::Data<ReadHandle<String, String>>,
+    resource_id: web::Path<String>,
+    resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
-    let metadata = kv_reader
-        .get_one(resources_id.as_str())
-        .map(|value| value.to_string());
+    let metadata = resource_store.get_resource(resource_id.as_ref());
 
     if let Some(metadata) = metadata {
         HttpResponse::Ok()
@@ -130,16 +122,13 @@ pub async fn get_resource_metadata_by_id(
 #[get("{resource_id}/description")]
 pub async fn get_resource_metadata_description_by_id(
     resources_id: web::Path<String>,
-    kv_reader: web::Data<ReadHandle<String, String>>,
-    geo_location_cache: web::Data<KvStore>,
+    resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
-    let resource = kv_reader
-        .get_one(resources_id.as_str())
-        .map(|value| value.to_string())
+    let resource = resource_store.get_resource(resources_id.as_str())
         .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
 
     let display_value = resource.map(|resource| {
-        resource_processor::build_display_value(resource, geo_location_cache.as_ref())
+        resource_processor::build_display_value(resource, resource_store.as_ref())
     });
 
     if let Some(display_value) = display_value {
