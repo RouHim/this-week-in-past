@@ -6,7 +6,7 @@ use actix_web::HttpResponse;
 
 use crate::resource_reader::RemoteResource;
 use crate::resource_store::ResourceStore;
-use crate::{image_processor, resource_processor, resource_reader, ResourceReader};
+use crate::{image_processor, resource_processor, resource_reader, resource_store, ResourceReader};
 
 #[get("")]
 pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
@@ -18,11 +18,8 @@ pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> Http
 }
 
 #[get("week")]
-pub async fn get_this_week_resources(
-    resource_store: web::Data<ResourceStore>,
-) -> HttpResponse {
-    let keys: Vec<String> =
-        resource_processor::get_this_week_in_past(resource_store.as_ref());
+pub async fn get_this_week_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
+    let keys: Vec<String> = resource_processor::get_this_week_in_past(resource_store.as_ref());
 
     HttpResponse::Ok()
         .content_type("application/json")
@@ -30,11 +27,8 @@ pub async fn get_this_week_resources(
 }
 
 #[get("random")]
-pub async fn random_resource(
-    resource_store: web::Data<ResourceStore>,
-) -> HttpResponse {
-    let resource_id: Option<String> =
-        resource_processor::random_entry(resource_store);
+pub async fn random_resource(resource_store: web::Data<ResourceStore>) -> HttpResponse {
+    let resource_id: Option<String> = resource_store.get_random_resource();
 
     if let Some(resource_id) = resource_id {
         HttpResponse::Ok()
@@ -48,7 +42,7 @@ pub async fn random_resource(
 #[get("{resource_id}/{display_width}/{display_height}")]
 pub async fn get_resource_by_id_and_resolution(
     resources_id: web::Path<(String, u32, u32)>,
-    app_config: web::Data<ResourceReader>,
+    resource_reader: web::Data<ResourceReader>,
     resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
     let path_params = resources_id.into_inner();
@@ -78,7 +72,7 @@ pub async fn get_resource_by_id_and_resolution(
 
     let resource_data = remote_resource
         .map(|remote_resource| {
-            resource_reader::read_resource_data(app_config.as_ref(), &remote_resource)
+            resource_reader::read_resource_data(resource_reader.as_ref(), &remote_resource)
         })
         .map(|resource_data| {
             image_processor::optimize_image(
@@ -124,12 +118,12 @@ pub async fn get_resource_metadata_description_by_id(
     resources_id: web::Path<String>,
     resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
-    let resource = resource_store.get_resource(resources_id.as_str())
+    let resource = resource_store
+        .get_resource(resources_id.as_str())
         .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
 
-    let display_value = resource.map(|resource| {
-        resource_processor::build_display_value(resource, resource_store.as_ref())
-    });
+    let display_value = resource
+        .map(|resource| resource_processor::build_display_value(resource, resource_store.as_ref()));
 
     if let Some(display_value) = display_value {
         HttpResponse::Ok()

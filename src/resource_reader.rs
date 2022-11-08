@@ -33,7 +33,7 @@ pub fn read_resource_data(resource_reader: &ResourceReader, resource: &RemoteRes
 
 /// Returns all available resources
 impl ResourceReader {
-    pub fn list_all_resources(&self) -> Vec<RemoteResource> {
+    pub fn read_all(&self) -> Vec<RemoteResource> {
         let local_resources: Vec<RemoteResource> = self
             .local_resource_paths
             .par_iter()

@@ -1,14 +1,13 @@
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+
 use std::{env, fs};
 
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::{test, web, App, Error};
 use assertor::{assert_that, EqualityAssertion};
-use evmap::{ReadHandle, WriteHandle};
 use rand::Rng;
 
-use crate::{config_endpoint, resource_reader, resource_store, scheduler, ResourceReader};
+use crate::{config_endpoint, resource_reader, resource_store, scheduler};
 
 const TEST_FOLDER_NAME: &str = "integration_test_config_api";
 
@@ -16,14 +15,7 @@ const TEST_FOLDER_NAME: &str = "integration_test_config_api";
 async fn test_get_slideshow_interval() {
     // GIVEN is a running this-week-in-past instance
     let base_test_dir = create_temp_folder().await;
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-    let app_server = test::init_service(build_app(
-        kv_reader,
-        resource_reader::new(base_test_dir.to_str().unwrap()),
-        kv_writer_mutex.clone(),
-    ))
-    .await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // AND slideshow interval is set
     let slideshow_interval: String = rand::thread_rng().gen::<u16>().to_string();
@@ -44,20 +36,16 @@ async fn test_get_slideshow_interval() {
 
     // THEN the response should contain the correct interval
     assert_that!(response).is_equal_to(&slideshow_interval);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
 }
 
 #[actix_web::test]
 async fn test_get_refresh_interval() {
     // GIVEN is a running this-week-in-past instance
     let base_test_dir = create_temp_folder().await;
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-    let app_server = test::init_service(build_app(
-        kv_reader,
-        resource_reader::new(base_test_dir.to_str().unwrap()),
-        kv_writer_mutex.clone(),
-    ))
-    .await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // AND refresh interval is set
     let refresh_interval: String = rand::thread_rng().gen::<u16>().to_string();
@@ -78,12 +66,13 @@ async fn test_get_refresh_interval() {
 
     // THEN the response should contain the correct interval
     assert_that!(response).is_equal_to(&refresh_interval);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
 }
 
 fn build_app(
-    kv_reader: ReadHandle<String, String>,
-    resource_reader: ResourceReader,
-    kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
+    base_test_dir: &str,
 ) -> App<
     impl ServiceFactory<
         ServiceRequest,
@@ -93,16 +82,14 @@ fn build_app(
         InitError = (),
     >,
 > {
-    let resource_store = resource_store::initialize();
-    scheduler::fetch_resources(resource_reader.clone(), kv_writer_mutex, resource_store);
-    App::new()
-        .app_data(web::Data::new(kv_reader))
-        .app_data(web::Data::new(resource_reader))
-        .service(
-            web::scope("/api/config")
-                .service(config_endpoint::get_slideshow_interval)
-                .service(config_endpoint::get_refresh_interval),
-        )
+    let resource_reader = resource_reader::new(base_test_dir);
+    let resource_store = resource_store::initialize(base_test_dir.to_string());
+    scheduler::index_resources(resource_reader, resource_store.clone());
+    App::new().app_data(web::Data::new(resource_store)).service(
+        web::scope("/api/config")
+            .service(config_endpoint::get_slideshow_interval)
+            .service(config_endpoint::get_refresh_interval),
+    )
 }
 
 /// Creates a temp folder with the given name and returns its full path
@@ -121,4 +108,9 @@ async fn create_temp_folder() -> PathBuf {
     fs::create_dir_all(&cache_dir).unwrap();
 
     test_dir
+}
+
+/// Removes the test folder after test run
+async fn cleanup(test_dir: &PathBuf) {
+    let _ = fs::remove_dir_all(test_dir);
 }

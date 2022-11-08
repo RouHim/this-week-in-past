@@ -1,22 +1,19 @@
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+
 use std::{env, fs};
 
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::{test, web, App, Error};
 use assertor::{assert_that, EqualityAssertion, VecAssertion};
 use chrono::{Local, NaiveDateTime};
-use evmap::{ReadHandle, WriteHandle};
 use rand::Rng;
 use test::TestRequest;
 
 use crate::geo_location::GeoLocation;
 use crate::resource_reader::RemoteResource;
-use crate::{
-    kv_store, resource_endpoint, resource_reader, resource_store, scheduler, utils, ResourceReader,
-};
+use crate::{resource_endpoint, resource_reader, resource_store, scheduler, utils};
 
 const TEST_JPEG_EXIF_URL: &str =
     "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
@@ -43,14 +40,7 @@ async fn test_get_all_resources() {
     .await;
 
     // AND a running this-week-in-past instance
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-    let app_server = test::init_service(build_app(
-        kv_reader,
-        resource_reader::new(base_test_dir.to_str().unwrap()),
-        kv_writer_mutex.clone(),
-    ))
-    .await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // WHEN requesting all resources
     let response: Vec<String> = test::call_and_read_body_json(
@@ -83,14 +73,7 @@ async fn test_this_week_in_past_resources() {
     .await;
 
     // AND a running this-week-in-past instance
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-    let app_server = test::init_service(build_app(
-        kv_reader,
-        resource_reader::new(base_test_dir.to_str().unwrap()),
-        kv_writer_mutex.clone(),
-    ))
-    .await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // WHEN requesting of this week in past resources
     let response: Vec<String> = test::call_and_read_body_json(
@@ -114,14 +97,7 @@ async fn test_get_random_resources() {
         create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
 
     // AND a running this-week-in-past instance
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-    let app_server = test::init_service(build_app(
-        kv_reader,
-        resource_reader::new(base_test_dir.to_str().unwrap()),
-        kv_writer_mutex.clone(),
-    ))
-    .await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // WHEN requesting a random resource
     let response: String = test::call_and_read_body_json(
@@ -146,14 +122,7 @@ async fn test_get_resource_by_id_and_resolution() {
     let test_image_1_id = utils::md5(test_image_1.as_str());
 
     // AND a running this-week-in-past instance
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-    let app_server = test::init_service(build_app(
-        kv_reader,
-        resource_reader::new(base_test_dir.to_str().unwrap()),
-        kv_writer_mutex.clone(),
-    ))
-    .await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // WHEN requesting a random resource
     let response = test::call_and_read_body(
@@ -181,14 +150,7 @@ async fn test_get_resource_metadata_by_id() {
     let test_image_1_path = format!("{}/{}", base_test_dir.to_str().unwrap(), test_image_1);
 
     // AND a running this-week-in-past instance
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-    let app_server = test::init_service(build_app(
-        kv_reader,
-        resource_reader::new(base_test_dir.to_str().unwrap()),
-        kv_writer_mutex.clone(),
-    ))
-    .await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // WHEN requesting a random resource
     let response: RemoteResource = test::call_and_read_body_json(
@@ -232,14 +194,7 @@ async fn test_get_resource_description_by_id() {
     let test_image_1_id = utils::md5(test_image_1.as_str());
 
     // AND a running this-week-in-past instance
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-    let app_server = test::init_service(build_app(
-        kv_reader,
-        resource_reader::new(base_test_dir.to_str().unwrap()),
-        kv_writer_mutex.clone(),
-    ))
-    .await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // WHEN requesting a description resource
     let response = String::from_utf8(
@@ -277,14 +232,7 @@ async fn get_hidden_resources() {
     );
 
     // AND a running this-week-in-past instance
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-    let app_server = test::init_service(build_app(
-        kv_reader,
-        resource_reader::new(base_test_dir.to_str().unwrap()),
-        kv_writer_mutex.clone(),
-    ))
-    .await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // AND this image is hidden
     let _ = test::call_and_read_body(
@@ -325,14 +273,7 @@ async fn get_hidden_resources_when_set_visible_again() {
     );
 
     // AND a running this-week-in-past instance
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
-    let app_server = test::init_service(build_app(
-        kv_reader,
-        resource_reader::new(base_test_dir.to_str().unwrap()),
-        kv_writer_mutex.clone(),
-    ))
-    .await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // AND this image is hidden
     let _ = test::call_and_read_body(
@@ -367,9 +308,7 @@ async fn get_hidden_resources_when_set_visible_again() {
 }
 
 fn build_app(
-    kv_reader: ReadHandle<String, String>,
-    resource_reader: ResourceReader,
-    kv_writer_mutex: Arc<Mutex<WriteHandle<String, String>>>,
+    base_test_dir: &str,
 ) -> App<
     impl ServiceFactory<
         ServiceRequest,
@@ -379,19 +318,12 @@ fn build_app(
         InitError = (),
     >,
 > {
-    let resource_store = resource_store::initialize();
-    scheduler::fetch_resources(
-        resource_reader.clone(),
-        kv_writer_mutex.clone(),
-        resource_store.clone(),
-    );
-    let geo_location_cache = kv_store::new();
+    let resource_reader = resource_reader::new(base_test_dir);
+    let resource_store = resource_store::initialize(base_test_dir.to_string());
+    scheduler::index_resources(resource_reader.clone(), resource_store.clone());
     App::new()
         .app_data(web::Data::new(resource_store))
-        .app_data(web::Data::new(kv_reader))
         .app_data(web::Data::new(resource_reader))
-        .app_data(web::Data::new(kv_writer_mutex))
-        .app_data(web::Data::new(geo_location_cache))
         .service(
             web::scope("/api/resources")
                 .service(resource_endpoint::get_all_resources)

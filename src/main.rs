@@ -2,8 +2,7 @@ extern crate core;
 
 use actix_files::Files;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
-use std::env;
-
+use std::{env, thread};
 
 mod config_endpoint;
 mod exif_reader;
@@ -42,28 +41,28 @@ pub struct ResourceReader {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Build application state based on the provided parameter
-    let app_config = resource_reader::new(
+    // Create a new resource reader based on the provided resources path
+    let resource_reader = resource_reader::new(
         env::var("RESOURCE_PATHS")
             .expect("RESOURCE_PATHS is missing")
             .as_str(),
     );
 
     // Initialize databases
-    let resource_store = resource_store::initialize();
+    let data_folder = env::var("DATA_FOLDER")
+        .or_else(|_| env::var("CACHE_DIR"))
+        .unwrap_or_else(|_| "./data".to_string());
+    let resource_store = resource_store::initialize(data_folder);
 
     // Start scheduler to run at midnight
-    let scheduler_handle = scheduler::schedule_indexer(app_config.clone(), resource_store.clone());
-
-    // Fetch resources for the first time
-    scheduler::fetch_resources(app_config.clone(), resource_store.clone());
+    let scheduler_handle = scheduler::schedule_indexer(resource_reader.clone(), resource_store.clone());
 
     // Run the actual web server and hold the main thread here
     println!("Launching webserver 🚀");
     let http_server_result = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(resource_store.clone()))
-            .app_data(web::Data::new(app_config.clone()))
+            .app_data(web::Data::new(resource_reader.clone()))
             .wrap(middleware::Logger::default()) // enable logger
             .service(
                 web::scope("/api/resources")
@@ -93,9 +92,9 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./web-app/").index_file("index.html"))
     })
-    .bind("0.0.0.0:8080")?
-    .run()
-    .await;
+        .bind("0.0.0.0:8080")?
+        .run()
+        .await;
 
     // If the http server is terminated
 

@@ -151,3 +151,4 @@ fn parse_from_str(shard: &str) -> Option<NaiveDate> {
         Some(*parse_results.first().unwrap())
     }
 }
+

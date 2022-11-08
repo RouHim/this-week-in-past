@@ -1,4 +1,4 @@
-use std::{env, fs};
+use std::fs;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -9,7 +9,6 @@ use r2d2_sqlite::SqliteConnectionManager;
 #[derive(Clone)]
 pub struct ResourceStore {
     persistent_file_store_pool: Pool<SqliteConnectionManager>,
-    in_memory_pool: Pool<SqliteConnectionManager>,
 }
 
 /// Implements all functions acting on the data store instance
@@ -18,6 +17,19 @@ impl ResourceStore {
     pub fn get_all_hidden(&self) -> Vec<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection.prepare("SELECT id FROM hidden").unwrap();
+        let mut rows = stmt.query([]).unwrap();
+        let mut ids: Vec<String> = Vec::new();
+        while let Some(row) = rows.next().unwrap() {
+            ids.push(row.get(0).unwrap());
+        }
+        ids
+    }
+
+    /// Gets a list of all visible resources in a random order
+    /// Returns a list of resource data
+    pub fn get_all_visible_resource_random(&self) -> Vec<String> {
+        let connection = self.persistent_file_store_pool.get().unwrap();
+        let mut stmt = connection.prepare("SELECT value FROM resources WHERE id NOT IN (SELECT id FROM hidden) ORDER BY RANDOM();").unwrap();
         let mut rows = stmt.query([]).unwrap();
         let mut ids: Vec<String> = Vec::new();
         while let Some(row) = rows.next().unwrap() {
@@ -42,19 +54,6 @@ impl ResourceStore {
             .prepare("DELETE FROM hidden WHERE ID = ?")
             .unwrap();
         stmt.execute([resource_id]).unwrap();
-    }
-
-    /// Checks if the specified resource id is hidden
-    pub fn is_hidden(&self, resource_id: &str) -> bool {
-        let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection
-            .prepare("SELECT COUNT(id) FROM hidden WHERE id = ?")
-            .unwrap();
-        let mut rows = stmt.query([resource_id]).unwrap();
-
-        let count: i32 = rows.next().unwrap().unwrap().get(0).unwrap();
-
-        count == 1
     }
 
     /// Adds a image cache entry, if an entry already exists it gets updated
@@ -96,20 +95,8 @@ impl ResourceStore {
 
     /// Returns an id list of all resources, including hidden resources
     pub fn get_all_resource_ids(&self) -> Vec<String> {
-        let connection = self.in_memory_pool.get().unwrap();
+        let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection.prepare("SELECT id FROM resources").unwrap();
-        let mut rows = stmt.query([]).unwrap();
-        let mut ids: Vec<String> = Vec::new();
-        while let Some(row) = rows.next().unwrap() {
-            ids.push(row.get(0).unwrap());
-        }
-        ids
-    }
-
-    /// Returns an list of all resources json strings, including hidden resources
-    pub fn get_all_resource_values(&self) -> Vec<String> {
-        let connection = self.in_memory_pool.get().unwrap();
-        let mut stmt = connection.prepare("SELECT value FROM resources").unwrap();
         let mut rows = stmt.query([]).unwrap();
         let mut ids: Vec<String> = Vec::new();
         while let Some(row) = rows.next().unwrap() {
@@ -120,7 +107,7 @@ impl ResourceStore {
 
     /// Get a resource value by id entry
     pub fn get_resource(&self, id: &str) -> Option<String> {
-        let connection = self.in_memory_pool.get().unwrap();
+        let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
             .prepare("SELECT value FROM resources WHERE id = ?")
             .unwrap();
@@ -137,11 +124,11 @@ impl ResourceStore {
         }
     }
 
-    /// Get a resource value by id entry
+    /// Returns a single random, non-hidden, resource id
     pub fn get_random_resource(&self) -> Option<String> {
-        let connection = self.in_memory_pool.get().unwrap();
+        let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
-            .prepare("SELECT id FROM resources ORDER BY RANDOM() LIMIT 1")
+            .prepare("SELECT id FROM resources WHERE id NOT IN (SELECT id FROM hidden) ORDER BY RANDOM() LIMIT 1;")
             .unwrap();
         let mut rows = stmt.query([]).unwrap();
 
@@ -158,20 +145,24 @@ impl ResourceStore {
 
     /// Clears the complete resources cache
     pub fn clear_resources(&self) {
-        let connection = self.in_memory_pool.get().unwrap();
+        let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection.prepare("DELETE FROM resources").unwrap();
         stmt.execute(())
             .unwrap_or_else(|_| panic!("Deletion of table 'resources' failed"));
     }
 
-    /// Batch inserts resources
+    /// Batch inserts or updates resources
     pub fn add_resources(&self, resources: HashMap<String, String>) {
-        let mut connection = self.in_memory_pool.get().unwrap();
-        let tx = connection.transaction().expect("Failed to create transaction");
+        let mut connection = self.persistent_file_store_pool.get().unwrap();
+        let tx = connection
+            .transaction()
+            .expect("Failed to create transaction");
 
         resources.iter().for_each(|(id, value)| {
-            tx.execute("INSERT OR REPLACE INTO resources(id, value) VALUES(?, ?)",
-                       (id.as_str(), value.as_str()))
+            tx.execute(
+                "INSERT OR REPLACE INTO resources(id, value) VALUES(?, ?)",
+                (id.as_str(), value.as_str()),
+            )
                 .unwrap_or_else(|_| panic!("Insertion of {id} failed"));
         });
 
@@ -225,8 +216,7 @@ impl ResourceStore {
 /// If no $DATA_FOLDER env var is configured, ./data/ is used
 /// Creates data folder if it does not exists
 /// Also creates all tables if needed
-pub fn initialize() -> ResourceStore {
-    let data_folder = env::var("DATA_FOLDER").unwrap_or_else(|_| "./data".to_string());
+pub fn initialize(data_folder: String) -> ResourceStore {
     fs::create_dir_all(&data_folder).unwrap_or_else(|_| panic!("Could not create {}", data_folder));
     let database_path = PathBuf::from(data_folder).join("resources.db");
 
@@ -234,18 +224,13 @@ pub fn initialize() -> ResourceStore {
     let persistent_file_store_pool = Pool::new(SqliteConnectionManager::file(database_path))
         .expect("persistent storage pool creation failed");
 
-    // Create in memory store
-    let in_memory_pool =
-        Pool::new(SqliteConnectionManager::memory()).expect("In memory pool creation failed");
-
     create_table_hidden(&persistent_file_store_pool);
     create_table_data_cache(&persistent_file_store_pool);
     create_table_geo_location_cache(&persistent_file_store_pool);
-    create_table_resources(&in_memory_pool);
+    create_table_resources(&persistent_file_store_pool);
 
     ResourceStore {
         persistent_file_store_pool,
-        in_memory_pool,
     }
 }
 
