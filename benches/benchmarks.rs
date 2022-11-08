@@ -1,8 +1,8 @@
 use chrono::{NaiveDate, NaiveDateTime};
+use regex::{Captures, Regex};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
-use regex::{Captures, Regex};
 use std::{env, fs};
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
@@ -34,20 +34,24 @@ fn criterion_benchmark(crit: &mut Criterion) {
 
     let resource = read_resource(&imag_file_path);
 
-    // crit.bench_function("write to memory", |bencher| {
-    //     bencher.iter(|| write_to_memory(black_box(in_memory_pool.clone()), black_box(&resource)))
-    // });
-    // crit.bench_function("write to fs", |bencher| {
-    //     bencher.iter(|| {
-    //         write_to_fs(
-    //             black_box(persistent_file_store_pool.clone()),
-    //             black_box(&resource),
-    //         )
-    //     })
-    // });
+    crit.bench_function("write to memory", |bencher| {
+        bencher.iter(|| write_to_memory(black_box(in_memory_pool.clone()), black_box(&resource)))
+    });
+    crit.bench_function("write to fs", |bencher| {
+        bencher.iter(|| {
+            write_to_fs(
+                black_box(persistent_file_store_pool.clone()),
+                black_box(&resource),
+            )
+        })
+    });
 
-    crit.bench_function("hash file on fs", |bencher| bencher.iter(|| hash_file_on_fs(black_box(resource.clone()), black_box(&image_file))));
-    crit.bench_function("read resource on fs", |bencher| bencher.iter(|| read_resource(black_box(&imag_file_path))));
+    crit.bench_function("hash file on fs", |bencher| {
+        bencher.iter(|| hash_file_on_fs(black_box(resource.clone()), black_box(&image_file)))
+    });
+    crit.bench_function("read resource on fs", |bencher| {
+        bencher.iter(|| read_resource(black_box(&imag_file_path)))
+    });
 
     fs::remove_dir_all(base_dir).expect("Cleanup failed");
 }
@@ -226,12 +230,14 @@ pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
     fill_exif_data_fs(resource, maybe_exif_data)
 }
 
-
 /// Augments the provided resource with meta information
 /// The meta information is extracted from the exif data
 /// If the exif data is not available, the meta information is extracted from the gps data
 /// If the gps data is not available, the meta information is extracted from the file name
-pub fn fill_exif_data_fs(resource: &RemoteResource, maybe_exif_data: Option<Exif>) -> RemoteResource {
+pub fn fill_exif_data_fs(
+    resource: &RemoteResource,
+    maybe_exif_data: Option<Exif>,
+) -> RemoteResource {
     let mut taken_date = None;
     let mut location = None;
     let mut orientation = None;
@@ -253,7 +259,6 @@ pub fn fill_exif_data_fs(resource: &RemoteResource, maybe_exif_data: Option<Exif
 
     augmented_resource
 }
-
 
 /// Reads the exif date from a given exif data entry
 /// Primarily the exif date is used to determine the date the image was taken
@@ -336,7 +341,6 @@ pub fn from_degrees_minutes_seconds(latitude: String, longitude: String) -> Opti
     }
 }
 
-
 /// Converts Degrees Minutes Seconds To Decimal Degrees
 /// See https://stackoverflow.com/questions/14906764/converting-gps-coordinates-to-decimal-degrees
 fn dms_to_dd(dms_string: &str) -> Option<f32> {
@@ -417,7 +421,6 @@ fn parse_pattern_2(caps: Captures) -> Option<f32> {
     }
 }
 
-
 /// Detects the orientation from the exif data
 /// If the orientation is not found, the orientation is set to None
 /// Possible rotations are: 0, 90, 180, 270
@@ -463,7 +466,6 @@ pub fn detect_orientation(exif_data: &Exif) -> Option<ImageOrientation> {
     }
 }
 
-
 /// Detects the date from the file name
 /// If the date is not found, the date is set to None
 /// The chars '/', ' ', '.', '_' are replaced with '_'
@@ -482,7 +484,6 @@ pub fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {
     }
 }
 
-
 /// Parses a string into a date
 /// Returns None if the string could not be parsed
 fn parse_from_str(shard: &str) -> Option<NaiveDate> {
@@ -492,9 +493,9 @@ fn parse_from_str(shard: &str) -> Option<NaiveDate> {
         "%Y%m%d", // 20010708
         "signal-%Y-%m-%d-%Z",
     ]
-        .iter()
-        .filter_map(|format| NaiveDate::parse_from_str(shard, format).ok())
-        .collect();
+    .iter()
+    .filter_map(|format| NaiveDate::parse_from_str(shard, format).ok())
+    .collect();
 
     if parse_results.is_empty() {
         None
@@ -502,4 +503,3 @@ fn parse_from_str(shard: &str) -> Option<NaiveDate> {
         Some(*parse_results.first().unwrap())
     }
 }
-

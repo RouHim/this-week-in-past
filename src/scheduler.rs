@@ -4,8 +4,6 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use clokwerk::{ScheduleHandle, Scheduler, TimeUnits};
-use log::{info, warn};
-use crate::resource_reader::RemoteResource;
 
 use crate::resource_store::ResourceStore;
 use crate::ResourceReader;
@@ -46,7 +44,12 @@ pub fn index_resources(resource_reader: ResourceReader, resource_store: Resource
     println!("Found {} resources", resources.len());
     let map: HashMap<String, String> = resources
         .iter()
-        .map(|resource| (resource.id.clone(), serde_json::to_string(resource).unwrap()))
+        .map(|resource| {
+            (
+                resource.id.clone(),
+                serde_json::to_string(resource).unwrap(),
+            )
+        })
         .collect();
 
     println!("Purging resources store");

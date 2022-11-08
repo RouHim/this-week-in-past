@@ -2,7 +2,7 @@ extern crate core;
 
 use actix_files::Files;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
-use std::{env, thread};
+use std::env;
 
 mod config_endpoint;
 mod exif_reader;
@@ -55,7 +55,8 @@ async fn main() -> std::io::Result<()> {
     let resource_store = resource_store::initialize(data_folder);
 
     // Start scheduler to run at midnight
-    let scheduler_handle = scheduler::schedule_indexer(resource_reader.clone(), resource_store.clone());
+    let scheduler_handle =
+        scheduler::schedule_indexer(resource_reader.clone(), resource_store.clone());
 
     // Run the actual web server and hold the main thread here
     println!("Launching webserver 🚀");
@@ -92,9 +93,9 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./web-app/").index_file("index.html"))
     })
-        .bind("0.0.0.0:8080")?
-        .run()
-        .await;
+    .bind("0.0.0.0:8080")?
+    .run()
+    .await;
 
     // If the http server is terminated
 

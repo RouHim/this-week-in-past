@@ -6,7 +6,7 @@ use actix_web::HttpResponse;
 
 use crate::resource_reader::RemoteResource;
 use crate::resource_store::ResourceStore;
-use crate::{image_processor, resource_processor, resource_reader, resource_store, ResourceReader};
+use crate::{image_processor, resource_processor, resource_reader, ResourceReader};
 
 #[get("")]
 pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {

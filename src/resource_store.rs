@@ -163,7 +163,7 @@ impl ResourceStore {
                 "INSERT OR REPLACE INTO resources(id, value) VALUES(?, ?)",
                 (id.as_str(), value.as_str()),
             )
-                .unwrap_or_else(|_| panic!("Insertion of {id} failed"));
+            .unwrap_or_else(|_| panic!("Insertion of {id} failed"));
         });
 
         tx.commit().expect("Transaction commit failed");

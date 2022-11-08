@@ -1,7 +1,5 @@
 use std::env;
 
-use actix_web::web::Data;
-
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::geo_location;
