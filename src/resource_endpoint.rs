@@ -39,6 +39,7 @@ pub async fn random_resource(resource_store: web::Data<ResourceStore>) -> HttpRe
     }
 }
 
+// TODO: Refactor me
 #[get("{resource_id}/{display_width}/{display_height}")]
 pub async fn get_resource_by_id_and_resolution(
     resources_id: web::Path<(String, u32, u32)>,
@@ -60,16 +61,20 @@ pub async fn get_resource_by_id_and_resolution(
             .body(cached_data);
     }
 
-    // if no cache, load it
-    let remote_resource: RemoteResource = resource_store
+    // if not in cache, load resource metadata from database
+    let remote_resource: Option<RemoteResource> = resource_store
         .get_resource(resource_id)
-        .map(|resource_json_string| {
+        .and_then(|resource_json_string| {
             serde_json::from_str(resource_json_string.as_str())
                 .ok()
-                .unwrap()
-        })
-        .unwrap();
+        });
+    // If we can't find the requested resource by id, get out here
+    if remote_resource.is_none() {
+        return HttpResponse::InternalServerError().finish();
+    }
 
+    // If we found the requested resource, read the image data and adjust the image to the display
+    let remote_resource = remote_resource.unwrap();
     let resource_data =
         resource_reader::read_resource_data(resource_reader.as_ref(), &remote_resource).and_then(
             |resource_data| {

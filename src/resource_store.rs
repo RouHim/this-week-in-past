@@ -32,7 +32,7 @@ impl ResourceStore {
         let mut stmt = connection.prepare("SELECT value FROM resources WHERE id NOT IN (SELECT id FROM hidden) ORDER BY RANDOM();").unwrap();
         let mut rows = stmt.query([]).unwrap();
         let mut ids: Vec<String> = Vec::new();
-        while let Some(row) = rows.next().unwrap() {
+        while let Ok(Some(row)) = rows.next() {
             ids.push(row.get(0).unwrap());
         }
         ids
