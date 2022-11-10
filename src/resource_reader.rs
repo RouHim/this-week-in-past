@@ -18,15 +18,18 @@ use crate::{exif_reader, filesystem_client, samba_client, ResourceReader};
 
 /// Reads the specified resource from the filesystem
 /// Returns the resource file data
-pub fn read_resource_data(resource_reader: &ResourceReader, resource: &RemoteResource) -> Vec<u8> {
+pub fn read_resource_data(
+    resource_reader: &ResourceReader,
+    resource: &RemoteResource,
+) -> Option<Vec<u8>> {
     match resource.resource_type {
-        RemoteResourceType::Local => fs::read(resource.path.clone()).unwrap(),
+        RemoteResourceType::Local => fs::read(resource.path.clone()).ok(),
         RemoteResourceType::Samba => {
             let smb_connection_path = resource_reader
                 .samba_resource_paths
                 .get(resource.samba_client_index)
                 .unwrap();
-            samba_client::read_file(smb_connection_path, resource)
+            Some(samba_client::read_file(smb_connection_path, resource))
         }
     }
 }

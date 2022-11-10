@@ -3,6 +3,7 @@ extern crate core;
 use actix_files::Files;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use std::env;
+use log::{info, warn};
 
 mod config_endpoint;
 mod exif_reader;
@@ -41,6 +42,8 @@ pub struct ResourceReader {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init();
+
     // Create a new resource reader based on the provided resources path
     let resource_reader = resource_reader::new(
         env::var("RESOURCE_PATHS")
@@ -49,6 +52,9 @@ async fn main() -> std::io::Result<()> {
     );
 
     // Initialize databases
+    if env::var("CACHE_DIR").is_ok() {
+        warn!("CACHE_DIR environment variable is deprecated, use DATA_FOLDER instead!")
+    }
     let data_folder = env::var("DATA_FOLDER")
         .or_else(|_| env::var("CACHE_DIR"))
         .unwrap_or_else(|_| "./data".to_string());
@@ -59,7 +65,7 @@ async fn main() -> std::io::Result<()> {
         scheduler::schedule_indexer(resource_reader.clone(), resource_store.clone());
 
     // Run the actual web server and hold the main thread here
-    println!("Launching webserver 🚀");
+    info!("Launching webserver 🚀");
     let http_server_result = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(resource_store.clone()))
@@ -100,10 +106,10 @@ async fn main() -> std::io::Result<()> {
     // If the http server is terminated
 
     // Stop the scheduler
-    println!("Stopping scheduler 🕐️");
+    info!("Stopping scheduler 🕐️");
     scheduler_handle.stop();
 
     // Done, let's get out here
-    println!("Stopping Application 😵️");
+    info!("Stopping Application 😵️");
     http_server_result
 }

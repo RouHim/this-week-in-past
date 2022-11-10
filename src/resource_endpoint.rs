@@ -50,38 +50,38 @@ pub async fn get_resource_by_id_and_resolution(
     let display_width = path_params.1;
     let display_height = path_params.2;
 
-    // check cache
+    // Check cache, if successful return early
     let cached_data = resource_store
         .get_ref()
         .get_data_cache_entry(format!("{resource_id}_{display_width}_{display_height}"));
-
     if let Some(cached_data) = cached_data {
         return HttpResponse::Ok()
             .content_type("image/png")
             .body(cached_data);
     }
 
-    // if no cache, fetch from remote
-    let remote_resource = resource_store
+    // if no cache, load it
+    let remote_resource: RemoteResource = resource_store
         .get_resource(resource_id)
-        .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
-
-    let orientation = remote_resource
-        .clone()
-        .and_then(|remote_resource: RemoteResource| remote_resource.orientation);
-
-    let resource_data = remote_resource
-        .map(|remote_resource| {
-            resource_reader::read_resource_data(resource_reader.as_ref(), &remote_resource)
+        .map(|resource_json_string| {
+            serde_json::from_str(resource_json_string.as_str())
+                .ok()
+                .unwrap()
         })
-        .map(|resource_data| {
-            image_processor::optimize_image(
-                resource_data,
-                display_width,
-                display_height,
-                orientation,
-            )
-        });
+        .unwrap();
+
+    let resource_data =
+        resource_reader::read_resource_data(resource_reader.as_ref(), &remote_resource).and_then(
+            |resource_data| {
+                image_processor::adjust_image(
+                    remote_resource.path,
+                    resource_data,
+                    display_width,
+                    display_height,
+                    remote_resource.orientation,
+                )
+            },
+        );
 
     if let Some(resource_data) = resource_data {
         resource_store.get_ref().add_data_cache_entry(

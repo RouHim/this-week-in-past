@@ -4,6 +4,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use clokwerk::{ScheduleHandle, Scheduler, TimeUnits};
+use log::info;
 
 use crate::resource_store::ResourceStore;
 use crate::ResourceReader;
@@ -36,12 +37,12 @@ pub fn schedule_indexer(
 /// Fetches the resources from the configures paths and writes them to the resource store
 pub fn index_resources(resource_reader: ResourceReader, resource_store: ResourceStore) {
     let s = Instant::now();
-    println!("Begin resource indexing");
+    info!("Begin resource indexing");
 
-    println!("Indexing resources, this may take some time depending on the amount of resources...");
+    info!("Indexing resources, this may take some time depending on the amount of resources...");
     let resources = resource_reader.read_all();
 
-    println!("Found {} resources", resources.len());
+    info!("Found {} resources", resources.len());
     let map: HashMap<String, String> = resources
         .iter()
         .map(|resource| {
@@ -52,14 +53,14 @@ pub fn index_resources(resource_reader: ResourceReader, resource_store: Resource
         })
         .collect();
 
-    println!("Purging resources store");
+    info!("Purging resources store");
     resource_store.clear_resources();
 
-    println!("Cleanup cache");
+    info!("Cleanup cache");
     resource_store.clear_data_cache();
 
-    println!("Inserting new resources");
+    info!("Inserting new resources");
     resource_store.add_resources(map);
 
-    println!("Job done in {}s!", s.elapsed().as_secs());
+    info!("Job done in {}s!", s.elapsed().as_secs());
 }

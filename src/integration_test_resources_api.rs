@@ -389,14 +389,9 @@ async fn create_temp_folder() -> PathBuf {
 
     fs::create_dir_all(&test_dir).unwrap();
 
-    // set cache folder to test dir
-    let cache_dir = test_dir.join("cache");
+    // add data folder to test dir
     let data_dir = test_dir.join("data");
-
-    env::set_var("CACHE_DIR", cache_dir.as_path().to_str().unwrap());
     env::set_var("DATA_FOLDER", data_dir.as_path().to_str().unwrap());
-
-    fs::create_dir_all(&cache_dir).unwrap();
     fs::create_dir_all(&data_dir).unwrap();
 
     test_dir

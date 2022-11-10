@@ -99,9 +99,9 @@ async fn create_temp_folder() -> PathBuf {
 
     fs::create_dir_all(&test_dir).unwrap();
 
-    let cache_dir = format!("/tmp/cache/{}/{}", &random_string, TEST_FOLDER_NAME);
-    env::set_var("CACHE_DIR", &cache_dir);
-    fs::create_dir_all(&cache_dir).unwrap();
+    let data_dir = format!("/tmp/cache/{}/{}", &random_string, TEST_FOLDER_NAME);
+    env::set_var("DATA_FOLDER", &data_dir);
+    fs::create_dir_all(&data_dir).unwrap();
 
     test_dir
 }
