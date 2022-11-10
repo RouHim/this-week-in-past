@@ -3,7 +3,7 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 FROM docker.io/alpine:3 as builder
 
-# Create a data directory that will be copied into the final image
+# Create a n empty 'data' directory that will be copied into the final image
 RUN mkdir "/data"
 
 # Install alpine-sdk that provides build dependencies
@@ -133,10 +133,10 @@ COPY --from=builder /usr/lib/samba/libMESSAGING-SEND-samba4.so /usr/lib/samba/li
 COPY --from=builder /usr/lib/libjansson.so.4 /usr/lib/libjansson.so.4
 COPY --from=builder /usr/lib/libffi.so.8 /usr/lib/libffi.so.8
 
-# Create an empty cache directory
+# Copy the empty data directory
 COPY --chown=1337:1337 --from=builder /data /data
 
-# Copy ssl certificates to the scratch image to enable HTTPS
+# Copy ssl certificates to the scratch image to enable HTTPS requests
 COPY --chown=1337:1337 --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # Copy the built application from the host to the container
