@@ -24,6 +24,7 @@ window.onload = () => {
     intervalID = setInterval(() => location.reload(), refreshIntervalInMinutes * 60000);
 };
 
+// Checks if the hidden button should be visible and appends the click event listener on it
 function initHideButton() {
     fetch(`${window.location.href}api/config/show-hide-button`)
         .then(response => response.json())
@@ -36,6 +37,7 @@ function initHideButton() {
         });
 }
 
+// Adds the current visible image to the hidden list and reloads the slideshow (to hide it)
 function hideCurrentImage() {
     let hideResourceRequest = new XMLHttpRequest();
     hideResourceRequest.open("POST", window.location.href + "api/resources/hide/" + current_resource_id);
