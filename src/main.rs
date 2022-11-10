@@ -2,8 +2,8 @@ extern crate core;
 
 use actix_files::Files;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
-use std::env;
 use log::{info, warn};
+use std::env;
 
 mod config_endpoint;
 mod exif_reader;
