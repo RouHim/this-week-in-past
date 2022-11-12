@@ -20,8 +20,9 @@ jobs:
         run: |
           GIT_BRANCH=${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}
           echo "GIT_BRANCH=$GIT_BRANCH"
-          if [ $GIT_BRANCH = "main" ]; then export IMAGE_TAG=latest; else export IMAGE_TAG=next; fi
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          if [ $GIT_BRANCH = "main" ]; then export TAG=latest; else export TAG=next; fi
+          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$IMAGE_TAG"
           env
 
   check-oci-config:
