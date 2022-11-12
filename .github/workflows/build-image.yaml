@@ -145,7 +145,7 @@ jobs:
 
   build-container-image:
     name: Build container image
-    needs: [ set-image_tag, check-oci-config, check-repo, check-code-style, check-code, test ]
+    needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -255,7 +255,7 @@ jobs:
           name: arm
           path: .
 
-      - name: Restore container assets
+      - name: Restore container images
         run: |
           podman load --input amd64.tar
           podman load --input arm64.tar
