@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set image tag global
-        run: |          
+        run: |
           GIT_BRANCH=${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}          
           if [ $GIT_BRANCH = "main"  ]; then export TEST_IMAGE_TAG=latest; else export TEST_IMAGE_TAG=next; fi
           echo "TEST_IMAGE_TAG=$TEST_IMAGE_TAG"
