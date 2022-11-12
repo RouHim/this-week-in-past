@@ -1,26 +1,8 @@
 use std::env;
 
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-
 use crate::geo_location;
 use crate::resource_reader::RemoteResource;
 use crate::resource_store::ResourceStore;
-
-/// Returns resources that was taken this week in the past
-/// The resources are shuffled, to the result is not deterministic
-/// Excluded are hidden resources
-pub fn get_this_week_in_past(resource_store: &ResourceStore) -> Vec<String> {
-    resource_store
-        .get_all_visible_resource_random()
-        .par_iter()
-        .map(|resource_json_string| {
-            serde_json::from_str::<RemoteResource>(resource_json_string.as_str())
-                .unwrap_or_else(|_| panic!("Parsing of '{resource_json_string}' failed!"))
-        })
-        .filter(|resource| resource.is_this_week())
-        .map(|resource| resource.id)
-        .collect()
-}
 
 /// Builds the display value for the specified resource
 /// The display value contains the date and location of a resource

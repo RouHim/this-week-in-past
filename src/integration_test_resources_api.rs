@@ -2,8 +2,8 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use std::{env, fs};
 use std::ops::Add;
+use std::{env, fs};
 
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::{test, web, App, Error};
@@ -72,14 +72,18 @@ async fn test_this_week_in_past_resources() {
         TEST_JPEG_URL,
     )
     .await;
-    let another_date_string = Local::now().date().add(Duration::weeks(4)).format("%Y%m%d").to_string();
+    let another_date_string = Local::now()
+        .date()
+        .add(Duration::weeks(4))
+        .format("%Y%m%d")
+        .to_string();
     let _ = create_test_image(
         &base_test_dir,
         "",
         format!("IMG_{}.jpg", another_date_string).as_str(),
         TEST_JPEG_URL,
     )
-        .await;
+    .await;
 
     // AND a running this-week-in-past instance
     let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;

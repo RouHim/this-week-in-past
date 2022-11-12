@@ -19,11 +19,13 @@ pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> Http
 
 #[get("week")]
 pub async fn get_this_week_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
-    let keys: Vec<String> = resource_processor::get_this_week_in_past(resource_store.as_ref());
+    let resource_ids: Vec<String> = resource_store
+        .as_ref()
+        .get_resource_this_week_visible_random();
 
     HttpResponse::Ok()
         .content_type("application/json")
-        .body(serde_json::to_string(&keys).unwrap())
+        .body(serde_json::to_string(&resource_ids).unwrap())
 }
 
 #[get("random")]
@@ -51,7 +53,7 @@ pub async fn get_resource_by_id_and_resolution(
     let display_width = path_params.1;
     let display_height = path_params.2;
 
-    // Check cache, if successful return early
+    // Check cache, if successful return it
     let cached_data = resource_store
         .get_ref()
         .get_data_cache_entry(format!("{resource_id}_{display_width}_{display_height}"));
@@ -64,13 +66,10 @@ pub async fn get_resource_by_id_and_resolution(
     // if not in cache, load resource metadata from database
     let remote_resource: Option<RemoteResource> = resource_store
         .get_resource(resource_id)
-        .and_then(|resource_json_string| {
-            serde_json::from_str(resource_json_string.as_str())
-                .ok()
-        });
-    // If we can't find the requested resource by id, get out here
+        .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
+    // If we can't find the requested resource by id, return with an error
     if remote_resource.is_none() {
-        return HttpResponse::InternalServerError().finish();
+        return HttpResponse::NotFound().finish();
     }
 
     // If we found the requested resource, read the image data and adjust the image to the display
@@ -88,6 +87,7 @@ pub async fn get_resource_by_id_and_resolution(
             },
         );
 
+    // If image adjustments were successful, return the data, otherwise return with error
     if let Some(resource_data) = resource_data {
         resource_store.get_ref().add_data_cache_entry(
             format!("{resource_id}_{display_width}_{display_height}"),
