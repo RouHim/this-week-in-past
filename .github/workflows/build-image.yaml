@@ -12,12 +12,6 @@ env:
 
 jobs:
 
-  pre-test:
-    name: test
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "IMAGE_TAG=${{ env.IMAGE_TAG }}"
-
   check-oci-config:
     name: Check Containerfile
     runs-on: ubuntu-latest
