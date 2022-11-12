@@ -20,8 +20,9 @@ jobs:
         run: |
           GIT_BRANCH=${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}
           echo "GIT_BRANCH=$GIT_BRANCH"
-          if [ $GIT_BRANCH = "main"  ]; then export TEST_IMAGE_TAG=latest; else export TEST_IMAGE_TAG=next; fi
-          echo "TEST_IMAGE_TAG=$TEST_IMAGE_TAG"
+          if [ $GIT_BRANCH = "main" ]; then export IMAGE_TAG=latest; else export IMAGE_TAG=next; fi
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          env
 
   check-oci-config:
     name: Check Containerfile
