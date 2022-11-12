@@ -44,6 +44,7 @@ pub struct ResourceReader {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // Configure logger
     let mut builder = Builder::from_default_env();
     builder
         .filter(None, LevelFilter::Info)
