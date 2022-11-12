@@ -10,7 +10,10 @@ RUN mkdir "/data"
 # Install ssl certificates that will also be copied into the final image
 # Install pavao (smb client) required dependencies
 # Install Rust cargo
-RUN apk update && apk add --no-cache alpine-sdk ca-certificates samba-dev cargo
+RUN apk update && apk add \
+    --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community \
+    --no-cache \
+    alpine-sdk ca-certificates samba-dev cargo
 
 # Prepare build dir
 RUN mkdir /app
