@@ -16,7 +16,7 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - run: env
+      - run: echo "IMAGE_NAME=${{ env.IMAGE_NAME }}"
 
   check-oci-config:
     name: Check Containerfile
