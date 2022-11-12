@@ -1,9 +1,11 @@
 extern crate core;
 
+use std::env;
+
 use actix_files::Files;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
-use log::{info, warn};
-use std::env;
+use env_logger::Builder;
+use log::{info, warn, LevelFilter};
 
 mod config_endpoint;
 mod exif_reader;
@@ -42,7 +44,11 @@ pub struct ResourceReader {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    env_logger::init();
+    let mut builder = Builder::from_default_env();
+    builder
+        .filter(None, LevelFilter::Info)
+        .filter(Some("actix_web::middleware::logger"), LevelFilter::Error)
+        .init();
 
     // Create a new resource reader based on the provided resources path
     let resource_reader = resource_reader::new(
