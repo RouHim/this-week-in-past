@@ -8,9 +8,15 @@ on:
 
 env:
   IMAGE_NAME: rouhim/this-week-in-past
-  IMAGE_TAG: latest
+  IMAGE_TAG: "${{ github.ref == 'refs/heads/main' && 'latest' || 'next' }}"
 
 jobs:
+
+  pre-test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - run: env
 
   check-oci-config:
     name: Check Containerfile
