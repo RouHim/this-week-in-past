@@ -8,7 +8,6 @@ on:
 
 env:
   IMAGE_NAME: rouhim/this-week-in-past
-  IMAGE_TAG: latest
 
 jobs:
 
