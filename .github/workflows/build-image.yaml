@@ -8,19 +8,9 @@ on:
 
 env:
   IMAGE_NAME: rouhim/this-week-in-past
+  IMAGE_TAG: latest
 
 jobs:
-
-  set-image_tag:
-    name: Set container image tag
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set image tag global
-        run: |
-          GIT_BRANCH=${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}
-          if [ $GIT_BRANCH = "main" ]; then export TAG=latest; else export TAG=next; fi
-          echo "Current branch: GIT_BRANCH=$GIT_BRANCH leads to the container image tag: $TAG"
-          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
   check-oci-config:
     name: Check Containerfile
