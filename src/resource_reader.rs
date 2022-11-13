@@ -37,6 +37,8 @@ pub fn read_resource_data(
 /// Returns all available resources
 impl ResourceReader {
     pub fn read_all(&self) -> Vec<RemoteResource> {
+        // TODO: return the iterator here and insert each resource one by one
+        // Fix: smb client handling
         let local_resources: Vec<RemoteResource> = self
             .local_resource_paths
             .par_iter()
@@ -44,8 +46,6 @@ impl ResourceReader {
             .flat_map(filesystem_client::read_files_recursive)
             .map(|resource| filesystem_client::fill_exif_data(&resource))
             .collect();
-
-        // TODO: find a generic solution for this or make this prettier
 
         // Create smb clients
         let smb_clients: Vec<SmbClient> = self
