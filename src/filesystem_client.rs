@@ -74,13 +74,13 @@ fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
 }
 
 /// Reads the exif data from the file and augments the remote resource with this information
-pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
+pub fn augment_with_exif_data(resource: &RemoteResource) -> RemoteResource {
     let file_path = resource.path.as_str();
-    let file = std::fs::File::open(file_path).unwrap();
+    let file = fs::File::open(file_path).unwrap();
 
     let mut bufreader = std::io::BufReader::new(&file);
     let exif_reader = exif::Reader::new();
     let maybe_exif_data = exif_reader.read_from_container(&mut bufreader).ok();
 
-    resource_reader::fill_exif_data(resource, maybe_exif_data)
+    resource_reader::augment_with_exif_data(resource, maybe_exif_data)
 }
