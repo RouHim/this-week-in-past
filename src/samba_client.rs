@@ -138,7 +138,7 @@ pub fn fill_exif_data(resource: &RemoteResource, smb_client: &SmbClient) -> Remo
     let exif_reader = exif::Reader::new();
     let maybe_exif_data = exif_reader.read_from_container(&mut bufreader).ok();
 
-    resource_reader::augment_with_exif_data(resource, maybe_exif_data)
+    resource_reader::fill_exif_data(resource, maybe_exif_data)
 }
 
 /// Reads a single file based on a connection string and a remote resource

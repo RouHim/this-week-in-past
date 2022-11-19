@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::Path;
 use std::thread;
 
 use std::time::{Duration, Instant};
@@ -7,12 +6,8 @@ use std::time::{Duration, Instant};
 use clokwerk::{ScheduleHandle, Scheduler, TimeUnits};
 use log::info;
 
-use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::ParallelIterator;
-
-use crate::resource_reader::RemoteResource;
 use crate::resource_store::ResourceStore;
-use crate::{filesystem_client, ResourceReader};
+use crate::ResourceReader;
 
 /// Schedules the cache indexer at every day at midnight
 pub fn schedule_indexer(
@@ -44,20 +39,8 @@ pub fn index_resources(resource_reader: ResourceReader, resource_store: Resource
     let s = Instant::now();
     info!("Begin resource indexing");
 
-    info!("Purging resources store");
-    resource_store.clear_resources();
-
     info!("Indexing resources, this may take some time depending on the amount of resources...");
-    let resources: Vec<RemoteResource> = resource_reader
-        .local_resource_paths
-        .par_iter()
-        .map(|path_str| Path::new(path_str.as_str()))
-        .flat_map(filesystem_client::read_files_recursive)
-        .map(|resource| filesystem_client::augment_with_exif_data(&resource))
-        .collect();
-
-    // TODO: read samba resources
-    // TODO: directly insert resources when iterating filesystem
+    let resources = resource_reader.read_all();
 
     info!("Found {} resources", resources.len());
     let map: HashMap<String, String> = resources
@@ -69,6 +52,9 @@ pub fn index_resources(resource_reader: ResourceReader, resource_store: Resource
             )
         })
         .collect();
+
+    info!("Purging resources store");
+    resource_store.clear_resources();
 
     info!("Cleanup cache");
     resource_store.clear_data_cache();

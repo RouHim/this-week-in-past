@@ -63,7 +63,7 @@ fn read_jpg_with_exif_image_resource() {
     create_test_image(&base_test_dir, "", test_image_name, TEST_JPEG_EXIF_URL);
 
     // WHEN reading resources from a folder
-    let resources_read = filesystem_client::augment_with_exif_data(
+    let resources_read = filesystem_client::fill_exif_data(
         &filesystem_client::read_files_recursive(&base_test_dir)[0],
     );
 

@@ -1,17 +1,20 @@
 use std::fmt::{Display, Formatter};
 use std::fs;
+use std::path::Path;
 
 use chrono::{Local, NaiveDateTime, TimeZone};
 use exif::Exif;
 use now::DateTimeNow;
 use pavao::SmbClient;
 
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
 
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
 use crate::samba_client::create_smb_client;
-use crate::{exif_reader, samba_client, ResourceReader};
+use crate::{exif_reader, filesystem_client, samba_client, ResourceReader};
 
 /// Reads the specified resource from the filesystem
 /// Returns the resource file data
@@ -33,7 +36,17 @@ pub fn read_resource_data(
 
 /// Returns all available resources
 impl ResourceReader {
-    pub fn from_samba_share(&self) -> Vec<RemoteResource> {
+    pub fn read_all(&self) -> Vec<RemoteResource> {
+        // TODO: return the iterator here and insert each resource one by one
+        // Fix: smb client handling
+        let local_resources: Vec<RemoteResource> = self
+            .local_resource_paths
+            .par_iter()
+            .map(|path_str| Path::new(path_str.as_str()))
+            .flat_map(filesystem_client::read_files_recursive)
+            .map(|resource| filesystem_client::fill_exif_data(&resource))
+            .collect();
+
         // Create smb clients
         let smb_clients: Vec<SmbClient> = self
             .samba_resource_paths
@@ -56,7 +69,7 @@ impl ResourceReader {
         // Drop smb clients
         smb_clients.iter().for_each(drop);
 
-        samba_resources
+        [local_resources, samba_resources].concat()
     }
 }
 
@@ -133,7 +146,7 @@ impl Display for RemoteResource {
 /// The meta information is extracted from the exif data
 /// If the exif data is not available, the meta information is extracted from the gps data
 /// If the gps data is not available, the meta information is extracted from the file name
-pub fn augment_with_exif_data(resource: &RemoteResource, maybe_exif_data: Option<Exif>) -> RemoteResource {
+pub fn fill_exif_data(resource: &RemoteResource, maybe_exif_data: Option<Exif>) -> RemoteResource {
     let mut taken_date = None;
     let mut location = None;
     let mut orientation = None;
