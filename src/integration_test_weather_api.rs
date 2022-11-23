@@ -76,7 +76,7 @@ fn build_app(
     >,
 > {
     let resource_reader = resource_reader::new(base_test_dir);
-    let resource_store = resource_store::initialize(base_test_dir.to_string());
+    let resource_store = resource_store::initialize(base_test_dir);
     scheduler::index_resources(resource_reader.clone(), resource_store.clone());
     App::new()
         .app_data(web::Data::new(resource_store))

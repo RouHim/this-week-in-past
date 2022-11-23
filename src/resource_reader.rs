@@ -45,7 +45,6 @@ impl ResourceReader {
             .map(|resource| filesystem_client::fill_exif_data(&resource))
             .collect();
 
-        // TODO: Improve
         // Create smb clients
         let smb_clients: Vec<SmbClient> = self
             .samba_resource_paths

@@ -1,6 +1,5 @@
-use std::fs;
-
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 
 use r2d2::Pool;
@@ -13,6 +12,13 @@ pub struct ResourceStore {
 
 /// Implements all functions acting on the data store instance
 impl ResourceStore {
+    /// Cleanup database
+    pub fn vacuum(&self) {
+        let connection = self.persistent_file_store_pool.get().unwrap();
+        let mut stmt = connection.prepare("VACUUM").unwrap();
+        stmt.execute([]).expect("Vacuum failed");
+    }
+
     /// Returns a list of all hidden resource ids
     pub fn get_all_hidden(&self) -> Vec<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
@@ -227,8 +233,8 @@ impl ResourceStore {
 /// If no $DATA_FOLDER env var is configured, ./data/ is used
 /// Creates data folder if it does not exists
 /// Also creates all tables if needed
-pub fn initialize(data_folder: String) -> ResourceStore {
-    fs::create_dir_all(&data_folder).unwrap_or_else(|_| panic!("Could not create {}", data_folder));
+pub fn initialize(data_folder: &str) -> ResourceStore {
+    fs::create_dir_all(data_folder).unwrap_or_else(|_| panic!("Could not create {}", data_folder));
     let database_path = PathBuf::from(data_folder).join("resources.db");
 
     // Create persistent file store

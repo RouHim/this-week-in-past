@@ -65,7 +65,7 @@ async fn main() -> std::io::Result<()> {
     let data_folder = env::var("DATA_FOLDER")
         .or_else(|_| env::var("CACHE_DIR"))
         .unwrap_or_else(|_| "./data".to_string());
-    let resource_store = resource_store::initialize(data_folder);
+    let resource_store = resource_store::initialize(&data_folder);
 
     // Start scheduler to run at midnight
     let scheduler_handle =
@@ -110,7 +110,11 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await;
 
-    // If the http server is terminated
+    // If the http server is terminated...
+
+    // Cleanup database
+    info!("Cleanup database 🧹");
+    resource_store::initialize(&data_folder).vacuum();
 
     // Stop the scheduler
     info!("Stopping scheduler 🕐️");
