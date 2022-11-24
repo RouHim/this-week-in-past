@@ -62,5 +62,8 @@ pub fn index_resources(resource_reader: ResourceReader, resource_store: Resource
     info!("Inserting new resources");
     resource_store.add_resources(map);
 
+    info!("Cleanup database");
+    resource_store.vacuum();
+
     info!("Job done in {}s!", s.elapsed().as_secs());
 }
