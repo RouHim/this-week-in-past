@@ -22,7 +22,7 @@ impl Display for GeoLocation {
 }
 
 /// Converts Degrees Minutes Seconds To Decimal Degrees
-/// See https://stackoverflow.com/questions/14906764/converting-gps-coordinates-to-decimal-degrees
+/// See <https://stackoverflow.com/questions/14906764/converting-gps-coordinates-to-decimal-degrees>
 fn dms_to_dd(dms_string: &str) -> Option<f32> {
     lazy_static! {
         static ref DMS_PARSE_PATTERN_1: Regex = Regex::new(

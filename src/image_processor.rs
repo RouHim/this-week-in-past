@@ -16,7 +16,7 @@ pub struct ImageOrientation {
 
 /// Adjusts the image to fit optimal to the browser resolution
 /// Also fixes the orientation delivered by the exif image rotation
-/// src: https://sirv.com/help/articles/rotate-photos-to-be-upright/
+/// src: <https://sirv.com/help/articles/rotate-photos-to-be-upright/>
 pub fn adjust_image(
     resource_path: String,
     resource_data: Vec<u8>,
