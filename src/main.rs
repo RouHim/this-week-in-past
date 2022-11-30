@@ -1,20 +1,21 @@
 extern crate core;
 
 use std::env;
-use std::sync::{Arc, Mutex};
 
 use actix_files::Files;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use env_logger::Builder;
+use log::{info, warn, LevelFilter};
 
 mod config_endpoint;
 mod exif_reader;
 mod filesystem_client;
 mod geo_location;
 mod image_processor;
-mod kv_store;
 mod resource_endpoint;
 mod resource_processor;
 mod resource_reader;
+mod resource_store;
 mod samba_client;
 mod scheduler;
 mod utils;
@@ -43,45 +44,51 @@ pub struct ResourceReader {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Build application state based on the provided parameter
-    let app_config = resource_reader::new(
+    // Configure logger
+    let mut builder = Builder::from_default_env();
+    builder
+        .filter(None, LevelFilter::Info)
+        .filter(Some("actix_web::middleware::logger"), LevelFilter::Error)
+        .init();
+
+    // Create a new resource reader based on the provided resources path
+    let resource_reader = resource_reader::new(
         env::var("RESOURCE_PATHS")
             .expect("RESOURCE_PATHS is missing")
             .as_str(),
     );
 
-    // Initialize kv_store reader and writer
-    let (kv_reader, kv_writer) = evmap::new::<String, String>();
-    // Build arc mutex of kv_store writer, we need this exact instance (cause, we have multiple writer)
-    let kv_writer_mutex = Arc::new(Mutex::new(kv_writer));
+    // Initialize databases
+    if env::var("CACHE_DIR").is_ok() {
+        warn!("CACHE_DIR environment variable is deprecated, use DATA_FOLDER instead!")
+    }
+    let data_folder = env::var("DATA_FOLDER")
+        .or_else(|_| env::var("CACHE_DIR"))
+        .unwrap_or_else(|_| "./data".to_string());
+    let resource_store = resource_store::initialize(&data_folder);
 
     // Start scheduler to run at midnight
-    scheduler::init();
-    let scheduler_handle = scheduler::schedule_indexer(app_config.clone(), kv_writer_mutex.clone());
-
-    // Fetch resources for the first time
-    scheduler::fetch_resources(app_config.clone(), kv_writer_mutex.clone());
-
-    // Initialize geo location cache
-    let geo_location_cache = kv_store::new();
+    let scheduler_handle =
+        scheduler::schedule_indexer(resource_reader.clone(), resource_store.clone());
 
     // Run the actual web server and hold the main thread here
-    println!("Launching webserver 🚀");
+    info!("Launching webserver 🚀");
     let http_server_result = HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(app_config.clone()))
-            .app_data(web::Data::new(kv_reader.clone()))
-            .app_data(web::Data::new(kv_writer_mutex.clone()))
-            .app_data(web::Data::new(geo_location_cache.clone()))
+            .app_data(web::Data::new(resource_store.clone()))
+            .app_data(web::Data::new(resource_reader.clone()))
             .wrap(middleware::Logger::default()) // enable logger
             .service(
                 web::scope("/api/resources")
-                    .service(resource_endpoint::list_all_resources)
-                    .service(resource_endpoint::list_this_week_resources)
+                    .service(resource_endpoint::get_all_resources)
+                    .service(resource_endpoint::get_this_week_resources)
                     .service(resource_endpoint::random_resource)
                     .service(resource_endpoint::get_resource_by_id_and_resolution)
                     .service(resource_endpoint::get_resource_metadata_by_id)
-                    .service(resource_endpoint::get_resource_metadata_description_by_id),
+                    .service(resource_endpoint::get_resource_metadata_description_by_id)
+                    .service(resource_endpoint::get_all_hidden_resources)
+                    .service(resource_endpoint::set_resource_hidden)
+                    .service(resource_endpoint::delete_resource_hidden),
             )
             .service(
                 web::scope("/api/weather")
@@ -93,7 +100,8 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api/config")
                     .service(config_endpoint::get_slideshow_interval)
-                    .service(config_endpoint::get_refresh_interval),
+                    .service(config_endpoint::get_refresh_interval)
+                    .service(config_endpoint::get_hide_button_enabled),
             )
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./web-app/").index_file("index.html"))
@@ -102,13 +110,17 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await;
 
-    // If the http server is terminated
+    // If the http server is terminated...
+
+    // Cleanup database
+    info!("Cleanup database 🧹");
+    resource_store::initialize(&data_folder).vacuum();
 
     // Stop the scheduler
-    println!("Stopping scheduler 🕐️");
+    info!("Stopping scheduler 🕐️");
     scheduler_handle.stop();
 
     // Done, let's get out here
-    println!("Stopping Application 😵️");
+    info!("Stopping Application 😵️");
     http_server_result
 }

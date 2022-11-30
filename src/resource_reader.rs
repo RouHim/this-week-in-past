@@ -18,22 +18,25 @@ use crate::{exif_reader, filesystem_client, samba_client, ResourceReader};
 
 /// Reads the specified resource from the filesystem
 /// Returns the resource file data
-pub fn read_resource_data(resource_reader: &ResourceReader, resource: &RemoteResource) -> Vec<u8> {
+pub fn read_resource_data(
+    resource_reader: &ResourceReader,
+    resource: &RemoteResource,
+) -> Option<Vec<u8>> {
     match resource.resource_type {
-        RemoteResourceType::Local => fs::read(resource.path.clone()).unwrap(),
+        RemoteResourceType::Local => fs::read(resource.path.clone()).ok(),
         RemoteResourceType::Samba => {
             let smb_connection_path = resource_reader
                 .samba_resource_paths
                 .get(resource.samba_client_index)
                 .unwrap();
-            samba_client::read_file(smb_connection_path, resource)
+            Some(samba_client::read_file(smb_connection_path, resource))
         }
     }
 }
 
 /// Returns all available resources
 impl ResourceReader {
-    pub fn list_all_resources(&self) -> Vec<RemoteResource> {
+    pub fn read_all(&self) -> Vec<RemoteResource> {
         let local_resources: Vec<RemoteResource> = self
             .local_resource_paths
             .par_iter()
@@ -41,8 +44,6 @@ impl ResourceReader {
             .flat_map(filesystem_client::read_files_recursive)
             .map(|resource| filesystem_client::fill_exif_data(&resource))
             .collect();
-
-        // TODO: find a generic solution for this or make this prettier
 
         // Create smb clients
         let smb_clients: Vec<SmbClient> = self

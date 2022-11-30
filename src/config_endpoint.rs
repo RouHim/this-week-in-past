@@ -16,3 +16,10 @@ pub async fn get_refresh_interval() -> HttpResponse {
         .content_type("plain/text")
         .body(env::var("REFRESH_INTERVAL").unwrap_or_else(|_| "180".to_string()))
 }
+
+#[get("show-hide-button")]
+pub async fn get_hide_button_enabled() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("plain/text")
+        .body(env::var("SHOW_HIDE_BUTTON").unwrap_or_else(|_| "false".to_string()))
+}

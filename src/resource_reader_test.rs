@@ -18,7 +18,7 @@ const TEST_FOLDER_NAME: &str = "resource_reader_test";
 
 #[test]
 fn read_dir_recursive() {
-    // GIVEN is a folder structure with two images and another file type
+    // GIVEN is a folder structure with two assets and another file type
     let base_test_dir = create_temp_folder();
     create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_URL);
     create_test_image(&base_test_dir, "sub1", "test_image_2.jpg", TEST_JPEG_URL);
@@ -135,7 +135,7 @@ fn read_gif_image_resource() {
 
 #[test]
 fn read_no_images_dir() {
-    // GIVEN is a folder structure with no images
+    // GIVEN is a folder structure with no assets
     let base_test_dir = create_temp_folder();
     create_test_file(&base_test_dir, "", "test_file.txt");
 
@@ -208,7 +208,7 @@ fn create_test_image(base_dir: &Path, sub_dir: &str, file_name: &str, image_url:
 
 /// Removes the test folder after test run
 fn cleanup(test_dir: &PathBuf) {
-    let _ = fs::remove_dir_all(&test_dir);
+    let _ = fs::remove_dir_all(test_dir);
 }
 
 /// Creates a test file withing a folder

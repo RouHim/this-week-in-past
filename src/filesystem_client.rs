@@ -76,7 +76,7 @@ fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
 /// Reads the exif data from the file and augments the remote resource with this information
 pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
     let file_path = resource.path.as_str();
-    let file = std::fs::File::open(&file_path).unwrap();
+    let file = std::fs::File::open(file_path).unwrap();
 
     let mut bufreader = std::io::BufReader::new(&file);
     let exif_reader = exif::Reader::new();

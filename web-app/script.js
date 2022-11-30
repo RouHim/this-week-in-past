@@ -3,22 +3,49 @@ Disclaimer:
     Yes this is vanilla javascript, and no I'm not a professional web developer.
 */
 
-let resources;
+let resourcesThisWeek;
 let currentIndex = 0;
 let maxIndex = 0;
+let current_resource_id;
+let intervalID;
 
 // On page load, do the following things:
 // 1. Load the available images and initialize the slideshow with it
 // 2. Load and show the weather information
+
 // 3. Set a page reload interval for each hour
 window.onload = () => {
     loadAvailableImages();
     loadWeatherInformation();
+    initHideButton();
 
     // Reload page every x minutes
     let refreshIntervalInMinutes = getRefreshInterval();
-    setInterval(() => location.reload(), refreshIntervalInMinutes * 60000);
+    intervalID = setInterval(() => location.reload(), refreshIntervalInMinutes * 60000);
 };
+
+// Checks if the hidden button should be visible and appends the click event listener on it
+function initHideButton() {
+    fetch(`${window.location.href}api/config/show-hide-button`)
+        .then(response => response.json())
+        .then(showHideButton => {
+            if (showHideButton === true) {
+                let hideCurrentImageBtn = document.getElementById("hide-current-image");
+                hideCurrentImageBtn.style.visibility = "visible";
+                hideCurrentImageBtn.addEventListener("click", hideCurrentImage)
+            }
+        });
+}
+
+// Adds the current visible image to the hidden list and reloads the slideshow (to hide it)
+function hideCurrentImage() {
+    let hideResourceRequest = new XMLHttpRequest();
+    hideResourceRequest.open("POST", window.location.href + "api/resources/hide/" + current_resource_id);
+    hideResourceRequest.send();
+
+    // Reload page if the resource is set to hidden
+    hideResourceRequest.onload = () => location.reload();
+}
 
 // Checks if the weather information should be shown, if so load them
 function loadWeatherInformation() {
@@ -87,7 +114,9 @@ function getCurrentTemperatureDataFromHomeAssistant() {
 // This is done by fading out the current image and fading in the new image
 // The sleep function is used to prevent the slideshow from flickering
 // @param resource_id: the id of the resource
-function setImageData(resource_id) {
+function setImage(resource_id) {
+    current_resource_id = resource_id;
+
     // build the image url
     let imageUrl = `${window.location.href}api/resources/${resource_id}/${window.screen.availWidth}/${window.screen.availHeight}`;
 
@@ -141,20 +170,34 @@ function getRandomResource() {
     let request = new XMLHttpRequest();
     request.open('GET', `${window.location.href}api/resources/random`, false);
     request.send(null);
+
     if (request.status === 200) {
         return JSON.parse(request.response);
+    } else {
+        return null;
     }
 }
 
 // On slideshow tick interval
 // Set the slideshow image and its meta information
 function slideshowTick() {
-    if (resources.length === 0) {
-        setImageData(getRandomResource());
+    // If no image for this week was found, select a random one
+    // If no random could be found, show an alert message and stop slideshow
+    if (resourcesThisWeek.length === 0) {
+        let randomResource = getRandomResource();
+
+        if (randomResource === null) {
+            alert("Could not find any photos!");
+            clearInterval(intervalID);
+            return;
+        }
+
+        setImage(randomResource);
         return;
     }
 
-    setImageData(resources[currentIndex]);
+    // Proceeds with the regular "this week" slideshow
+    setImage(resourcesThisWeek[currentIndex]);
 
     currentIndex++;
     if (currentIndex > maxIndex) {
@@ -197,10 +240,10 @@ function getRefreshInterval() {
 
 // Starts the slideshow utilizing `setInterval`
 // The interval is set to the value returned from the backend API
-function startSlideshow(response) {
-    resources = response;
+function startSlideshow(foundResourcesOfThisWeek) {
+    resourcesThisWeek = foundResourcesOfThisWeek;
 
-    maxIndex = Object.keys(resources).length - 1;
+    maxIndex = Object.keys(resourcesThisWeek).length - 1;
     slideshowTick();
 
     // Load slideshow interval
