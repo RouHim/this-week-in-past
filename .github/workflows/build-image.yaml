@@ -177,6 +177,8 @@ jobs:
           file: ./Containerfile
           load: true
           push: false
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new
 
       - name: Prepare test env
         run: |
@@ -197,3 +199,5 @@ jobs:
           file: ./Containerfile
           load: false
           push: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new
