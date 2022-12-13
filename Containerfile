@@ -10,7 +10,10 @@ RUN mkdir "/empty_dir"
 # Install ssl certificates that will also be copied into the final image
 # Install pavao (smb client) required dependencies
 RUN apk update && apk add --no-cache \
-    git alpine-sdk ca-certificates samba-dev
+    git musl-dev alpine-sdk ca-certificates samba-dev
+
+# Link git to cargos git expected place
+RUN ln -s /usr/bin/git /usr/local/cargo/bin/git
 
 # Prepare build dir
 RUN mkdir /app
