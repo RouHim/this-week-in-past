@@ -173,7 +173,7 @@ jobs:
       - name: Load x86 image into local repo
         uses: docker/build-push-action@v3
         with:
-          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_${{ matrix.container-image-arch }}
+          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           file: ./Containerfile
           load: true
           push: false
@@ -185,7 +185,7 @@ jobs:
           mkdir -p /tmp/test
           wget https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg -O /tmp/test/DSCN0010.jpg
       - name: Start test container
-        run: docker run --pull never -d --name test-container -p 8080:8080 -v /tmp/test:/resources rouhim/this-week-in-past:latest
+        run: docker run --pull never -d --name test-container -p 8080:8080 -v /tmp/test:/resources ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
       - name: Test container web api
         run: wget -q -O /dev/null --timeout 5 --tries 3 http://localhost:8080/api/health
       - name: Cleanup
@@ -194,7 +194,7 @@ jobs:
       - name: Build and push multi platform container image
         uses: docker/build-push-action@v3
         with:
-          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_${{ matrix.container-image-arch }}
+          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           platforms: linux/amd64, linux/arm64, linux/arm/v7
           file: ./Containerfile
           load: false
