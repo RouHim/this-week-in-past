@@ -1,7 +1,7 @@
 # # # # # # # # # # # # # # # # # # # #
 # Builder
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM docker.io/alpine:3 as builder
+FROM docker.io/rust:alpine as builder
 
 # Create an empty directory that will be used in the final image
 RUN mkdir "/empty_dir"
@@ -9,9 +9,8 @@ RUN mkdir "/empty_dir"
 # Install alpine-sdk that provides build dependencies
 # Install ssl certificates that will also be copied into the final image
 # Install pavao (smb client) required dependencies
-# Install Rust cargo
 RUN apk update && apk add --no-cache \
-    alpine-sdk ca-certificates samba-dev cargo
+    git alpine-sdk ca-certificates samba-dev
 
 # Prepare build dir
 RUN mkdir /app
