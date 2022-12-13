@@ -179,6 +179,14 @@ jobs:
           load: true
           push: false
 
+      - name: Load x86 image into local repo
+        uses: docker/build-push-action@v3
+        with:
+          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}_${{ matrix.container-image-arch }}
+          file: ./Containerfile
+          load: true
+          push: false
+
       - name: Prepare test env
         run: |
           mkdir -p /tmp/test
