@@ -6,15 +6,12 @@ FROM docker.io/alpine:3 as builder
 # Create an empty directory that will be used in the final image
 RUN mkdir "/empty_dir"
 
-# Use alpine edge repository in order to get the latest rust version
-RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-
 # Install alpine-sdk that provides build dependencies
 # Install ssl certificates that will also be copied into the final image
 # Install pavao (smb client) required dependencies
 # Install Rust cargo
 RUN apk update && apk add --no-cache \
-    alpine-sdk ca-certificates samba-dev cargo@edge
+    alpine-sdk ca-certificates samba-dev cargo
 
 # Prepare build dir
 RUN mkdir /app

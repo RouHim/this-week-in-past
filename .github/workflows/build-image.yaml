@@ -168,6 +168,7 @@ jobs:
         with:
           image: ${{ env.IMAGE_NAME }}
           tags: ${{ env.IMAGE_TAG }}_${{ matrix.container-image-arch }}
+          oci: true
           archs: ${{ matrix.container-image-arch }}
           containerfiles: |
             ./Containerfile
