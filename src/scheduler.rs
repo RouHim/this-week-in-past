@@ -3,7 +3,7 @@ use std::thread;
 
 use std::time::{Duration, Instant};
 
-use clokwerk::{ScheduleHandle, Scheduler, TimeUnits};
+use clokwerk::{Job, ScheduleHandle, Scheduler, TimeUnits};
 use log::info;
 
 use crate::resource_store::ResourceStore;

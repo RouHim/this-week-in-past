@@ -7,3 +7,4 @@ test-image.sh
 index-*
 content-*
 *.db
+.env
