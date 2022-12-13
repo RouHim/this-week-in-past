@@ -3,6 +3,15 @@
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 FROM docker.io/rust:alpine as builder
 
+# Required for a still open ring issue:
+# https://github.com/briansmith/ring/issues/1414
+ENV CC_aarch64_unknown_linux_musl=clang
+ENV AR_aarch64_unknown_linux_musl=llvm-ar
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="-Clink-self-contained=yes -Clinker=rust-lld"
+RUN apk update && apk add --no-cache llvm clang
+RUN ln -s /usr/bin/clang /usr/local/cargo/bin/clang
+RUN ln -s /usr/bin/llvm-ar /usr/local/cargo/bin/llvm-ar
+
 # Create an empty directory that will be used in the final image
 RUN mkdir "/empty_dir"
 
@@ -12,7 +21,7 @@ RUN mkdir "/empty_dir"
 RUN apk update && apk add --no-cache \
     git musl-dev alpine-sdk ca-certificates samba-dev
 
-# Link git to cargos git expected place
+# Link system binaries to cargos expected location
 RUN ln -s /usr/bin/git /usr/local/cargo/bin/git
 
 # Prepare build dir
