@@ -72,20 +72,20 @@ services:
 
 All configuration is done via environment variables:
 
-| Name                     | Description                                                                                                                                                                                                    | Default value                 |
-|--------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|
-| RESOURCE_PATHS           | A list of folders from which the images should be loaded (comma separated). Either a local path e.g.: `/home/user/Pictures,/mnt/hdd/images` or a samba url e.g.: `smb://user:passwd@192.168.0.1//share/photos` | `/resources` (Container only) |
-| DATA_FOLDER              | Path to a folder where the data should be stored, needs to read/write access                                                                                                                                   | `/data` (Container only)      |
-| SLIDESHOW_INTERVAL       | Interval of the slideshow in seconds                                                                                                                                                                           | 30                            |
-| REFRESH_INTERVAL         | Interval how often the page should be reloaded in minutes                                                                                                                                                      | 180                           |
-| DATE_FORMAT              | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html)                                                                                                          | %d.%m.%Y                      |
-| BIGDATA_CLOUD_API_KEY    | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com                                                                                                                             |                               |
-| OPEN_WEATHER_MAP_API_KEY | To receive weather live data. Obtain here: https://openweathermap.org/api                                                                                                                                      |                               |
-| WEATHER_ENABLED          | Indicates if weather should be shown in the slideshow                                                                                                                                                          | false                         |
-| WEATHER_LOCATION         | Name of a city                                                                                                                                                                                                 | Berlin                        |
-| WEATHER_LANGUAGE         | Weather language ([ISO_639-1](https://en.wikipedia.org/wiki/ISO_639-1))                                                                                                                                        | en                            |
-| WEATHER_UNIT             | Weather units (`metric` or `imperial`)                                                                                                                                                                         | metric                        |
-| HOME_ASSISTANT_BASE_URL  | Home assistant base url (e.g.: `http://192.168.0.123:8123`)                                                                                                                                                    |                               |
-| HOME_ASSISTANT_ENTITY_ID | Home assistant entity id to load the weather from (e.g.: `sensor.outside_temperature`)                                                                                                                         |                               |
-| HOME_ASSISTANT_API_TOKEN | Home assistant api access token                                                                                                                                                                                |                               |
-| SHOW_HIDE_BUTTON         | Show the hide button on the slideshow                                                                                                                                                                          | false                         |
+| Name                     | Description                                                                                           | Default value                 |
+|--------------------------|-------------------------------------------------------------------------------------------------------|-------------------------------|
+| RESOURCE_PATHS           | A list of folders from which the images should be loaded (comma separated).                           | `/resources` (Container only) |
+| DATA_FOLDER              | Path to a folder where the data should be stored, needs to read/write access                          | `/data` (Container only)      |
+| SLIDESHOW_INTERVAL       | Interval of the slideshow in seconds                                                                  | 30                            |
+| REFRESH_INTERVAL         | Interval how often the page should be reloaded in minutes                                             | 180                           |
+| DATE_FORMAT              | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html) | %d.%m.%Y                      |
+| BIGDATA_CLOUD_API_KEY    | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com                    |                               |
+| OPEN_WEATHER_MAP_API_KEY | To receive weather live data. Obtain here: https://openweathermap.org/api                             |                               |
+| WEATHER_ENABLED          | Indicates if weather should be shown in the slideshow                                                 | false                         |
+| WEATHER_LOCATION         | Name of a city                                                                                        | Berlin                        |
+| WEATHER_LANGUAGE         | Weather language ([ISO_639-1](https://en.wikipedia.org/wiki/ISO_639-1))                               | en                            |
+| WEATHER_UNIT             | Weather units (`metric` or `imperial`)                                                                | metric                        |
+| HOME_ASSISTANT_BASE_URL  | Home assistant base url (e.g.: `http://192.168.0.123:8123`)                                           |                               |
+| HOME_ASSISTANT_ENTITY_ID | Home assistant entity id to load the weather from (e.g.: `sensor.outside_temperature`)                |                               |
+| HOME_ASSISTANT_API_TOKEN | Home assistant api access token                                                                       |                               |
+| SHOW_HIDE_BUTTON         | Show the hide button on the slideshow                                                                 | false                         |

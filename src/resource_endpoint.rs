@@ -3,10 +3,11 @@ use actix_web::get;
 use actix_web::post;
 use actix_web::web;
 use actix_web::HttpResponse;
+use std::fs;
 
 use crate::resource_reader::RemoteResource;
 use crate::resource_store::ResourceStore;
-use crate::{image_processor, resource_processor, resource_reader, ResourceReader};
+use crate::{image_processor, resource_processor, ResourceReader};
 
 #[get("")]
 pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
@@ -74,18 +75,18 @@ pub async fn get_resource_by_id_and_resolution(
 
     // If we found the requested resource, read the image data and adjust the image to the display
     let remote_resource = remote_resource.unwrap();
-    let resource_data =
-        resource_reader::read_resource_data(resource_reader.as_ref(), &remote_resource).and_then(
-            |resource_data| {
-                image_processor::adjust_image(
-                    remote_resource.path,
-                    resource_data,
-                    display_width,
-                    display_height,
-                    remote_resource.orientation,
-                )
-            },
-        );
+    let _resource_reader1 = resource_reader.as_ref();
+    let resource_data = fs::read(remote_resource.path.clone())
+        .ok()
+        .and_then(|resource_data| {
+            image_processor::adjust_image(
+                remote_resource.path,
+                resource_data,
+                display_width,
+                display_height,
+                remote_resource.orientation,
+            )
+        });
 
     // If image adjustments were successful, return the data, otherwise return with error
     if let Some(resource_data) = resource_data {

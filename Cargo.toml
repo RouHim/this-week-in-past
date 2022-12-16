@@ -31,7 +31,6 @@ log = "0.4.17"
 env_logger = "0.10.0"
 rand = "0.8.5"
 mime_guess = "2.0.4"
-pavao = "0.1.2"
 r2d2 = "0.8.10"
 rusqlite = { version = "0.28.0", features = ["bundled"] }
 r2d2_sqlite = "0.21.0"

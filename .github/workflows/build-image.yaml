@@ -52,9 +52,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install required dependencies
-        run: sudo apt update && sudo apt install -y libsmbclient-dev libsmbclient
-
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -75,9 +72,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Install required dependencies
-        run: sudo apt update && sudo apt install -y libsmbclient-dev libsmbclient
 
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
@@ -103,9 +97,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install required dependencies
-        run: sudo apt update && sudo apt install -y libsmbclient-dev libsmbclient
-
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -125,9 +116,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Install required dependencies
-        run: sudo apt update && sudo apt install -y libsmbclient-dev libsmbclient
 
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
@@ -149,17 +137,31 @@ jobs:
     name: Build, test and push container image
     needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ amd64, arm64, arm ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install required dependencies
-        run: sudo apt update && sudo apt install -y libsmbclient-dev libsmbclient
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
         with:
-          platforms: linux/amd64, linux/arm64
+          platforms: linux/amd64, linux/arm64, linux/arm
+
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+
+      - uses: Swatinem/rust-cache@v2 # use rust / cargo caching
+        with:
+          cache-on-failure: "true"
+
+      - name: Build static application binary
+        run: |
+          source prep-build-env.sh
+          alias rust-musl-builder='docker run --rm -it -v "$(pwd)":/home/rust/src messense/rust-musl-cross:${BUILDER_TAG[${{ matrix.arch }}]}'
+          rust-musl-builder cargo build --release
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2

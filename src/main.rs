@@ -16,7 +16,6 @@ mod resource_endpoint;
 mod resource_processor;
 mod resource_reader;
 mod resource_store;
-mod samba_client;
 mod scheduler;
 mod utils;
 mod weather_endpoint;
@@ -37,9 +36,6 @@ mod resource_reader_test;
 pub struct ResourceReader {
     /// Holds all specified local paths
     pub local_resource_paths: Vec<String>,
-
-    /// Holds all samba paths
-    pub samba_resource_paths: Vec<String>,
 }
 
 #[actix_web::main]
