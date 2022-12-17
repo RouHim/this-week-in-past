@@ -137,10 +137,6 @@ jobs:
     name: Build, test and push container image
     needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [ amd64, arm64, arm ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -160,8 +156,9 @@ jobs:
       - name: Build static application binary
         run: |
           source prep-build-env.sh
-          alias rust-musl-builder='docker run --rm -it -v "$(pwd)":/home/rust/src messense/rust-musl-cross:${BUILDER_TAG[${{ matrix.arch }}]}'
-          rust-musl-builder cargo build --release
+          build-rust-static-bin x86_64-musl
+          build-rust-static-bin aarch64-musl
+          build-rust-static-bin armv7-musleabihf
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -197,7 +194,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-          platforms: linux/amd64, linux/arm64
+          platforms: linux/amd64, linux/arm64, linux/arm
           file: ./Containerfile
           load: false
           push: true

@@ -6,18 +6,24 @@ FROM docker.io/alpine:3 as builder
 # Create an empty directory that will be used in the final image
 RUN mkdir "/empty_dir"
 
-# Install alpine-sdk that provides build dependencies
 # Install ssl certificates that will also be copied into the final image
-# Install pavao (smb client) required dependencies
 RUN apk update && apk add --no-cache \
-    ca-certificates
+    ca-certificates bash file
+
+# Copy all archs in to this container
+RUN mkdir /target
+WORKDIR /target
+COPY target /target
+COPY stage-arch-bin.sh /target
+
+# This will copy the cpu arch corresponding binary to /target/this-week-in-past
+RUN ./stage-arch-bin.sh this-week-in-past
+
 
 # # # # # # # # # # # # # # # # # # # #
 # Run image
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 FROM scratch
-
-ARG BINARY_FILE
 
 ENV USER "1337"
 ENV RESOURCE_PATHS "/resources"
@@ -34,8 +40,8 @@ COPY --chown=$USER:$USER --from=builder /empty_dir /tmp
 # Copy ssl certificates to the scratch image to enable HTTPS requests
 COPY --chown=$USER:$USER --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Copy the built application from the host to the container
-COPY --chown=$USER:$USER $BINARY_FILE /this-week-in-past
+# Copy the built application from the build image to the run-image
+COPY --chown=$USER:$USER --from=builder /target/this-week-in-past /this-week-in-past
 
 # Copy the static html website data from the host to the container
 COPY --chown=$USER:$USER web-app /web-app

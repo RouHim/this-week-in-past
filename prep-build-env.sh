@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
+#
+# Description:
+#   Provides a function to build a static binary for the specified cpu arch.
+#   This script utilizes this project: https://github.com/rust-cross/rust-musl-cross
+#
+# Parameter:
+#   $1 - CPU arch to build. Check all available docker image tags here: https://github.com/rust-cross/rust-musl-cross
+#
+# How to use:
+#   Just source this file and then run: build-rust-static-bin <desired-cpu-arch>
+#
+# Example:
+#   build-rust-static-bin aarch64-musl
+#
+# # # #
 
-declare -A BUILD_TARGET
-BUILD_TARGET[amd64]="x86_64-unknown-linux-musl"
-BUILD_TARGET[arm64]="aarch64-unknown-linux-musl"
-BUILD_TARGET[arm]="armv7-unknown-linux-musleabihf"
-
-declare -A BUILDER_TAG
-BUILDER_TAG[amd64]="x86_64-musl"
-BUILDER_TAG[arm64]="rust-musl-cross:aarch64-musl"
-BUILDER_TAG[arm]="rust-musl-cross:armv7-musleabihf"
+function build-rust-static-bin() {
+    echo "Building arch: $1"
+    docker run --rm -it -e CARGO_NET_GIT_FETCH_WITH_CLI=true -v "$(pwd)":/home/rust/src messense/rust-musl-cross:"${1}" cargo build --release
+}
