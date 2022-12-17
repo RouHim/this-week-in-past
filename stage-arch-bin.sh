@@ -18,14 +18,18 @@ else
   exit 1
 fi
 
-# TODO: fix for armv7 -> armv7l
 CURRENT_ARCH=$(uname -m)
+
+if [ "$CURRENT_ARCH" = "armv7l" ]; then
+  CURRENT_ARCH="armv7"
+fi
+
 echo "Current arch is: $CURRENT_ARCH"
 
 find . -wholename "*release/${1}" -type f | while read arch_binary; do
   echo "Checking: $arch_binary"
   if [[ "$arch_binary" = *"$CURRENT_ARCH"* ]]; then
-    echo "Binary for this cpu arch is: $arch_binary"
+    echo " -> Binary for this cpu arch is: $arch_binary"
     file "$arch_binary"
     cp "$arch_binary" "${1}"
     exit 0
@@ -33,8 +37,3 @@ find . -wholename "*release/${1}" -type f | while read arch_binary; do
     echo " -> No match"
   fi
 done
-
-echo "No binary found for: $CURRENT_ARCH"
-echo "List of available binaries:"
-find . -wholename "*release/${1}" -type f
-exit 1

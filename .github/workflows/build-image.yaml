@@ -141,13 +141,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-        with:
-          platforms: linux/amd64, linux/arm64, linux/arm
-
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
       - uses: Swatinem/rust-cache@v2 # use rust / cargo caching
         with:
