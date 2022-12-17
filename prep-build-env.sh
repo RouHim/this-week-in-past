@@ -17,5 +17,5 @@
 
 function build-rust-static-bin() {
     echo "Building arch: $1"
-    docker run --rm -it -e CARGO_NET_GIT_FETCH_WITH_CLI=true -v "$(pwd)":/home/rust/src messense/rust-musl-cross:"${1}" cargo build --release
+    docker run --rm -e CARGO_NET_GIT_FETCH_WITH_CLI=true -v "$(pwd)":/home/rust/src messense/rust-musl-cross:"${1}" cargo build --release
 }
