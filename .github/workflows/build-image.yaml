@@ -156,6 +156,8 @@ jobs:
           build-rust-static-bin x86_64-musl
           build-rust-static-bin aarch64-musl
           build-rust-static-bin armv7-musleabihf
+          pwd
+          ls -lsha target
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
