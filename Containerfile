@@ -11,10 +11,10 @@ RUN apk update && apk add --no-cache \
     ca-certificates bash file
 
 # Copy all archs in to this container
-RUN mkdir /target
-WORKDIR /target
-COPY target /target
-COPY stage-arch-bin.sh /target
+RUN mkdir /bin
+WORKDIR /bin
+COPY target .
+COPY stage-arch-bin.sh /bin
 
 # This will copy the cpu arch corresponding binary to /target/this-week-in-past
 RUN bash stage-arch-bin.sh this-week-in-past
