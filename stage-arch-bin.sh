@@ -32,6 +32,7 @@ find . -wholename "*release/${1}" -type f | while read arch_binary; do
     echo " -> Binary for this cpu arch is: $arch_binary"
     file "$arch_binary"
     cp "$arch_binary" "${1}"
+    realpath "${1}"
     exit 0
   else
     echo " -> No match"
