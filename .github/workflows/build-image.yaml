@@ -193,6 +193,7 @@ jobs:
         with:
           tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           platforms: linux/amd64, linux/arm64, linux/arm
+          context: .
           file: ./Containerfile
           load: false
           push: true
