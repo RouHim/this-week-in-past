@@ -29,7 +29,7 @@ fn get_gps_date(exif_data: &Exif) -> Option<NaiveDateTime> {
         .map(|gps_date| {
             NaiveDate::parse_from_str(gps_date.display_value().to_string().as_str(), "%F").unwrap()
         })
-        .map(|gps_date| gps_date.and_hms(0, 0, 0))
+        .map(|gps_date| gps_date.and_hms_opt(0, 0, 0).unwrap())
 }
 
 /// Finds the exif date in for the given tags
@@ -128,7 +128,7 @@ pub fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {
     if parsed.is_empty() {
         None
     } else {
-        Some(parsed.first().unwrap().and_hms(0, 0, 0))
+        Some(parsed.first().unwrap().and_hms_opt(0, 0, 0).unwrap())
     }
 }
 

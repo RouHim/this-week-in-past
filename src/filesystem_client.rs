@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use log::error;
 
-use crate::resource_reader::{RemoteResource, RemoteResourceType};
+use crate::resource_reader::RemoteResource;
 use crate::{resource_reader, utils};
 
 /// Reads all files of a folder and returns all found resources
@@ -46,7 +46,7 @@ pub fn read_files_recursive(path: &Path) -> Vec<RemoteResource> {
 /// Reads a single file and returns the found resource
 /// Checks if the file is a supported resource currently all image types
 fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
-    let file = std::fs::File::open(file_path).unwrap();
+    let file = fs::File::open(file_path).unwrap();
     let metadata = file.metadata().expect("Failed to read metadata");
     let file_name = file_path.as_path().file_name().unwrap().to_str().unwrap();
 
@@ -68,15 +68,13 @@ fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
         taken: None,
         location: None,
         orientation: None,
-        resource_type: RemoteResourceType::Local,
-        samba_client_index: 0,
     }]
 }
 
 /// Reads the exif data from the file and augments the remote resource with this information
 pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
     let file_path = resource.path.as_str();
-    let file = std::fs::File::open(file_path).unwrap();
+    let file = fs::File::open(file_path).unwrap();
 
     let mut bufreader = std::io::BufReader::new(&file);
     let exif_reader = exif::Reader::new();

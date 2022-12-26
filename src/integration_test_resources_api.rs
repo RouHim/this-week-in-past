@@ -64,7 +64,7 @@ async fn test_get_all_resources() {
 async fn test_this_week_in_past_resources() {
     // GIVEN is one image assets
     let base_test_dir = create_temp_folder().await;
-    let today_date_string = Local::now().date().format("%Y%m%d").to_string();
+    let today_date_string = Local::now().date_naive().format("%Y%m%d").to_string();
     let test_image_1 = create_test_image(
         &base_test_dir,
         "",
@@ -73,7 +73,7 @@ async fn test_this_week_in_past_resources() {
     )
     .await;
     let another_date_string = Local::now()
-        .date()
+        .date_naive()
         .add(Duration::weeks(4))
         .format("%Y%m%d")
         .to_string();

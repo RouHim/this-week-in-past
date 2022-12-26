@@ -7,3 +7,5 @@ test-image.sh
 index-*
 content-*
 *.db
+.env
+this-week-in-past
