@@ -152,10 +152,17 @@ jobs:
 
       - name: Build static application binary
         run: |
+          # Prepare rust-cross/rust-musl-cross for cross compiling
           source prep-build-env.sh
+          
+          # Compile the desired targets
           build-rust-static-bin x86_64-musl
           build-rust-static-bin aarch64-musl
           build-rust-static-bin armv7-musleabihf
+          build-rust-static-bin arm-musleabihf
+          
+          # Cleanup target folder
+          sudo rm -rf target/*/release/build target/*/release/deps 
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -192,7 +199,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-          platforms: linux/amd64, linux/arm64, linux/arm
+          platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
           context: .
           file: ./Containerfile
           load: false
