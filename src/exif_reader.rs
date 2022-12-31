@@ -26,10 +26,10 @@ pub fn get_exif_date(exif_data: &Exif) -> Option<NaiveDateTime> {
 fn get_gps_date(exif_data: &Exif) -> Option<NaiveDateTime> {
     exif_data
         .get_field(Tag::GPSDateStamp, In::PRIMARY)
-        .map(|gps_date| {
-            NaiveDate::parse_from_str(gps_date.display_value().to_string().as_str(), "%F").unwrap()
+        .and_then(|gps_date| {
+            NaiveDate::parse_from_str(gps_date.display_value().to_string().as_str(), "%F").ok()
         })
-        .map(|gps_date| gps_date.and_hms_opt(0, 0, 0).unwrap())
+        .and_then(|gps_date| gps_date.and_hms_opt(0, 0, 0))
 }
 
 /// Finds the exif date in for the given tags
