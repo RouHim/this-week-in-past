@@ -40,14 +40,14 @@ The first indexing when starting the application took about 6 seconds.
 
 ## Run the application
 
-The application should be started as a container.
+### Docker
 
 Docker Example:
 
 ```shell
 docker run -p 8080:8080 \
         -v /path/to/pictures:/resources \
-        -e SLIDESHOW_INTERVAL=10 \
+        -e SLIDESHOW_INTERVAL=60 \
         -e WEATHER_ENABLED=true \
         -e OPEN_WEATHER_MAP_API_KEY=<YOUR_KEY> \
         -e BIGDATA_CLOUD_API_KEY=<YOUR_KEY> \
@@ -68,6 +68,24 @@ services:
       - "8080:8080"
 ```
 
+### Native execution
+
+Download the latest release from the [releases page](https://github.com/RouHim/this-week-in-past/releases).
+Create a folder to store the application data:
+
+```shell
+mkdir this-week-in-past-data
+```
+
+Then start the application:
+
+```shell
+RESOURCE_PATHS=/path/to/pictures \
+DATA_FOLDER=this-week-in-past-data \
+SLIDESHOW_INTERVAL=60 \
+./this-week-in-past
+```
+
 ## Configuration
 
 All configuration is done via environment variables:
@@ -76,6 +94,7 @@ All configuration is done via environment variables:
 |--------------------------|-------------------------------------------------------------------------------------------------------|-------------------------------|
 | RESOURCE_PATHS           | A list of folders from which the images should be loaded (comma separated).                           | `/resources` (Container only) |
 | DATA_FOLDER              | Path to a folder where the data should be stored, needs to read/write access                          | `/data` (Container only)      |
+| PORT                     | Port on which the application should listen.                                                          | `8080`                        |
 | SLIDESHOW_INTERVAL       | Interval of the slideshow in seconds                                                                  | 30                            |
 | REFRESH_INTERVAL         | Interval how often the page should be reloaded in minutes                                             | 180                           |
 | DATE_FORMAT              | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html) | %d.%m.%Y                      |

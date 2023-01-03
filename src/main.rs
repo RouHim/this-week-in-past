@@ -67,8 +67,12 @@ async fn main() -> std::io::Result<()> {
     let scheduler_handle =
         scheduler::schedule_indexer(resource_reader.clone(), resource_store.clone());
 
+    let bind_address = format!(
+        "0.0.0.0:{}",
+        env::var("PORT").unwrap_or_else(|_| "8080".to_string())
+    );
     // Run the actual web server and hold the main thread here
-    info!("Launching webserver 🚀");
+    info!(" 🚀 Launching webserver on http://{} 🚀 ", bind_address);
     let http_server_result = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(resource_store.clone()))
@@ -102,7 +106,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
             .service(Files::new("/", "./web-app/").index_file("index.html"))
     })
-    .bind("0.0.0.0:8080")?
+    .bind(bind_address)?
     .run()
     .await;
 
