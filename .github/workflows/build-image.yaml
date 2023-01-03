@@ -168,6 +168,10 @@ jobs:
           
           # Compile the desired target
           build-rust-static-bin ${{ matrix.target }}
+          
+          ls -la
+          ls -la target
+          tree
 
       - name: Upload static application binaries
         uses: actions/upload-artifact@v3
