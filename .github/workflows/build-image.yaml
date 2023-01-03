@@ -172,7 +172,7 @@ jobs:
           # Cleanup target folder
           sudo rm -rf target/*/release/build target/*/release/deps 
           
-          ls -la target/${{ matrix.target }}/release
+          ls -la target
           tree target
 
       - name: Upload static application binaries
