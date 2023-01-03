@@ -141,7 +141,7 @@ jobs:
 
 
   build-binaries:
-    name: Build binaries
+    name: Build
     needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
     # rRun all targets in parallel
@@ -191,6 +191,13 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: x86_64-musl
+          path: .
+
+      - name: Debug
+        run: |
+          ls -la
+          ls -la target
+          tree target
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
