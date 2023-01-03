@@ -144,6 +144,10 @@ jobs:
     name: Build binaries
     needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
+    # rRun all targets in parallel
+    strategy:
+      matrix:
+        target: [ x86_64-musl, aarch64-musl, armv7-musleabihf, arm-musleabihf ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -162,11 +166,8 @@ jobs:
           # Prepare rust-cross/rust-musl-cross for cross compiling
           source prep-build-env.sh
           
-          # Compile the desired targets
-          build-rust-static-bin x86_64-musl
-          build-rust-static-bin aarch64-musl
-          build-rust-static-bin armv7-musleabihf
-          build-rust-static-bin arm-musleabihf
+          # Compile the desired target
+          build-rust-static-bin ${{ matrix.target }}
           
           # Cleanup target folder
           sudo rm -rf target/*/release/build target/*/release/deps 
@@ -174,7 +175,7 @@ jobs:
       - name: Upload static application binaries
         uses: actions/upload-artifact@v2
         with:
-          name: binaries
+          name: ${{ matrix.target }}
           path: target
 
 
@@ -189,7 +190,7 @@ jobs:
       - name: Download static application binaries
         uses: actions/download-artifact@v2
         with:
-          name: binaries
+          name: x86_64-musl
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -229,10 +230,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download static application binaries
+      - name: Download x86_64-musl binary
         uses: actions/download-artifact@v2
         with:
-          name: binaries
+          name: x86_64-musl
+      - name: Download aarch64-musl binary
+        uses: actions/download-artifact@v2
+        with:
+          name: aarch64-musl
+      - name: Download armv7-musleabihf binary
+        uses: actions/download-artifact@v2
+        with:
+          name: armv7-musleabihf
+      - name: Download arm-musleabihf binary
+        uses: actions/download-artifact@v2
+        with:
+          name: arm-musleabihf
 
       # Create a new release based on semantic versioning
       - name: Set up Node.js
@@ -295,10 +308,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download static application binaries
+      - name: Download x86_64-musl binary
         uses: actions/download-artifact@v2
         with:
-          name: binaries
+          name: x86_64-musl
+      - name: Download aarch64-musl binary
+        uses: actions/download-artifact@v2
+        with:
+          name: aarch64-musl
+      - name: Download armv7-musleabihf binary
+        uses: actions/download-artifact@v2
+        with:
+          name: armv7-musleabihf
+      - name: Download arm-musleabihf binary
+        uses: actions/download-artifact@v2
+        with:
+          name: arm-musleabihf
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
