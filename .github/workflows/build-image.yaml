@@ -173,7 +173,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/this-week-in-past
+          path: ./${{ matrix.target }}/release/this-week-in-past
 
 
   test-container-image:
@@ -238,22 +238,22 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: x86_64-musl
-          path: target
+          path: .
       - name: Download aarch64-musl binary
         uses: actions/download-artifact@v3
         with:
           name: aarch64-musl
-          path: target
+          path: .
       - name: Download armv7-musleabihf binary
         uses: actions/download-artifact@v3
         with:
           name: armv7-musleabihf
-          path: target
+          path: .
       - name: Download arm-musleabihf binary
         uses: actions/download-artifact@v3
         with:
           name: arm-musleabihf
-          path: target
+          path: .
 
       # Create a new release based on semantic versioning
       - name: Set up Node.js
@@ -320,22 +320,22 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: x86_64-musl
-          path: target
+          path: .
       - name: Download aarch64-musl binary
         uses: actions/download-artifact@v3
         with:
           name: aarch64-musl
-          path: target
+          path: .
       - name: Download armv7-musleabihf binary
         uses: actions/download-artifact@v3
         with:
           name: armv7-musleabihf
-          path: target
+          path: .
       - name: Download arm-musleabihf binary
         uses: actions/download-artifact@v3
         with:
           name: arm-musleabihf
-          path: target
+          path: .
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
