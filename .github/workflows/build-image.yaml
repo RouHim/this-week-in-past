@@ -168,18 +168,12 @@ jobs:
           
           # Compile the desired target
           build-rust-static-bin ${{ matrix.target }}
-          
-          # Cleanup target folder
-          sudo rm -rf target/*/release/build target/*/release/deps 
-          
-          ls -la target
-          tree target
 
       - name: Upload static application binaries
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.target }}
-          path: target
+          path: target/${{ matrix.target }}/release/this-week-in-past
 
 
   test-container-image:
@@ -191,10 +185,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download x86_64-musl static application binary
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: x86_64-musl
-          path: target
+          path: .
 
       - name: Debug
         run: |
@@ -241,22 +235,22 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download x86_64-musl binary
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: x86_64-musl
           path: target
       - name: Download aarch64-musl binary
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: aarch64-musl
           path: target
       - name: Download armv7-musleabihf binary
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: armv7-musleabihf
           path: target
       - name: Download arm-musleabihf binary
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: arm-musleabihf
           path: target
@@ -323,22 +317,22 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Download x86_64-musl binary
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: x86_64-musl
           path: target
       - name: Download aarch64-musl binary
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: aarch64-musl
           path: target
       - name: Download armv7-musleabihf binary
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: armv7-musleabihf
           path: target
       - name: Download arm-musleabihf binary
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: arm-musleabihf
           path: target
