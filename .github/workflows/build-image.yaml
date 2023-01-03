@@ -8,8 +8,8 @@ on:
 
 env:
   IMAGE_NAME: rouhim/this-week-in-past
-  # Use branch name as image tag, replace invalid chars. For main branch use 'latest'.
-  IMAGE_TAG: ${{ github.ref_name == 'main' && 'latest' || github.ref_name }}
+  # Use latest for main and PR number for PRs
+  IMAGE_TAG: ${{ github.event_name == 'pull_request' && github.event.number || 'latest' }}
 
 jobs:
 
@@ -141,7 +141,7 @@ jobs:
 
 
   build-binaries:
-    name: Build, test and push container image
+    name: Build binaries
     needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
     steps:
@@ -222,7 +222,7 @@ jobs:
 
   release-artifacts:
     name: Release artifacts
-    needs: [ test-container-image ]
+    needs: [ build-binaries ]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
@@ -290,7 +290,7 @@ jobs:
     name: Publish container images
     needs: [ test-container-image ]
     runs-on: ubuntu-latest
-    if: github.ref_name == 'main' || startsWith(github.ref_name, 'fix/') || startsWith(github.ref_name, 'feat/')
+    if: github.event_name == 'push'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
