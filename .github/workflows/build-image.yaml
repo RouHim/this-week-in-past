@@ -8,8 +8,8 @@ on:
 
 env:
   IMAGE_NAME: rouhim/this-week-in-past
-  # Use latest for main and PR number for PRs
-  IMAGE_TAG: ${{ github.event_name == 'pull_request' && github.event.number || 'latest' }}
+  # Use latest for main and PR number plug the "ticket" string as prefix for PRs
+  IMAGE_TAG: ${{ github.event_name == 'pull_request' && format('next-{0}', github.event.number) || 'latest' }}
 
 jobs:
 
