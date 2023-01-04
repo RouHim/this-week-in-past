@@ -197,6 +197,8 @@ jobs:
 
       - name: Build and push multi platform container image
         uses: docker/build-push-action@v3
+        # Only if branch is main fix or feature
+        if: github.ref_name == 'main' || startsWith(github.ref_name, 'fix/') || startsWith(github.ref_name, 'feat/')
         with:
           tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
