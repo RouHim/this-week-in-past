@@ -174,7 +174,6 @@ jobs:
           build-rust-static-bin ${{ matrix.target }}
           
           # Stage the binary for the next step
-          mkdir -p target/staged
           bash stage-arch-bin.sh this-week-in-past
           
           ls -la target
