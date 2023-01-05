@@ -167,14 +167,14 @@ jobs:
           source prep-build-env.sh
           
           # Cleanup target dir
-          sudo rm -rf target
+          # TODO: Remove this once we know what is produces here
+          sudo rm -rf target 
           
           # Compile the desired target
           build-rust-static-bin ${{ matrix.target }}
           
-          ls -la
           ls -la target
-          tree
+          file target/**/this-week-in-past
 
       - name: Upload static application binaries
         uses: actions/upload-artifact@v3
