@@ -166,24 +166,17 @@ jobs:
           # Prepare rust-cross/rust-musl-cross for cross compiling
           source prep-build-env.sh
           
-          # Cleanup target dir
-          # TODO: Remove this once we know what is produces here
-          sudo rm -rf target 
-          
           # Compile the desired target
           build-rust-static-bin ${{ matrix.target }}
           
-          # Stage the binary for the next step
-          bash stage-arch-bin.sh this-week-in-past
-          
-          ls -la target
-          file target/**/this-week-in-past
+          # Translate ${{ matrix.target }} to rust target triple
+          echo "::set-env name=TARGET_TRIPPLE::$(bash translate-arch-to-rust-tripple.sh)"
 
       - name: Upload static application binaries
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.target }}
-          path: ./this-week-in-past
+          path: target/${{ env.TARGET_TRIPPLE }}/release/this-week-in-past
 
 
   test-container-image:
