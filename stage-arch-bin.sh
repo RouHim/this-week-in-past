@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Description:
-#   Stages the specified rust binary for the current cpu architecture
+#   Stages the specified rust binary for the current cpu architecture to the current directory.
 #
 # Parameter:
 #   $1 - Binary file name to stage
