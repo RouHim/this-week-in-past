@@ -193,7 +193,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: x86_64-musl
-          path: .
+          path: target/x86_64-unknown-linux-musl/release/
 
       - name: Debug
         run: |
