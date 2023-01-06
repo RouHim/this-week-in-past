@@ -195,12 +195,6 @@ jobs:
           name: x86_64-musl
           path: target/x86_64-unknown-linux-musl/release/
 
-      - name: Debug
-        run: |
-          ls -la
-          ls -la target
-          tree target
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -221,13 +215,13 @@ jobs:
           wget https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg -O /tmp/test/DSCN0010.jpg
 
       - name: Start test container
-        run: docker run --pull never -d --name test-container -p 8080:8080 -v /tmp/test:/resources ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+        run: sudo docker run --pull never -d --name test-container -p 8080:8080 -v /tmp/test:/resources ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
       - name: Test container web api
         run: wget -q -O /dev/null --timeout 5 --tries 3 http://localhost:8080/api/health
 
       - name: Cleanup
-        run: docker kill test-container && docker rm test-container
+        run: sudo docker kill test-container && docker rm test-container
 
 
   release-artifacts:
@@ -243,22 +237,22 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: x86_64-musl
-          path: .
+          path: target/x86_64-unknown-linux-musl/release/
       - name: Download aarch64-musl binary
         uses: actions/download-artifact@v3
         with:
           name: aarch64-musl
-          path: .
+          path: target/aarch64-unknown-linux-musl/release/
       - name: Download armv7-musleabihf binary
         uses: actions/download-artifact@v3
         with:
           name: armv7-musleabihf
-          path: .
+          path: target/armv7-unknown-linux-musleabihf/release/
       - name: Download arm-musleabihf binary
         uses: actions/download-artifact@v3
         with:
           name: arm-musleabihf
-          path: .
+          path: target/arm-unknown-linux-musleabihf/release/
 
       # Create a new release based on semantic versioning
       - name: Set up Node.js
