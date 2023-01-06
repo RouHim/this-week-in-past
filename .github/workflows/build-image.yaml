@@ -170,13 +170,13 @@ jobs:
           build-rust-static-bin ${{ matrix.target }}
           
           # Translate ${{ matrix.target }} to rust target triple
-          echo "::set-env name=TARGET_TRIPPLE::$(bash translate-arch-to-rust-tripple.sh)"
+          echo "::set-output name=TARGET_TRIPPLE::$(bash translate-arch-to-rust-tripple.sh)"
 
       - name: Upload static application binaries
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.target }}
-          path: target/${{ env.TARGET_TRIPPLE }}/release/this-week-in-past
+          path: target/${{ steps.build-binaries.outputs.TARGET_TRIPPLE }}/release/this-week-in-past
 
 
   test-container-image:
