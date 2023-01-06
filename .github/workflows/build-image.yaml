@@ -172,13 +172,13 @@ jobs:
           # Translate ${{ matrix.target }} to rust target triple
           # FIXME: The set output command does not work
           export TARGET_TRIPPLE=$(bash translate-arch-to-rust-tripple.sh)
-          echo "::set-env name=TARGET_TRIPPLE::$TARGET_TRIPPLE"
+          echo "TARGET_TRIPPLE=${TARGET_TRIPPLE}" >> $GITHUB_ENV
 
       - name: Upload static application binaries
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.target }}
-          path: target/$TARGET_TRIPPLE/release/this-week-in-past
+          path: target/${{ env.TARGET_TRIPPLE }}/release/this-week-in-past
 
 
   test-container-image:
