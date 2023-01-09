@@ -36,14 +36,8 @@ VOLUME $DATA_FOLDER
 COPY --chown=$USER:$USER --from=builder /empty_dir $DATA_FOLDER
 COPY --chown=$USER:$USER --from=builder /empty_dir /tmp
 
-# Copy ssl certificates to the scratch image to enable HTTPS requests
-COPY --chown=$USER:$USER --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-
 # Copy the built application from the build image to the run-image
 COPY --chown=$USER:$USER --from=builder /work/this-week-in-past /this-week-in-past
-
-# Copy the static html website data from the host to the container
-COPY --chown=$USER:$USER web-app /web-app
 
 EXPOSE 8080
 USER $USER
