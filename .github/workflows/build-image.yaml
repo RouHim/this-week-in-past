@@ -144,7 +144,7 @@ jobs:
     name: Build
     needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
-    # rRun all targets in parallel
+    # Run all targets in parallel
     strategy:
       matrix:
         target: [ x86_64-musl, aarch64-musl, armv7-musleabihf, arm-musleabihf ]
@@ -170,7 +170,6 @@ jobs:
           build-rust-static-bin ${{ matrix.target }}
           
           # Translate ${{ matrix.target }} to rust target triple
-          # FIXME: The set output command does not work
           export TARGET_TRIPPLE=$(bash translate-arch-to-rust-tripple.sh)
           echo "TARGET_TRIPPLE=${TARGET_TRIPPLE}" >> $GITHUB_ENV
 
