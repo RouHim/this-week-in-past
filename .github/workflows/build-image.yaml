@@ -12,14 +12,15 @@ env:
 jobs:
   # Use latest for main and PR number for the "ticket" string as prefix for PRs
   set_image_tag:
+    name: Set image tag
     runs-on: ubuntu-latest
     steps:
       - name: Set image tag
         run: |
           if [ -z "${{github.event.pull_request.number}}" ]; then
-            echo "::set-env name=IMAGE_TAG::latest"
+            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
           else
-            echo "::set-env name=IMAGE_TAG::PR${{github.event.pull_request.number}}"
+            echo "IMAGE_TAG=PR-${{github.event.pull_request.number}}" >> $GITHUB_ENV
           fi
 
   check-oci-config:
