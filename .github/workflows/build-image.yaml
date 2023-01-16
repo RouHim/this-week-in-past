@@ -8,12 +8,19 @@ on:
 
 env:
   IMAGE_NAME: rouhim/this-week-in-past
-  # Use latest for main and PR number plug the "ticket" string as prefix for PRs
-  IMAGE_TAG: ${{ if eq(github.event.pull_request.number, undefined)
-    then 'latest'
-    else github.event.pull_request.number }}
 
 jobs:
+  # Use latest for main and PR number for the "ticket" string as prefix for PRs
+  set_image_tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set image tag
+        run: |
+          if [ -z "${{github.event.pull_request.number}}" ]; then
+            echo "::set-env name=IMAGE_TAG::latest"
+          else
+            echo "::set-env name=IMAGE_TAG::PR${{github.event.pull_request.number}}"
+          fi
 
   check-oci-config:
     name: Check Containerfile
@@ -184,7 +191,7 @@ jobs:
 
   test-container-image:
     name: Test container image
-    needs: [ build-binaries ]
+    needs: [ build-binaries, set_image_tag ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -307,7 +314,7 @@ jobs:
 
   publish-container-images:
     name: Publish container images
-    needs: [ test-container-image ]
+    needs: [ test-container-image, set_image_tag ]
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
