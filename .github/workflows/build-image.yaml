@@ -23,7 +23,7 @@ jobs:
             echo "IMAGE_TAG=PR-${{github.event.pull_request.number}}" >> $GITHUB_ENV
           fi
           
-          echo "Image tag was set to $IMAGE_TAG"
+          echo "Image tag was set to ${{ env.IMAGE_TAG }}"
 
   check-oci-config:
     name: Check Containerfile
