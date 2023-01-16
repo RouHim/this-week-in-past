@@ -18,12 +18,14 @@ jobs:
       - name: Set image tag
         run: |
           if [ -z "${{github.event.pull_request.number}}" ]; then
+            export IMAGE_TAG=latest
             echo "IMAGE_TAG=latest" >> $GITHUB_ENV
           else
+            export IMAGE_TAG=PR-${{github.event.pull_request.number}}
             echo "IMAGE_TAG=PR-${{github.event.pull_request.number}}" >> $GITHUB_ENV
           fi
           
-          echo "Image tag was set to ${{ env.IMAGE_TAG }}"
+          echo "Image tag was set to $IMAGE_TAG"
 
   check-oci-config:
     name: Check Containerfile
