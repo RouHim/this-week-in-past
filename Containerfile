@@ -6,9 +6,8 @@ FROM docker.io/alpine:3 as builder
 # Create an empty directory that will be used in the final image
 RUN mkdir "/empty_dir"
 
-# Install ssl certificates that will also be copied into the final image
-RUN apk update && apk add --no-cache \
-    ca-certificates bash file
+# Install required packages for the staging script
+RUN apk update && apk add --no-cache bash file
 
 # Copy all archs in to this container
 RUN mkdir /work

@@ -9,7 +9,9 @@ on:
 env:
   IMAGE_NAME: rouhim/this-week-in-past
   # Use latest for main and PR number plug the "ticket" string as prefix for PRs
-  IMAGE_TAG: ${{ github.event_name == 'pull_request' && format('next-{0}', github.event.number) || 'latest' }}
+  IMAGE_TAG: ${{ if eq(github.event.pull_request.number, undefined)
+    then 'latest'
+    else github.event.pull_request.number }}
 
 jobs:
 
@@ -205,22 +207,20 @@ jobs:
           file: ./Containerfile
           load: true
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Prepare test env
         run: |
-          mkdir -p /tmp/test
-          wget https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg -O /tmp/test/DSCN0010.jpg
+          mkdir -p /tmp/this-week-in-past-test
+          wget https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg -O /tmp/this-week-in-past-test/DSCN0010.jpg
 
       - name: Start test container
-        run: sudo docker run --pull never -d --name test-container -p 8080:8080 -v /tmp/test:/resources ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+        run: docker run --pull never -d --name test-container -p 8080:8080 -v /tmp/this-week-in-past-test:/resources ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
       - name: Test container web api
         run: wget -q -O /dev/null --timeout 5 --tries 3 http://localhost:8080/api/health
 
       - name: Cleanup
-        run: sudo docker kill test-container && docker rm test-container
+        run: docker kill test-container && docker rm test-container
 
 
   release-artifacts:
@@ -346,7 +346,6 @@ jobs:
 
       - name: Build and push multi platform container image
         uses: docker/build-push-action@v3
-        # Only if branch is main fix or feature
         with:
           tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
@@ -354,5 +353,3 @@ jobs:
           file: ./Containerfile
           load: false
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
