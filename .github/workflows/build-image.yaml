@@ -18,14 +18,14 @@ jobs:
       - name: Set image tag
         run: |
           if [ -z "${{github.event.pull_request.number}}" ]; then
-            export IMAGE_TAG=latest
-            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+            echo "IMAGE_TAG=latest" >> $GITHUB_OUTPUT
           else
-            export IMAGE_TAG=PR-${{github.event.pull_request.number}}
-            echo "IMAGE_TAG=PR-${{github.event.pull_request.number}}" >> $GITHUB_ENV
+            echo "IMAGE_TAG=PR-${{github.event.pull_request.number}}" >> $GITHUB_OUTPUT
           fi
           
-          echo "Image tag was set to $IMAGE_TAG"
+          echo $IMAGE_TAG
+    outputs:
+      IMAGE_TAG: ${{ steps.set_image_tag.outputs.IMAGE_TAG }}
 
   check-oci-config:
     name: Check Containerfile
@@ -214,7 +214,7 @@ jobs:
       - name: Build x86 image and load into local repo
         uses: docker/build-push-action@v3
         with:
-          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          tags: ${{ env.IMAGE_NAME }}:${{ needs.set_image_tag.outputs.IMAGE_TAG }}
           context: .
           file: ./Containerfile
           load: true
@@ -226,7 +226,7 @@ jobs:
           wget https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg -O /tmp/this-week-in-past-test/DSCN0010.jpg
 
       - name: Start test container
-        run: docker run --pull never -d --name test-container -p 8080:8080 -v /tmp/this-week-in-past-test:/resources ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+        run: docker run --pull never -d --name test-container -p 8080:8080 -v /tmp/this-week-in-past-test:/resources ${{ env.IMAGE_NAME }}:${{ needs.set_image_tag.outputs.IMAGE_TAG }}
 
       - name: Test container web api
         run: wget -q -O /dev/null --timeout 5 --tries 3 http://localhost:8080/api/health
@@ -359,7 +359,7 @@ jobs:
       - name: Build and push multi platform container image
         uses: docker/build-push-action@v3
         with:
-          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          tags: ${{ env.IMAGE_NAME }}:${{ needs.set_image_tag.outputs.IMAGE_TAG }}
           platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
           context: .
           file: ./Containerfile
