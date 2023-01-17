@@ -16,13 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Set image tag
+        id: set_image_tag
         run: |
-          if [ -z "${{github.event.pull_request.number}}" ]; then
+          if [ -z "${{ github.event.pull_request.number }}" ]; then
             echo "IMAGE_TAG=latest"
             echo "IMAGE_TAG=latest" >> $GITHUB_OUTPUT
           else
-            echo "IMAGE_TAG=PR-${{github.event.pull_request.number}}"
-            echo "IMAGE_TAG=PR-${{github.event.pull_request.number}}" >> $GITHUB_OUTPUT
+            echo "IMAGE_TAG=PR-${{ github.event.pull_request.number }}"
+            echo "IMAGE_TAG=PR-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
           fi
           
           echo $IMAGE_TAG
