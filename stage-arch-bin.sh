@@ -33,6 +33,7 @@ find . -wholename "*release/${1}" -type f | while read arch_binary; do
     file "$arch_binary"
     cp "$arch_binary" "${1}"
     realpath "${1}"
+    chmod +x "${1}"
     exit 0
   else
     echo " -> No match"
