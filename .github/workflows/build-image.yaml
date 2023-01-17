@@ -23,11 +23,14 @@ jobs:
           if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
             IMAGE_TAG="latest"
           elif [ -n "${{ github.event.issue.number }}" ]; then
+            echo "Using github.event.issue.number: ${{ github.event.issue.number }}"
             IMAGE_TAG="ISSUE-${{ github.event.issue.number }}"
           elif [ -n "${{ github.event.pull_request.number }}" ];then
+            echo "Using github.event.pull_request.number: ${{ github.event.pull_request.number }}"
             IMAGE_TAG="PR-${{ github.event.pull_request.number }}"
           else
-            IMAGE_TAG="PR-$(echo -n $GITHUB_REF_NAME | md5sum | cut -c1-6)"
+            echo "Using GITHUB_REF_NAME: $GITHUB_REF_NAME"
+            IMAGE_TAG="$(echo -n $GITHUB_REF_NAME | md5sum | cut -c1-6)"
           fi
           
           echo "IMAGE_TAG: $IMAGE_TAG"
