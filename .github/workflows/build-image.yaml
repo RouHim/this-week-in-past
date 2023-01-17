@@ -18,12 +18,14 @@ jobs:
       - name: Set image tag
         id: set_image_tag
         run: |
-          if [ -z "${{ github.event.pull_request.number }}" ]; then
+          PR_NUMBER=${{github.event.issue.number}}
+          
+          if [ -z "$PR_NUMBER" ]; then
             echo "IMAGE_TAG=latest"
             echo "IMAGE_TAG=latest" >> $GITHUB_OUTPUT
-          else
-            echo "IMAGE_TAG=PR-${{ github.event.pull_request.number }}"
-            echo "IMAGE_TAG=PR-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          else            
+            echo "IMAGE_TAG=PR-$PR_NUMBER"
+            echo "IMAGE_TAG=PR-$PR_NUMBER" >> $GITHUB_OUTPUT
           fi
           
           echo $IMAGE_TAG
