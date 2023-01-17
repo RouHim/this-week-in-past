@@ -18,22 +18,20 @@ jobs:
       - name: Set image tag
         id: set_image_tag
         run: |
-          echo github.event.number = ${{ github.event.number  }}
-          echo github.event.pull_request.number = ${{ github.event.pull_request.number }}
-          echo github.event.issue.number = ${{ github.event.issue.number }}
-          env
+          IMAGE_TAG=
           
-          PR_NUMBER=${{github.event.issue.number}}
-          
-          if [ -z "$PR_NUMBER" ]; then
-            echo "IMAGE_TAG=latest"
-            echo "IMAGE_TAG=latest" >> $GITHUB_OUTPUT
-          else            
-            echo "IMAGE_TAG=PR-$PR_NUMBER"
-            echo "IMAGE_TAG=PR-$PR_NUMBER" >> $GITHUB_OUTPUT
+          if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            IMAGE_TAG="latest"
+          elif [ -n "${{ PR-github.event.issue.number }}" ]; then
+            IMAGE_TAG="ISSUE-${{ github.event.issue.number }}"
+          elif [ -n "${{ PR-github.event.pull_request.number }}" ];then
+            IMAGE_TAG="PR-${{ github.event.pull_request.number }}"
+          else
+            IMAGE_TAG="PR-$(echo -n $GITHUB_REF_NAME | md5sum | cut -c1-6)"
           fi
           
-          echo $IMAGE_TAG
+          echo "IMAGE_TAG: $IMAGE_TAG"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
     outputs:
       IMAGE_TAG: ${{ steps.set_image_tag.outputs.IMAGE_TAG }}
 
