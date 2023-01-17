@@ -18,6 +18,10 @@ jobs:
       - name: Set image tag
         id: set_image_tag
         run: |
+          echo github.event.number = ${{ github.event.number  }}
+          echo github.event.pull_request.number = ${{ github.event.pull_request.number }}
+          echo github.event.issue.number = ${{ github.event.issue.number }}
+          
           PR_NUMBER=${{github.event.issue.number}}
           
           if [ -z "$PR_NUMBER" ]; then
