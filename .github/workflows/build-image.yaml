@@ -196,7 +196,7 @@ jobs:
           build-rust-static-bin ${{ matrix.target }}
           
           # Translate ${{ matrix.target }} to rust target triple
-          export TARGET_TRIPPLE=$(bash translate-arch-to-rust-tripple.sh)
+          export TARGET_TRIPPLE=$(bash translate-arch-to-rust-tripple.sh ${{ matrix.target }})
           echo "TARGET_TRIPPLE=${TARGET_TRIPPLE}"
           echo "TARGET_TRIPPLE=${TARGET_TRIPPLE}" >> $GITHUB_ENV
 
