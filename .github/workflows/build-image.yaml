@@ -343,22 +343,22 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: x86_64-musl
-          path: .
+          path: target/x86_64-unknown-linux-musl/release/
       - name: Download aarch64-musl binary
         uses: actions/download-artifact@v3
         with:
           name: aarch64-musl
-          path: .
+          path: target/aarch64-unknown-linux-musl/release/
       - name: Download armv7-musleabihf binary
         uses: actions/download-artifact@v3
         with:
           name: armv7-musleabihf
-          path: .
+          path: target/armv7-unknown-linux-musleabihf/release/
       - name: Download arm-musleabihf binary
         uses: actions/download-artifact@v3
         with:
           name: arm-musleabihf
-          path: .
+          path: target/arm-unknown-linux-musleabihf/release/
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
