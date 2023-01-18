@@ -296,6 +296,7 @@ jobs:
       - name: Get release upload url
         run: |
           export UPLOAD_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ env.GITHUB_REPOSITORY }}/releases/tags/${{ env.GITHUB_REF }} | jq -r .id)
+          echo "UPLOAD_URL=${UPLOAD_URL}"
           echo "UPLOAD_URL=${UPLOAD_URL}" >> $GITHUB_ENV
 
       - name: Upload the x86 built binaries to the release
