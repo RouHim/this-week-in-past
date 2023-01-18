@@ -293,11 +293,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: npx semantic-release
 
+      - name: Get release upload url
+        run: |
+          export UPLOAD_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ env.GITHUB_REPOSITORY }}/releases/tags/${{ env.GITHUB_REF }} | jq -r .id)
+          echo "UPLOAD_URL=${UPLOAD_URL}" >> $GITHUB_ENV
+
       - name: Upload the x86 built binaries to the release
         uses: actions/upload-release-asset@v1
         if: github.ref == 'refs/heads/main'
         with:
-          upload_url: ${{ github.event.release.upload_url }}
+          upload_url: ${{ env.UPLOAD_URL }}
           asset_path: ./target/x86_64-unknown-linux-musl/release/this-week-in-past
           asset_name: this-week-in-past-x86_64-unknown-linux-musl
           asset_content_type: application/x-executable
@@ -306,7 +311,7 @@ jobs:
         uses: actions/upload-release-asset@v1
         if: github.ref == 'refs/heads/main'
         with:
-          upload_url: ${{ github.event.release.upload_url }}
+          upload_url: ${{ env.UPLOAD_URL }}
           asset_path: ./target/aarch64-unknown-linux-musl/release/this-week-in-past
           asset_name: this-week-in-past-aarch64-unknown-linux-musl
           asset_content_type: application/x-executable
@@ -315,7 +320,7 @@ jobs:
         uses: actions/upload-release-asset@v1
         if: github.ref == 'refs/heads/main'
         with:
-          upload_url: ${{ github.event.release.upload_url }}
+          upload_url: ${{ env.UPLOAD_URL }}
           asset_path: ./target/armv7-unknown-linux-musleabihf/release/this-week-in-past
           asset_name: this-week-in-past-armv7-unknown-linux-musleabihf
           asset_content_type: application/x-executable
@@ -324,7 +329,7 @@ jobs:
         uses: actions/upload-release-asset@v1
         if: github.ref == 'refs/heads/main'
         with:
-          upload_url: ${{ github.event.release.upload_url }}
+          upload_url: ${{ env.UPLOAD_URL }}
           asset_path: ./target/arm-unknown-linux-musleabihf/release/this-week-in-past
           asset_name: this-week-in-past-arm-unknown-linux-musleabihf
           asset_content_type: application/x-executable
