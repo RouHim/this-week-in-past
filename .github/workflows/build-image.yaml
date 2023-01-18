@@ -198,7 +198,6 @@ jobs:
           # Translate ${{ matrix.target }} to rust target triple
           export TARGET_TRIPPLE=$(bash translate-arch-to-rust-tripple.sh)
           echo "TARGET_TRIPPLE=${TARGET_TRIPPLE}"
-          ls -la target
           echo "TARGET_TRIPPLE=${TARGET_TRIPPLE}" >> $GITHUB_ENV
 
       - name: Upload static application binaries
