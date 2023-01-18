@@ -6,9 +6,8 @@ FROM docker.io/alpine:3 as builder
 # Create an empty directory that will be used in the final image
 RUN mkdir "/empty_dir"
 
-# Install ssl certificates that will also be copied into the final image
-RUN apk update && apk add --no-cache \
-    ca-certificates bash file
+# Install required packages for the staging script
+RUN apk update && apk add --no-cache bash file
 
 # Copy all archs in to this container
 RUN mkdir /work
@@ -36,14 +35,8 @@ VOLUME $DATA_FOLDER
 COPY --chown=$USER:$USER --from=builder /empty_dir $DATA_FOLDER
 COPY --chown=$USER:$USER --from=builder /empty_dir /tmp
 
-# Copy ssl certificates to the scratch image to enable HTTPS requests
-COPY --chown=$USER:$USER --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-
 # Copy the built application from the build image to the run-image
 COPY --chown=$USER:$USER --from=builder /work/this-week-in-past /this-week-in-past
-
-# Copy the static html website data from the host to the container
-COPY --chown=$USER:$USER web-app /web-app
 
 EXPOSE 8080
 USER $USER

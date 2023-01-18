@@ -5,11 +5,6 @@
     box-sizing: border-box;
 }
 
-@font-face {
-    font-family: "Roboto Medium";
-    src: url(Roboto-Medium.ttf);
-}
-
 /* ========================     */
 /* STYLED IDs                   */
 /* ========================     */
@@ -63,7 +58,7 @@
     bottom: 3vh;
     left: 3vh;
     color: #FFFFFF;
-    font-family: "Roboto Medium", serif;
+    font-family: sans-serif;
     background: transparent;
     font-size: 30px;
     text-align: left;

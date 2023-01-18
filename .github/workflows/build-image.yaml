@@ -8,9 +8,36 @@ on:
 
 env:
   IMAGE_NAME: rouhim/this-week-in-past
-  IMAGE_TAG: "${{ github.ref == 'refs/heads/main' && 'latest' || 'next' }}"
 
 jobs:
+  # Use latest for main and PR number for the "ticket" string as prefix for PRs
+  set_image_tag:
+    name: Set image tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set image tag
+        id: set_image_tag
+        run: |
+          IMAGE_TAG=
+          
+          if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
+            IMAGE_TAG="latest"
+          elif [ -n "${{ github.event.issue.number }}" ]; then
+            echo "Using github.event.issue.number: ${{ github.event.issue.number }}"
+            IMAGE_TAG="ISSUE-${{ github.event.issue.number }}"
+          elif [ -n "${{ github.event.pull_request.number }}" ];then
+            echo "Using github.event.pull_request.number: ${{ github.event.pull_request.number }}"
+            IMAGE_TAG="PR-${{ github.event.pull_request.number }}"
+          else
+            echo "Using GITHUB_REF_NAME: $GITHUB_REF_NAME"
+            IMAGE_TAG="$(echo -n $GITHUB_REF_NAME | md5sum | cut -c1-6)"
+          fi
+          
+          echo "IMAGE_TAG: $IMAGE_TAG"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    outputs:
+      IMAGE_TAG: ${{ steps.set_image_tag.outputs.IMAGE_TAG }}
 
   check-oci-config:
     name: Check Containerfile
@@ -29,6 +56,7 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
 
+
   check-repo:
     name: Check git repository
     runs-on: ubuntu-latest
@@ -44,6 +72,7 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
+
 
   check-code-style:
     name: Check code style
@@ -66,6 +95,7 @@ jobs:
       - name: Check the code style
         run: cargo fmt --all -- --check
 
+
   check-code:
     name: Check rust code
     runs-on: ubuntu-latest
@@ -86,6 +116,7 @@ jobs:
 
       - name: Verify code
         run: cargo clippy
+
 
   test:
     name: Run application tests
@@ -110,6 +141,7 @@ jobs:
       - name: Test code
         run: cargo test
 
+
   check-unused-dependencies:
     name: Check for unused deps
     runs-on: ubuntu-latest
@@ -133,10 +165,15 @@ jobs:
       - name: Analyze dependencies
         run: cargo +nightly udeps
 
-  build-container-image:
-    name: Build, test and push container image
+
+  build-binaries:
+    name: Build
     needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
+    # Run all targets in parallel
+    strategy:
+      matrix:
+        target: [ x86_64-musl, aarch64-musl, armv7-musleabihf, arm-musleabihf ]
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -155,14 +192,173 @@ jobs:
           # Prepare rust-cross/rust-musl-cross for cross compiling
           source prep-build-env.sh
           
-          # Compile the desired targets
-          build-rust-static-bin x86_64-musl
-          build-rust-static-bin aarch64-musl
-          build-rust-static-bin armv7-musleabihf
-          build-rust-static-bin arm-musleabihf
+          # Compile the desired target
+          build-rust-static-bin ${{ matrix.target }}
           
-          # Cleanup target folder
-          sudo rm -rf target/*/release/build target/*/release/deps 
+          # Translate ${{ matrix.target }} to rust target triple
+          export TARGET_TRIPPLE=$(bash translate-arch-to-rust-tripple.sh ${{ matrix.target }})
+          echo "TARGET_TRIPPLE=${TARGET_TRIPPLE}"
+          echo "TARGET_TRIPPLE=${TARGET_TRIPPLE}" >> $GITHUB_ENV
+
+      - name: Upload static application binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.target }}
+          path: target/${{ env.TARGET_TRIPPLE }}/release/this-week-in-past
+
+
+  test-container-image:
+    name: Test container image
+    needs: [ build-binaries, set_image_tag ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download x86_64-musl static application binary
+        uses: actions/download-artifact@v3
+        with:
+          name: x86_64-musl
+          path: target/x86_64-unknown-linux-musl/release/
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build x86 image and load into local repo
+        uses: docker/build-push-action@v3
+        with:
+          tags: ${{ env.IMAGE_NAME }}:${{ needs.set_image_tag.outputs.IMAGE_TAG }}
+          context: .
+          file: ./Containerfile
+          load: true
+          push: false
+
+      - name: Prepare test env
+        run: |
+          mkdir -p /tmp/this-week-in-past-test
+          wget https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg -O /tmp/this-week-in-past-test/DSCN0010.jpg
+
+      - name: Start test container
+        run: docker run --pull never -d --name test-container -p 8080:8080 -v /tmp/this-week-in-past-test:/resources ${{ env.IMAGE_NAME }}:${{ needs.set_image_tag.outputs.IMAGE_TAG }}
+
+      - name: Test container web api
+        run: wget -q -O /dev/null --timeout 5 --tries 3 http://localhost:8080/api/health
+
+      - name: Cleanup
+        run: docker kill test-container && docker rm test-container
+
+
+  release-artifacts:
+    name: Release artifacts
+    needs: [ build-binaries ]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download x86_64-musl binary
+        uses: actions/download-artifact@v3
+        with:
+          name: x86_64-musl
+          path: target/x86_64-unknown-linux-musl/release/
+      - name: Download aarch64-musl binary
+        uses: actions/download-artifact@v3
+        with:
+          name: aarch64-musl
+          path: target/aarch64-unknown-linux-musl/release/
+      - name: Download armv7-musleabihf binary
+        uses: actions/download-artifact@v3
+        with:
+          name: armv7-musleabihf
+          path: target/armv7-unknown-linux-musleabihf/release/
+      - name: Download arm-musleabihf binary
+        uses: actions/download-artifact@v3
+        with:
+          name: arm-musleabihf
+          path: target/arm-unknown-linux-musleabihf/release/
+
+      # Create a new release based on semantic versioning
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 12.x
+
+      - name: Install Dependencies
+        run: |
+          npm install -D semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/npm @semantic-release/git @semantic-release/github
+
+      - name: Generate Semantic Release Notes and Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: npx semantic-release
+
+      - name: Upload the x86 built binaries to the release
+        uses: actions/upload-release-asset@v1
+        if: github.ref == 'refs/heads/main'
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./target/x86_64-unknown-linux-musl/release/this-week-in-past
+          asset_name: this-week-in-past-x86_64-unknown-linux-musl
+          asset_content_type: application/x-executable
+
+      - name: Upload the aarch64 built binaries to the release
+        uses: actions/upload-release-asset@v1
+        if: github.ref == 'refs/heads/main'
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./target/aarch64-unknown-linux-musl/release/this-week-in-past
+          asset_name: this-week-in-past-aarch64-unknown-linux-musl
+          asset_content_type: application/x-executable
+
+      - name: Upload the armv7 built binaries to the release
+        uses: actions/upload-release-asset@v1
+        if: github.ref == 'refs/heads/main'
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./target/armv7-unknown-linux-musleabihf/release/this-week-in-past
+          asset_name: this-week-in-past-armv7-unknown-linux-musleabihf
+          asset_content_type: application/x-executable
+
+      - name: Upload the arm v6 built binaries to the release
+        uses: actions/upload-release-asset@v1
+        if: github.ref == 'refs/heads/main'
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./target/arm-unknown-linux-musleabihf/release/this-week-in-past
+          asset_name: this-week-in-past-arm-unknown-linux-musleabihf
+          asset_content_type: application/x-executable
+
+
+  publish-container-images:
+    name: Publish container images
+    needs: [ test-container-image, set_image_tag ]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download x86_64-musl binary
+        uses: actions/download-artifact@v3
+        with:
+          name: x86_64-musl
+          path: target/x86_64-unknown-linux-musl/release/
+      - name: Download aarch64-musl binary
+        uses: actions/download-artifact@v3
+        with:
+          name: aarch64-musl
+          path: target/aarch64-unknown-linux-musl/release/
+      - name: Download armv7-musleabihf binary
+        uses: actions/download-artifact@v3
+        with:
+          name: armv7-musleabihf
+          path: target/armv7-unknown-linux-musleabihf/release/
+      - name: Download arm-musleabihf binary
+        uses: actions/download-artifact@v3
+        with:
+          name: arm-musleabihf
+          path: target/arm-unknown-linux-musleabihf/release/
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -173,38 +369,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Load x86 image into local repo
-        uses: docker/build-push-action@v3
-        with:
-          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-          context: .
-          file: ./Containerfile
-          load: true
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Prepare test env
-        run: |
-          mkdir -p /tmp/test
-          wget https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg -O /tmp/test/DSCN0010.jpg
-      - name: Start test container
-        run: docker run --pull never -d --name test-container -p 8080:8080 -v /tmp/test:/resources ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-      - name: Test container web api
-        run: wget -q -O /dev/null --timeout 5 --tries 3 http://localhost:8080/api/health
-      - name: Cleanup
-        run: docker kill test-container && docker rm test-container
-
       - name: Build and push multi platform container image
         uses: docker/build-push-action@v3
-        # Only if branch is main fix or feature
-        if: github.ref_name == 'main' || startsWith(github.ref_name, 'fix/') || startsWith(github.ref_name, 'feat/')
         with:
-          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          tags: ${{ env.IMAGE_NAME }}:${{ needs.set_image_tag.outputs.IMAGE_TAG }}
           platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
           context: .
           file: ./Containerfile
           load: false
           push: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max

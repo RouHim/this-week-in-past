@@ -2,7 +2,6 @@ extern crate core;
 
 use std::env;
 
-use actix_files::Files;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use env_logger::Builder;
 use log::{info, warn, LevelFilter};
@@ -20,6 +19,7 @@ mod scheduler;
 mod utils;
 mod weather_endpoint;
 mod weather_processor;
+mod web_app_endpoint;
 
 #[cfg(test)]
 mod integration_test_config_api;
@@ -67,13 +67,22 @@ async fn main() -> std::io::Result<()> {
     let scheduler_handle =
         scheduler::schedule_indexer(resource_reader.clone(), resource_store.clone());
 
+    let bind_address = format!(
+        "0.0.0.0:{}",
+        env::var("PORT").unwrap_or_else(|_| "8080".to_string())
+    );
     // Run the actual web server and hold the main thread here
-    info!("Launching webserver 🚀");
+    info!(" 🚀 Launching webserver on http://{} 🚀 ", bind_address);
     let http_server_result = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(resource_store.clone()))
             .app_data(web::Data::new(resource_reader.clone()))
             .wrap(middleware::Logger::default()) // enable logger
+            .service(web_app_endpoint::index)
+            .service(web_app_endpoint::style_css)
+            .service(web_app_endpoint::script_js)
+            .service(web_app_endpoint::hide_png)
+            .service(web_app_endpoint::icon_png)
             .service(
                 web::scope("/api/resources")
                     .service(resource_endpoint::get_all_resources)
@@ -100,9 +109,8 @@ async fn main() -> std::io::Result<()> {
                     .service(config_endpoint::get_hide_button_enabled),
             )
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
-            .service(Files::new("/", "./web-app/").index_file("index.html"))
     })
-    .bind("0.0.0.0:8080")?
+    .bind(bind_address)?
     .run()
     .await;
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Description:
-#   Stages the specified rust binary for the current cpu architecture
+#   Stages the specified rust binary for the current cpu architecture to the current directory.
 #
 # Parameter:
 #   $1 - Binary file name to stage
@@ -33,6 +33,7 @@ find . -wholename "*release/${1}" -type f | while read arch_binary; do
     file "$arch_binary"
     cp "$arch_binary" "${1}"
     realpath "${1}"
+    chmod +x "${1}"
     exit 0
   else
     echo " -> No match"
