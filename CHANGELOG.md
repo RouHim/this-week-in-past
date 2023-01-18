@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/RouHim/this-week-in-past/compare/v1.0.1...v1.0.2) (2023-01-18)
+
+
+### Bug Fixes
+
+* **pipeline:** Fix release upload url ([8962500](https://github.com/RouHim/this-week-in-past/commit/896250090cd6664a189d7593b55dc6b4ccaee8f8))
+
 ## [1.0.1](https://github.com/RouHim/this-week-in-past/compare/v1.0.0...v1.0.1) (2023-01-18)
 
 
