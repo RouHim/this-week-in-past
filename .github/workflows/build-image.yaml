@@ -301,7 +301,8 @@ jobs:
 
       - name: Upload the x86 built binaries to the release
         uses: actions/upload-release-asset@v1
-        if: github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
           asset_path: ./target/x86_64-unknown-linux-musl/release/this-week-in-past
@@ -310,7 +311,8 @@ jobs:
 
       - name: Upload the aarch64 built binaries to the release
         uses: actions/upload-release-asset@v1
-        if: github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
           asset_path: ./target/aarch64-unknown-linux-musl/release/this-week-in-past
@@ -319,7 +321,8 @@ jobs:
 
       - name: Upload the armv7 built binaries to the release
         uses: actions/upload-release-asset@v1
-        if: github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
           asset_path: ./target/armv7-unknown-linux-musleabihf/release/this-week-in-past
@@ -328,7 +331,8 @@ jobs:
 
       - name: Upload the arm v6 built binaries to the release
         uses: actions/upload-release-asset@v1
-        if: github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ env.UPLOAD_URL }}
           asset_path: ./target/arm-unknown-linux-musleabihf/release/this-week-in-past
