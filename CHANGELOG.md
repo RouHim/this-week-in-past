@@ -1,3 +1,10 @@
+## [1.0.9](https://github.com/RouHim/this-week-in-past/compare/v1.0.8...v1.0.9) (2023-01-19)
+
+
+### Bug Fixes
+
+* **pipeline:** Install required packages ([12d8f15](https://github.com/RouHim/this-week-in-past/commit/12d8f15b1d9ca1d92cc7fbe53376522b16d31835))
+
 ## [1.0.8](https://github.com/RouHim/this-week-in-past/compare/v1.0.7...v1.0.8) (2023-01-19)
 
 
