@@ -1,3 +1,10 @@
+## [1.0.11](https://github.com/RouHim/this-week-in-past/compare/v1.0.10...v1.0.11) (2023-01-19)
+
+
+### Bug Fixes
+
+* **pipeline:** wrong jq selector ([b9a1886](https://github.com/RouHim/this-week-in-past/commit/b9a18863f642cf83b48da4b36258a270f7a348b2))
+
 ## [1.0.10](https://github.com/RouHim/this-week-in-past/compare/v1.0.9...v1.0.10) (2023-01-19)
 
 
