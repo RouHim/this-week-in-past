@@ -293,6 +293,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: npx semantic-release
 
+      - name: Install required packages
+        run: sudo apt update && sudo apt install curl jq
+
       - name: Upload the x86 built binaries to the release
         run: |
           ASSETS_URL=$(curl -s https://api.github.com/repos/RouHim/this-week-in-past/releases/latest | jq '.assets_url')
