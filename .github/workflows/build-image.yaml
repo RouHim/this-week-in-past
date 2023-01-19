@@ -293,22 +293,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: npx semantic-release
 
-      - name: Get release upload url
-        run: |
-          export UPLOAD_URL=$(curl -s https://api.github.com/repos/RouHim/this-week-in-past/releases/latest | jq '.upload_url')
-          echo "UPLOAD_URL=${UPLOAD_URL}"
-          echo "UPLOAD_URL=${UPLOAD_URL}" >> $GITHUB_ENV
-
-      - name: Debug
-        run: |
-          echo "Upload url: ${{ env.UPLOAD_URL }}"
+      - name: Get release
+        id: get_release
+        uses: bruceadams/get-release@v1.3.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Upload the x86 built binaries to the release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
           asset_path: ./target/x86_64-unknown-linux-musl/release/this-week-in-past
           asset_name: this-week-in-past-x86_64-unknown-linux-musl
           asset_content_type: application/x-executable
@@ -318,7 +314,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
           asset_path: ./target/aarch64-unknown-linux-musl/release/this-week-in-past
           asset_name: this-week-in-past-aarch64-unknown-linux-musl
           asset_content_type: application/x-executable
@@ -328,7 +324,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
           asset_path: ./target/armv7-unknown-linux-musleabihf/release/this-week-in-past
           asset_name: this-week-in-past-armv7-unknown-linux-musleabihf
           asset_content_type: application/x-executable
@@ -338,7 +334,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ env.UPLOAD_URL }}
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
           asset_path: ./target/arm-unknown-linux-musleabihf/release/this-week-in-past
           asset_name: this-week-in-past-arm-unknown-linux-musleabihf
           asset_content_type: application/x-executable
