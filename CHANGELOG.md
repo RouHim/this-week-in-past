@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/RouHim/this-week-in-past/compare/v1.0.12...v1.1.0) (2023-01-19)
+
+
+### Bug Fixes
+
+* **pipeline:** move to script ([bf42f0c](https://github.com/RouHim/this-week-in-past/commit/bf42f0cb7b22c0cd8923483037aa339acef95e18))
+
+
+### Features
+
+* **pipeline:** delete old releases ([e58cc3c](https://github.com/RouHim/this-week-in-past/commit/e58cc3c932951c7bf797339a431dd565eaf21f98))
+
 ## [1.0.12](https://github.com/RouHim/this-week-in-past/compare/v1.0.11...v1.0.12) (2023-01-19)
 
 
