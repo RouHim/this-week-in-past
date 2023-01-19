@@ -1,3 +1,10 @@
+## [1.0.10](https://github.com/RouHim/this-week-in-past/compare/v1.0.9...v1.0.10) (2023-01-19)
+
+
+### Bug Fixes
+
+* **pipeline:** wrong path name ([b01f910](https://github.com/RouHim/this-week-in-past/commit/b01f910ff5e8394cb730229016df0fecf25861af))
+
 ## [1.0.9](https://github.com/RouHim/this-week-in-past/compare/v1.0.8...v1.0.9) (2023-01-19)
 
 
