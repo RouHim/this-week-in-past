@@ -1,3 +1,10 @@
+## [1.0.8](https://github.com/RouHim/this-week-in-past/compare/v1.0.7...v1.0.8) (2023-01-19)
+
+
+### Bug Fixes
+
+* **pipeline:** Fix release asset upload ([b86ca0a](https://github.com/RouHim/this-week-in-past/commit/b86ca0a056a4d5035b80bf52480496356d096729))
+
 ## [1.0.7](https://github.com/RouHim/this-week-in-past/compare/v1.0.6...v1.0.7) (2023-01-19)
 
 
