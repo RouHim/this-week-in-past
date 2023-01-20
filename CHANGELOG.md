@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/RouHim/this-week-in-past/compare/v1.1.0...v1.2.0) (2023-01-20)
+
+
+### Features
+
+* **pipeline:** update docker hub description ([26976b5](https://github.com/RouHim/this-week-in-past/commit/26976b577806384d3166fc1e2d219fa4e41db696))
+
 # [1.1.0](https://github.com/RouHim/this-week-in-past/compare/v1.0.12...v1.1.0) (2023-01-19)
 
 
