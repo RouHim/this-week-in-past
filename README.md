@@ -50,19 +50,21 @@ displayed.
 
 ### Example 3
 
-* Hardware: LG G3 (2014), Internal Storage, Snapdragon 801 4C 32-Bit arm/v7, 3GB RAM
+* Hardware: LG G3 (Android Smartphone), Internal Storage, Snapdragon 801 4C 32-Bit arm/v7, 3GB RAM
 * Photos: ~8k
 * Indexing: 50 seconds
 * Uncached slideshow change: < 1 second
 
-> All times represent the runtime for the workload *without* cache.
+> Indexing scales with storage performance
+
+> Slideshow change scales with CPU performance
 
 ## Run the application
 
 ### Native execution
 
 Since the binary is compiled [completely statically](https://github.com/rust-cross/rust-musl-cross), there are no
-dependencies on system libraries or even glibc.
+dependencies on system libraries like glibc.
 
 Download the latest release for your system from
 the [releases page](https://github.com/RouHim/this-week-in-past/releases) and create a folder to store the application
