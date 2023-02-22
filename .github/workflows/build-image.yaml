@@ -286,7 +286,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          npm install -D semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/npm @semantic-release/git @semantic-release/github commitlint-changelog-conventionalcommits
+          npm install -D semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/npm @semantic-release/git @semantic-release/github semantic-release-conventional-commits
 
       - name: Generate Semantic Release Notes and Create Release
         env:
