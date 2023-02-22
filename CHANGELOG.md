@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/RouHim/this-week-in-past/compare/v1.2.0...v1.3.0) (2023-02-22)
+
+
+### Features
+
+* **release:** release patch for chore releases ([2d64f01](https://github.com/RouHim/this-week-in-past/commit/2d64f01182e379e94a9ebc11ea3e29785c2865f6))
+
 # [1.2.0](https://github.com/RouHim/this-week-in-past/compare/v1.1.0...v1.2.0) (2023-01-20)
 
 
