@@ -8,7 +8,7 @@
 # Get input string
 input_string=$1
 
-# Define a function to convert the input string to a rust target triple
+# Convert the input string to a rust target triple
 function to_triple() {
   case $1 in
     "x86_64-musl") echo "x86_64-unknown-linux-musl";;
@@ -19,7 +19,7 @@ function to_triple() {
   esac
 }
 
-# Call the function and save the output to a variable
+# Convert input string
 output=$(to_triple "$input_string")
 
 # check if the function returned an error
