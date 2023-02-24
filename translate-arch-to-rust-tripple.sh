@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Description:
-#   Translates the current cpu architecture to the a rust triple.
+#   Translates the current cpu architecture to a rust triple.
 #
 # # # #
 
