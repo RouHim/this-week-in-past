@@ -9,7 +9,7 @@ RUN mkdir "/empty_dir"
 # Install required packages for the staging script
 RUN apk update && apk add --no-cache bash file
 
-# Copy all archs in to this container
+# Copy all archs into this container
 RUN mkdir /work
 WORKDIR /work
 COPY target .
