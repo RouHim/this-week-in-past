@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/RouHim/this-week-in-past/compare/v1.3.21...v1.4.0) (2023-04-20)
+
+
+### Features
+
+* **web-app:** allow overwriting parameter via url ([0658a76](https://github.com/RouHim/this-week-in-past/commit/0658a76aaa45ce7020a82a73e63375305405ea57))
+
 ## [1.3.21](https://github.com/RouHim/this-week-in-past/compare/v1.3.20...v1.3.21) (2023-04-07)
 
 ## [1.3.20](https://github.com/RouHim/this-week-in-past/compare/v1.3.19...v1.3.20) (2023-04-01)
