@@ -46,9 +46,11 @@ pub fn read_files_recursive(path: &Path) -> Vec<RemoteResource> {
 /// Reads a single file and returns the found resource
 /// Checks if the file is a supported resource currently all image types
 fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
-    let file = fs::File::open(file_path).unwrap();
-    let metadata = file.metadata().expect("Failed to read metadata");
+    let absolute_file_path = file_path.to_str().unwrap();
     let file_name = file_path.as_path().file_name().unwrap().to_str().unwrap();
+
+    let file = fs::File::open(file_path).expect(format!("Failed to read file {}", absolute_file_path).as_str());
+    let metadata = file.metadata().expect(format!("Failed to read metadata {}", absolute_file_path).as_str());
 
     let is_file = metadata.is_file();
     let mime_type: &str = mime_guess::from_path(file_name).first_raw().unwrap_or("");
@@ -60,7 +62,7 @@ fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
 
     vec![RemoteResource {
         id: utils::md5(file_name),
-        path: file_path.to_str().unwrap().to_string(),
+        path: absolute_file_path.to_string(),
         content_type: mime_type.to_string(),
         name: file_name.to_string(),
         content_length: metadata.len(),
