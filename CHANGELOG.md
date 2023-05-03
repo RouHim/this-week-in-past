@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/RouHim/this-week-in-past/compare/v1.4.4...v1.5.0) (2023-05-03)
+
+
+### Features
+
+* improve logging ([fdf92b4](https://github.com/RouHim/this-week-in-past/commit/fdf92b4b33313299e82539e2e381d78dee945b30))
+
 ## [1.4.4](https://github.com/RouHim/this-week-in-past/compare/v1.4.3...v1.4.4) (2023-05-03)
 
 ## [1.4.3](https://github.com/RouHim/this-week-in-past/compare/v1.4.2...v1.4.3) (2023-04-29)
