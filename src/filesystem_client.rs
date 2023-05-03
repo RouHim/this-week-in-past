@@ -49,8 +49,11 @@ fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
     let absolute_file_path = file_path.to_str().unwrap();
     let file_name = file_path.as_path().file_name().unwrap().to_str().unwrap();
 
-    let file = fs::File::open(file_path).expect(format!("Failed to read file {}", absolute_file_path).as_str());
-    let metadata = file.metadata().expect(format!("Failed to read metadata {}", absolute_file_path).as_str());
+    let file = fs::File::open(file_path)
+        .unwrap_or_else(|_| panic!("Failed to read file {}", absolute_file_path));
+    let metadata = file
+        .metadata()
+        .unwrap_or_else(|_| panic!("Failed to read metadata {}", absolute_file_path));
 
     let is_file = metadata.is_file();
     let mime_type: &str = mime_guess::from_path(file_name).first_raw().unwrap_or("");
