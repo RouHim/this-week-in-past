@@ -67,8 +67,17 @@ Since the binary is compiled [completely statically](https://github.com/rust-cro
 dependencies on system libraries like glibc.
 
 Download the latest release for your system from
-the [releases page](https://github.com/RouHim/this-week-in-past/releases) and create a folder to store the application
-data:
+the [releases page](https://github.com/RouHim/this-week-in-past/releases):
+
+```shell
+# Assuming you run a x86/x64 system, if not adjust the binary name to download 
+LATEST_VERSION=$(curl -L -s -H 'Accept: application/json' https://github.com/RouHim/this-week-in-past/releases/latest | \
+sed -e 's/.*"tag_name":"\([^"]*\)".*/\1/') && \
+curl -L -o this-week-in-past https://github.com/RouHim/this-week-in-past/releases/download/$LATEST_VERSION/this-week-in-past-x86_64-unknown-linux-musl && \
+chmod +x this-week-in-past
+```
+
+Create a folder to store the application data:
 
 ```shell
 mkdir data
