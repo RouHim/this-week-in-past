@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/RouHim/this-week-in-past/compare/v1.5.15...v1.6.0) (2023-07-05)
+
+
+### Features
+
+* **pipeline:** move dependency check to scheduled security pipe ([d37415e](https://github.com/RouHim/this-week-in-past/commit/d37415ed3faee0cbe5e898d199d22e2273f4d903))
+
 ## [1.5.15](https://github.com/RouHim/this-week-in-past/compare/v1.5.14...v1.5.15) (2023-06-29)
 
 ## [1.5.14](https://github.com/RouHim/this-week-in-past/compare/v1.5.13...v1.5.14) (2023-06-15)
