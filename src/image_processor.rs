@@ -1,5 +1,3 @@
-
-
 use std::io::Cursor;
 
 use image::imageops::FilterType;
