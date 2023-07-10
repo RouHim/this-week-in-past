@@ -1,3 +1,11 @@
+# [1.7.0](https://github.com/RouHim/this-week-in-past/compare/v1.6.3...v1.7.0) (2023-07-10)
+
+
+### Features
+
+* **image:** print unsupported image output ([44543a7](https://github.com/RouHim/this-week-in-past/commit/44543a73de05a24eacc213bc723655d2d0c34a1a))
+* **image:** print unsupported image output ([8b37696](https://github.com/RouHim/this-week-in-past/commit/8b37696f87aee82b8b248589832edbcca2292b0c))
+
 ## [1.6.3](https://github.com/RouHim/this-week-in-past/compare/v1.6.2...v1.6.3) (2023-07-06)
 
 ## [1.6.2](https://github.com/RouHim/this-week-in-past/compare/v1.6.1...v1.6.2) (2023-07-05)
