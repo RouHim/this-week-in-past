@@ -71,3 +71,26 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'trivy-results.sarif'
+
+  check-unused-dependencies:
+    name: Check for unused deps
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+
+      - uses: Swatinem/rust-cache@v2 # use rust / cargo caching
+        with:
+          cache-on-failure: "true"
+
+      - name: Install cargo-udeps
+        run: cargo install cargo-udeps --locked
+
+      - name: Analyze dependencies
+        run: cargo +nightly udeps
