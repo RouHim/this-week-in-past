@@ -1,8 +1,9 @@
 use core::option::Option::None;
+use image::ImageFormat;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use log::error;
+use log::{error, warn};
 
 use crate::resource_reader::RemoteResource;
 use crate::{resource_reader, utils};
@@ -56,11 +57,24 @@ fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
         panic!("Failed to read metadata {}: {}", absolute_file_path, error)
     });
 
-    let is_file = metadata.is_file();
-    let mime_type: &str = mime_guess::from_path(file_name).first_raw().unwrap_or("");
+    // Cancel if folder
+    if !metadata.is_file() {
+        return vec![];
+    }
 
-    // Cancel if no image file
-    if !is_file || !mime_type.starts_with("image/") {
+    let mime_type: &str = mime_guess::from_path(file_name).first_raw().unwrap_or("");
+    let image_format = ImageFormat::from_mime_type(mime_type);
+
+    // Cancel and print error if no supported image format
+    if image_format.is_none() {
+        // If the mime type is image, but the format is not supported, print a warning
+        if mime_type.starts_with("image") {
+            warn!(
+                "{absolute_file_path} | has unsupported image format: {}",
+                mime_type
+            );
+        }
+
         return vec![];
     }
 

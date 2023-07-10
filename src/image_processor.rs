@@ -1,3 +1,5 @@
+
+
 use std::io::Cursor;
 
 use image::imageops::FilterType;
@@ -24,25 +26,20 @@ pub fn adjust_image(
     display_height: u32,
     image_orientation: Option<ImageOrientation>,
 ) -> Option<Vec<u8>> {
-    let data_with_guessed_format = Reader::new(Cursor::new(resource_data)).with_guessed_format();
+    let read_result = Reader::new(Cursor::new(&resource_data))
+        .with_guessed_format()
+        .unwrap()
+        .decode();
 
-    if data_with_guessed_format.is_err() {
-        error!("Cannot guess file format of '{resource_path}'");
-        return None;
-    }
-
-    let original_image = data_with_guessed_format.unwrap().decode();
-
-    if original_image.is_err() {
-        error!("{resource_path} | Error: {}", original_image.unwrap_err());
+    if read_result.is_err() {
+        error!("{resource_path} | Error: {}", read_result.unwrap_err());
         return None;
     }
 
     // Resize the image to the needed display size
-    let resized =
-        original_image
-            .unwrap()
-            .resize(display_width, display_height, FilterType::Triangle);
+    let resized = read_result
+        .unwrap()
+        .resize(display_width, display_height, FilterType::Triangle);
 
     // Rotate or flip the image if needed
     let fixed_orientation = if let Some(orientation) = image_orientation {

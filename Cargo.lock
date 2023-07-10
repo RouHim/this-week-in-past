@@ -268,9 +268,9 @@ dependencies = [
 
 [[package]]
 name = "assertor"
-version = "0.0.1"
+version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8bdea8063317deb973cc8ac4c8a5edf54abaaeb1764958d5101b4fe28dcf0fc"
+checksum = "71da9fbad72fe17f4904c6dfe0cc9988cec215ed69d30ff278b1a475e868763d"
 dependencies = [
  "num-traits",
 ]
@@ -1112,8 +1112,7 @@ checksum = "2a60c7ce501c71e03a9c9c0d35b861413ae925bd979cc7a4e30d060069aaac8d"
 [[package]]
 name = "mime_guess"
 version = "2.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4192263c238a5f0d0c6bfd21f336a313a4ce1c450542449ca191bb657b4642ef"
+source = "git+https://github.com/knopp/mime_guess?branch=add_heif_jxl#976a73642c6db7f48718497b518f63a01df39c3e"
 dependencies = [
  "mime",
  "unicase",
