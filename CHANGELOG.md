@@ -1,3 +1,5 @@
+## [1.7.1](https://github.com/RouHim/this-week-in-past/compare/v1.7.0...v1.7.1) (2023-07-16)
+
 # [1.7.0](https://github.com/RouHim/this-week-in-past/compare/v1.6.3...v1.7.0) (2023-07-10)
 
 
