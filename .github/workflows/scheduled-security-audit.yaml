@@ -90,7 +90,7 @@ jobs:
           cache-on-failure: "true"
 
       - name: Install cargo-udeps
-        run: cargo install cargo-udeps --locked
+        run: cargo update -p proc-macro2 && cargo install cargo-udeps --locked
 
       - name: Analyze dependencies
         run: cargo +nightly udeps
