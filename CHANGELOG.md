@@ -1,3 +1,10 @@
+## [1.7.2](https://github.com/RouHim/this-week-in-past/compare/v1.7.1...v1.7.2) (2023-07-17)
+
+
+### Bug Fixes
+
+* **pipe:** unused dependencies ([27c2313](https://github.com/RouHim/this-week-in-past/commit/27c231371d0ef28e246e7993f563129445eec278))
+
 ## [1.7.1](https://github.com/RouHim/this-week-in-past/compare/v1.7.0...v1.7.1) (2023-07-16)
 
 # [1.7.0](https://github.com/RouHim/this-week-in-past/compare/v1.6.3...v1.7.0) (2023-07-10)
