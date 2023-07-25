@@ -23,3 +23,10 @@ pub async fn get_hide_button_enabled() -> HttpResponse {
         .content_type("plain/text")
         .body(env::var("SHOW_HIDE_BUTTON").unwrap_or_else(|_| "false".to_string()))
 }
+
+#[get("random-slideshow")]
+pub async fn get_random_slideshow_enabled() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("plain/text")
+        .body(env::var("RANDOM_SLIDESHOW").unwrap_or_else(|_| "false".to_string()))
+}

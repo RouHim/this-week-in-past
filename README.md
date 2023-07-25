@@ -142,6 +142,7 @@ All configuration is done via environment variables:
 | HOME_ASSISTANT_ENTITY_ID | Home assistant entity id to load the weather from (e.g.: `sensor.outside_temperature`)                |                               |                           |
 | HOME_ASSISTANT_API_TOKEN | Home assistant api access token                                                                       |                               |                           |
 | SHOW_HIDE_BUTTON         | Show the hide button on the slideshow                                                                 | false                         | x                         |
+| RANDOM_SLIDESHOW         | Show only random images instead of images from this week in previous years                            | false                         | x                         |
 
 > Some parameters, as marked in the table, can be overwritten as URL parameter
 > e.g.: http://localhost:8080/?SLIDESHOW_INTERVAL=10&SHOW_HIDE_BUTTON=false
