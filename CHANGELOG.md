@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/RouHim/this-week-in-past/compare/v1.7.2...v1.8.0) (2023-07-25)
+
+
+### Features
+
+* **slideshow:** add 'force random slideshow' feature ([95677a1](https://github.com/RouHim/this-week-in-past/commit/95677a12d3c8aabd6161d443f163fb966f6f0ec5))
+
 ## [1.7.2](https://github.com/RouHim/this-week-in-past/compare/v1.7.1...v1.7.2) (2023-07-17)
 
 
