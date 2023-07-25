@@ -3,6 +3,7 @@ extern crate core;
 use std::env;
 
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+
 use env_logger::Builder;
 use log::{info, warn, LevelFilter};
 
@@ -106,7 +107,8 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/api/config")
                     .service(config_endpoint::get_slideshow_interval)
                     .service(config_endpoint::get_refresh_interval)
-                    .service(config_endpoint::get_hide_button_enabled),
+                    .service(config_endpoint::get_hide_button_enabled)
+                    .service(config_endpoint::get_random_slideshow_enabled),
             )
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
     })

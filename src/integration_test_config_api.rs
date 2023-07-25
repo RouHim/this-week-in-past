@@ -71,6 +71,36 @@ async fn test_get_refresh_interval() {
     cleanup(&base_test_dir).await;
 }
 
+#[actix_web::test]
+async fn test_get_random_slideshow() {
+    // GIVEN is a running this-week-in-past instance
+    let base_test_dir = create_temp_folder().await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+
+    // AND random slideshow is set
+    let random_slideshow: String = rand::thread_rng().gen::<bool>().to_string();
+    env::set_var("RANDOM_SLIDESHOW", &random_slideshow);
+
+    // WHEN requesting random slideshow
+    let response: String = String::from_utf8(
+        test::call_and_read_body(
+            &app_server,
+            test::TestRequest::get()
+                .uri("/api/config/random-slideshow")
+                .to_request(),
+        )
+        .await
+        .to_vec(),
+    )
+    .unwrap();
+
+    // THEN the response should contain the correct interval
+    assert_that!(response).is_equal_to(&random_slideshow);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
 fn build_app(
     base_test_dir: &str,
 ) -> App<
@@ -88,7 +118,8 @@ fn build_app(
     App::new().app_data(web::Data::new(resource_store)).service(
         web::scope("/api/config")
             .service(config_endpoint::get_slideshow_interval)
-            .service(config_endpoint::get_refresh_interval),
+            .service(config_endpoint::get_refresh_interval)
+            .service(config_endpoint::get_random_slideshow_enabled),
     )
 }
 

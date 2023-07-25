@@ -8,6 +8,7 @@ let currentIndex = 0;
 let maxIndex = 0;
 let current_resource_id;
 let intervalID;
+let forceRandomSlideshow = false;
 
 /**
  * On page load, do the following things:
@@ -19,11 +20,25 @@ window.addEventListener('load', () => {
     initSlideshow();
     loadWeatherInformation();
     initHideButton();
+    forceRandomSlideshow = shouldOnlyPlayRandom();
 
     // Reload page every x minutes
     let refreshIntervalInMinutes = getRefreshInterval();
     intervalID = setInterval(() => location.reload(), refreshIntervalInMinutes * 60000);
 });
+
+function shouldOnlyPlayRandom() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('RANDOM_SLIDESHOW')) {
+        return urlParams.get('RANDOM_SLIDESHOW') === "true";
+    }
+
+    let request = new XMLHttpRequest();
+    request.open('GET', `/api/config/random-slideshow`, false);
+    request.send(null);
+
+    return request.status === 200 && request.responseText === "true";
+}
 
 /**
  * Initializes a new slideshow
@@ -256,9 +271,11 @@ function getRandomResource() {
  * Set the slideshow image and its meta information.
  */
 function slideshowTick() {
-    // If no image for this week was found, select a random one
+    // If the user wants to force a random slideshow
+    // Or if no image for this week was found, select a random one
     // If no random could be found, show an alert message and stop slideshow
-    if (resourcesThisWeek.length === 0) {
+    console.log("Forcing random slideshow: " + forceRandomSlideshow)
+    if (forceRandomSlideshow || resourcesThisWeek.length === 0) {
         let randomResource = getRandomResource();
 
         if (randomResource === null) {
