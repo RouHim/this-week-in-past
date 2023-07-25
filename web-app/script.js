@@ -274,7 +274,6 @@ function slideshowTick() {
     // If the user wants to force a random slideshow
     // Or if no image for this week was found, select a random one
     // If no random could be found, show an alert message and stop slideshow
-    console.log("Forcing random slideshow: " + forceRandomSlideshow)
     if (forceRandomSlideshow || resourcesThisWeek.length === 0) {
         let randomResource = getRandomResource();
 
