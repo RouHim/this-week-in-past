@@ -1,3 +1,10 @@
+## [1.8.4](https://github.com/RouHim/this-week-in-past/compare/v1.8.3...v1.8.4) (2023-08-22)
+
+
+### Bug Fixes
+
+* **tests:** broken test ([5e4b7d8](https://github.com/RouHim/this-week-in-past/commit/5e4b7d8e7dbca878a807a83ae220e76a6e67494a))
+
 ## [1.8.3](https://github.com/RouHim/this-week-in-past/compare/v1.8.2...v1.8.3) (2023-08-20)
 
 ## [1.8.2](https://github.com/RouHim/this-week-in-past/compare/v1.8.1...v1.8.2) (2023-08-20)
