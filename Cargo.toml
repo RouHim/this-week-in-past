@@ -8,7 +8,7 @@ description = "Aggregate images taken this week, from previous years and present
 readme = "README.md"
 homepage = "https://github.com/RouHim/this-week-in-past"
 repository = "https://github.com/RouHim/this-week-in-past"
-keywords = ["image", "gallery", "slideshow", "this week"]
+keywords = ["image", "gallery", "slideshow", "week"]
 
 [dependencies]
 lazy_static = "1.4"
