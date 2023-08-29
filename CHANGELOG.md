@@ -1,3 +1,10 @@
+## [1.8.11](https://github.com/RouHim/this-week-in-past/compare/v1.8.10...v1.8.11) (2023-08-29)
+
+
+### Bug Fixes
+
+* **pipeline:** use angular commit schema ([38fb920](https://github.com/RouHim/this-week-in-past/commit/38fb920b25d1c0bfd456bfa54724df0fedf0e2f1))
+
 ## [1.8.10](https://github.com/RouHim/this-week-in-past/compare/v1.8.9...v1.8.10) (2023-08-27)
 
 ## [1.8.9](https://github.com/RouHim/this-week-in-past/compare/v1.8.8...v1.8.9) (2023-08-27)
