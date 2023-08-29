@@ -19,7 +19,7 @@ now = "0.1"
 time = "0.3"
 md5 = "0.7"
 ureq = "2.7"
-actix-http = { version = "3.3", features = ["rustls"] }
+actix-http = { version = "3.4", features = ["rustls"] }
 actix-web = { version = "4.3", features = ["rustls"] }
 clokwerk = "0.4"
 kamadak-exif = "0.5"
