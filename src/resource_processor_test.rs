@@ -49,6 +49,22 @@ async fn resolve_kottenheim() {
 }
 
 #[actix_rt::test]
+async fn resolve_negative_dms() {
+    // GIVEN are the degree minutes seconds coordinates for San Bartolomé de Tirajana
+    let lat = "27 deg 45 min 22.22 sec".to_string();
+    let long = "15 deg 34 min 13.76 sec".to_string();
+    let lat_ref = "N".to_string();
+    let long_ref = "W".to_string();
+
+    // WHEN resolving the city name
+    let dms = geo_location::from_degrees_minutes_seconds(lat, long, lat_ref, long_ref);
+
+    // THEN the resolved city name should be Kottenheim
+    let city_name = geo_location::resolve_city_name(dms.unwrap()).await;
+    assert_that!(city_name).is_equal_to(Some("San Bartolomé de Tirajana".to_string()));
+}
+
+#[actix_rt::test]
 async fn resolve_invalid_data() {
     // GIVEN are invalid geo coordinates
     let geo_location: GeoLocation = GeoLocation {
