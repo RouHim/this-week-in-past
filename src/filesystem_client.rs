@@ -5,30 +5,33 @@ use std::path::{Path, PathBuf};
 
 use log::{error, warn};
 
-use crate::resource_reader::RemoteResource;
+use crate::resource_reader::ImageResource;
 use crate::{resource_reader, utils};
 
 /// Reads all files of a folder and returns all found resources
 /// The folder is recursively searched
-pub fn read_files_recursive(path: &Path) -> Vec<RemoteResource> {
+pub fn read_files_recursive(path: &Path) -> Vec<ImageResource> {
     let maybe_folder_path = fs::File::open(path);
 
     if maybe_folder_path.is_err() {
-        error!("Could not open folder: {}", path.display());
+        error!("Could not open folder: {:?}", path);
         return vec![];
     }
 
     let metadata = maybe_folder_path
         .unwrap()
         .metadata()
-        .expect("Failed to read metadata");
+        .unwrap();
 
     if metadata.is_file() {
         return vec![];
     }
 
+    // TODO: Check if folder is in ignore list, then return an empty vec
+    // TODO: Check if folder contains a ".hidden" file, then return an empty vec
+
     let paths = fs::read_dir(path)
-        .unwrap_or_else(|_| panic!("Failed to read directory: {}", &path.to_str().unwrap()));
+        .unwrap_or_else(|error| panic!("Failed to read directory: {} Error:\n{}", path.to_str().unwrap(), error));
 
     paths
         .flatten()
@@ -46,7 +49,7 @@ pub fn read_files_recursive(path: &Path) -> Vec<RemoteResource> {
 
 /// Reads a single file and returns the found resource
 /// Checks if the file is a supported resource currently all image types
-fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
+fn read_resource(file_path: &PathBuf) -> Vec<ImageResource> {
     let absolute_file_path = file_path.to_str().unwrap();
     let file_name = file_path.as_path().file_name().unwrap().to_str().unwrap();
 
@@ -78,7 +81,7 @@ fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
         return vec![];
     }
 
-    vec![RemoteResource {
+    vec![ImageResource {
         id: utils::md5(file_name),
         path: absolute_file_path.to_string(),
         content_type: mime_type.to_string(),
@@ -91,8 +94,8 @@ fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
     }]
 }
 
-/// Reads the exif data from the file and augments the remote resource with this information
-pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
+/// Reads the exif data from the file and augments the image resource with this information
+pub fn fill_exif_data(resource: &ImageResource) -> ImageResource {
     let file_path = resource.path.as_str();
     let file = fs::File::open(file_path).unwrap();
 

@@ -136,16 +136,25 @@ All configuration is done via environment variables:
 | OPEN_WEATHER_MAP_API_KEY | To receive weather live data. Obtain here: https://openweathermap.org/api                             |                               |                           |
 | WEATHER_ENABLED          | Indicates if weather should be shown in the slideshow                                                 | false                         | x                         |
 | WEATHER_LOCATION         | Name of a city                                                                                        | Berlin                        |                           |
-| WEATHER_LANGUAGE         | Weather language ([ISO_639-1](https://en.wikipedia.org/wiki/ISO_639-1))                               | en                            |                           |
+| WEATHER_LANGUAGE         | Weather language ([ISO_639-1 two digit code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes))  | en                            |                           |
 | WEATHER_UNIT             | Weather units (`metric` or `imperial`)                                                                | metric                        |                           |
 | HOME_ASSISTANT_BASE_URL  | Home assistant base url (e.g.: `http://192.168.0.123:8123`)                                           |                               |                           |
 | HOME_ASSISTANT_ENTITY_ID | Home assistant entity id to load the weather from (e.g.: `sensor.outside_temperature`)                |                               |                           |
 | HOME_ASSISTANT_API_TOKEN | Home assistant api access token                                                                       |                               |                           |
 | SHOW_HIDE_BUTTON         | Show the hide button on the slideshow                                                                 | false                         | x                         |
 | RANDOM_SLIDESHOW         | Show only random images instead of images from this week in previous years                            | false                         | x                         |
+| IGNORE_FOLDERS           | A list of folder names which should be ignored (comma separated).                                     |                               |                           |
 
 > Some parameters, as marked in the table, can be overwritten as URL parameter
 > e.g.: http://localhost:8080/?SLIDESHOW_INTERVAL=10&SHOW_HIDE_BUTTON=false
+
+### Ignoring folders
+
+There are two ways to ignore folders:
+
+1) Set the environment variable `IGNORE_FOLDERS` to a comma separated list of folder names which should be ignored.
+   Example: `IGNORE_FOLDERS=thumbnails,$RECYLE.BIN`` 
+2) Create a file named `.ignore` in the folder which should be ignored. The file should be empty.
 
 ## Resources
 

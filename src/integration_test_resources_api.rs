@@ -13,7 +13,7 @@ use rand::Rng;
 use test::TestRequest;
 
 use crate::geo_location::GeoLocation;
-use crate::resource_reader::RemoteResource;
+use crate::resource_reader::ImageResource;
 use crate::{resource_endpoint, resource_reader, resource_store, scheduler, utils};
 
 const TEST_JPEG_EXIF_URL: &str =
@@ -166,7 +166,7 @@ async fn test_get_resource_metadata_by_id() {
     let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // WHEN requesting a random resource
-    let response: RemoteResource = test::call_and_read_body_json(
+    let response: ImageResource = test::call_and_read_body_json(
         &app_server,
         TestRequest::get()
             .uri(format!("/api/resources/{test_image_1_id}/metadata").as_str())

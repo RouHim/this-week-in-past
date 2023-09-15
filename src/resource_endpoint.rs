@@ -5,7 +5,7 @@ use actix_web::web;
 use actix_web::HttpResponse;
 use std::fs;
 
-use crate::resource_reader::RemoteResource;
+use crate::resource_reader::ImageResource;
 use crate::resource_store::ResourceStore;
 use crate::{image_processor, resource_processor, ResourceReader};
 
@@ -65,26 +65,26 @@ pub async fn get_resource_by_id_and_resolution(
     }
 
     // if not in cache, load resource metadata from database
-    let remote_resource: Option<RemoteResource> = resource_store
+    let image_resource: Option<ImageResource> = resource_store
         .get_resource(resource_id)
         .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
     // If we can't find the requested resource by id, return with an error
-    if remote_resource.is_none() {
+    if image_resource.is_none() {
         return HttpResponse::NotFound().finish();
     }
 
     // If we found the requested resource, read the image data and adjust the image to the display
-    let remote_resource = remote_resource.unwrap();
+    let image_resource = image_resource.unwrap();
     let _resource_reader1 = resource_reader.as_ref();
-    let resource_data = fs::read(remote_resource.path.clone())
+    let resource_data = fs::read(image_resource.path.clone())
         .ok()
         .and_then(|resource_data| {
             image_processor::adjust_image(
-                remote_resource.path,
+                image_resource.path,
                 resource_data,
                 display_width,
                 display_height,
-                remote_resource.orientation,
+                image_resource.orientation,
             )
         });
 

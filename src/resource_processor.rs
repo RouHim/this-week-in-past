@@ -1,13 +1,13 @@
 use std::env;
 
 use crate::geo_location;
-use crate::resource_reader::RemoteResource;
+use crate::resource_reader::ImageResource;
 use crate::resource_store::ResourceStore;
 
 /// Builds the display value for the specified resource
 /// The display value contains the date and location of a resource
 pub async fn build_display_value(
-    resource: RemoteResource,
+    resource: ImageResource,
     resource_store: &ResourceStore,
 ) -> String {
     let mut display_value: String = String::new();
@@ -38,7 +38,7 @@ pub async fn build_display_value(
 /// Returns the city name for the specified resource
 /// The city name is taken from the cache, if available
 /// If not, the city name is taken from the geo location service
-async fn get_city_name(resource: RemoteResource, resource_store: &ResourceStore) -> Option<String> {
+async fn get_city_name(resource: ImageResource, resource_store: &ResourceStore) -> Option<String> {
     let resource_location = resource.location?;
     let resource_location_string = resource_location.to_string();
 
