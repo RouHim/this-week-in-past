@@ -68,10 +68,10 @@ pub fn detect_location(exif_data: &Exif) -> Option<GeoLocation> {
         maybe_longitude_ref,
     ) {
         return geo_location::from_degrees_minutes_seconds(
-            latitude.display_value().to_string(),
-            longitude.display_value().to_string(),
-            latitude_ref.display_value().to_string(),
-            longitude_ref.display_value().to_string(),
+            &latitude.display_value().to_string(),
+            &longitude.display_value().to_string(),
+            &latitude_ref.display_value().to_string(),
+            &longitude_ref.display_value().to_string(),
         );
     }
 

@@ -23,11 +23,11 @@ impl Display for GeoLocation {
 
 /// Converts Degrees Minutes Seconds To Decimal Degrees
 /// See <https://stackoverflow.com/questions/14906764/converting-gps-coordinates-to-decimal-degrees>
-fn dms_to_dd(dms_string: &str, dms_ref: String) -> Option<f32> {
+fn dms_to_dd(dms_string: &str, dms_ref: &str) -> Option<f32> {
     lazy_static! {
         static ref DMS_PARSE_PATTERN_1: Regex = Regex::new(
-            // e.g.: 7 deg 33 min 55.5155 sec
-            r"(?P<deg>\d+) deg (?P<min>\d+) min (?P<sec>\d+.\d+) sec"
+            // e.g.: 7 deg 33 min 55.5155 sec or 7 deg 33 min 55 sec
+            r"(?P<deg>\d+) deg (?P<min>\d+) min (?P<sec>\d+.?\d*) sec"
         ).unwrap();
         static ref DMS_PARSE_PATTERN_2: Regex = Regex::new(
             // e.g.: 50/1, 25/1, 2519/100
@@ -39,7 +39,7 @@ fn dms_to_dd(dms_string: &str, dms_ref: String) -> Option<f32> {
     let dms_pattern_2_match: Option<Captures> = DMS_PARSE_PATTERN_2.captures(dms_string);
 
     // Depending on the dms ref the value has to be multiplied by -1
-    let dms_ref_multiplier = match dms_ref.as_str() {
+    let dms_ref_multiplier = match dms_ref {
         "S" | "W" => -1.0,
         _ => 1.0,
     };
@@ -111,13 +111,13 @@ fn parse_pattern_2(caps: Captures) -> Option<f32> {
 /// If the latitude or longitude is not valid, None is returned
 /// This is done by converting the latitude and longitude to degrees minutes seconds
 pub fn from_degrees_minutes_seconds(
-    latitude: String,
-    longitude: String,
-    latitude_ref: String,
-    longitude_ref: String,
+    latitude: &str,
+    longitude: &str,
+    latitude_ref: &str,
+    longitude_ref: &str,
 ) -> Option<GeoLocation> {
-    let maybe_dd_lat = dms_to_dd(&latitude, latitude_ref);
-    let maybe_dd_lon = dms_to_dd(&longitude, longitude_ref);
+    let maybe_dd_lat = dms_to_dd(latitude, latitude_ref);
+    let maybe_dd_lon = dms_to_dd(longitude, longitude_ref);
 
     if let (Some(latitude), Some(longitude)) = (maybe_dd_lat, maybe_dd_lon) {
         Some(GeoLocation {
