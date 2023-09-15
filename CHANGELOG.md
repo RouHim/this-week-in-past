@@ -1,3 +1,18 @@
+# [1.9.0](https://github.com/RouHim/this-week-in-past/compare/v1.8.19...v1.9.0) (2023-09-15)
+
+
+### Bug Fixes
+
+* **exif:** another gps location issue ([e59848a](https://github.com/RouHim/this-week-in-past/commit/e59848a6d7275cb541c23657ecc66268697ff99a))
+* **exif:** wrong exif date reading & wrong exif gps coordinates reading ([3f639be](https://github.com/RouHim/this-week-in-past/commit/3f639be0f02fce002aabd4105ce646bf79724e4d))
+
+
+### Features
+
+* **sqlite:** enable wal checkpoint TRUNCATE ([6d7fef5](https://github.com/RouHim/this-week-in-past/commit/6d7fef5336ae385bb79a2692123a4662faf06e4b))
+* **sqlite:** enable WAL mode ([b99e300](https://github.com/RouHim/this-week-in-past/commit/b99e300d7fbc50f39151dcf4f371987edc212ab1))
+* **sqlite:** enable WAL mode ([24d5eb2](https://github.com/RouHim/this-week-in-past/commit/24d5eb2d7b4791689abcd8ef136ba139187295d4))
+
 ## [1.8.19](https://github.com/RouHim/this-week-in-past/compare/v1.8.18...v1.8.19) (2023-09-14)
 
 ## [1.8.18](https://github.com/RouHim/this-week-in-past/compare/v1.8.17...v1.8.18) (2023-09-14)
