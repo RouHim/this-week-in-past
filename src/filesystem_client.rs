@@ -1,34 +1,42 @@
 use core::option::Option::None;
-use image::ImageFormat;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use log::{error, warn};
+use image::ImageFormat;
+use lazy_static::lazy_static;
+use log::{error, info, warn};
 
-use crate::resource_reader::RemoteResource;
+use crate::resource_reader::ImageResource;
 use crate::{resource_reader, utils};
 
 /// Reads all files of a folder and returns all found resources
 /// The folder is recursively searched
-pub fn read_files_recursive(path: &Path) -> Vec<RemoteResource> {
-    let maybe_folder_path = fs::File::open(path);
+pub fn read_files_recursive(path: &Path) -> Vec<ImageResource> {
+    let folder_path = fs::File::open(path);
 
-    if maybe_folder_path.is_err() {
-        error!("Could not open folder: {}", path.display());
+    if folder_path.is_err() {
+        error!("Could not open folder: {:?}", path);
         return vec![];
     }
-
-    let metadata = maybe_folder_path
-        .unwrap()
-        .metadata()
-        .expect("Failed to read metadata");
+    let folder_path = folder_path.unwrap();
+    let metadata = folder_path.metadata().unwrap();
 
     if metadata.is_file() {
         return vec![];
     }
 
-    let paths = fs::read_dir(path)
-        .unwrap_or_else(|_| panic!("Failed to read directory: {}", &path.to_str().unwrap()));
+    // Checks if the folder should be skipped, because it is ignored or contains a .ignore file
+    if should_skip_folder(path) {
+        return vec![];
+    }
+
+    let paths = fs::read_dir(path).unwrap_or_else(|error| {
+        panic!(
+            "Failed to read directory: {} Error:\n{}",
+            path.to_str().unwrap(),
+            error
+        )
+    });
 
     paths
         .flatten()
@@ -44,9 +52,60 @@ pub fn read_files_recursive(path: &Path) -> Vec<RemoteResource> {
         .collect()
 }
 
+/// Checks if the folder should be skipped, because it is ignored or contains a .ignore file
+/// Returns true if the folder should be skipped
+/// Returns false if the folder should be processed
+fn should_skip_folder(path: &Path) -> bool {
+    lazy_static! {
+        static ref IGNORED_FOLDERS: Vec<String> = std::env::var("IGNORED_FOLDERS")
+            .unwrap_or("".to_string())
+            .as_str()
+            .split(',')
+            .map(|s| s.to_string())
+            .collect();
+    };
+
+    for folder in IGNORED_FOLDERS.iter() {
+        println!(
+            "{:?} == {:?}",
+            path.file_name().unwrap().to_str().unwrap(),
+            folder
+        );
+    }
+
+    let folder_name = path.file_name().unwrap().to_str().unwrap();
+    if IGNORED_FOLDERS.contains(&folder_name.to_string()) {
+        info!("Skipping folder: {:?} because it is ignored", path);
+        return true;
+    }
+
+    let contains_ignore_file = fs::read_dir(path)
+        .unwrap_or_else(|error| {
+            panic!(
+                "Failed to read directory: {} Error:\n{}",
+                path.to_str().unwrap(),
+                error
+            )
+        })
+        .flatten()
+        .any(|entry| {
+            let metadata = entry.metadata().unwrap();
+            metadata.is_file() && entry.file_name().to_str().unwrap() == ".ignore"
+        });
+    if contains_ignore_file {
+        info!(
+            "Skipping folder: {:?} because it contains a .ignore file",
+            path
+        );
+        return true;
+    }
+
+    false
+}
+
 /// Reads a single file and returns the found resource
 /// Checks if the file is a supported resource currently all image types
-fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
+fn read_resource(file_path: &PathBuf) -> Vec<ImageResource> {
     let absolute_file_path = file_path.to_str().unwrap();
     let file_name = file_path.as_path().file_name().unwrap().to_str().unwrap();
 
@@ -78,7 +137,7 @@ fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
         return vec![];
     }
 
-    vec![RemoteResource {
+    vec![ImageResource {
         id: utils::md5(file_name),
         path: absolute_file_path.to_string(),
         content_type: mime_type.to_string(),
@@ -91,8 +150,8 @@ fn read_resource(file_path: &PathBuf) -> Vec<RemoteResource> {
     }]
 }
 
-/// Reads the exif data from the file and augments the remote resource with this information
-pub fn fill_exif_data(resource: &RemoteResource) -> RemoteResource {
+/// Reads the exif data from the file and augments the image resource with this information
+pub fn fill_exif_data(resource: &ImageResource) -> ImageResource {
     let file_path = resource.path.as_str();
     let file = fs::File::open(file_path).unwrap();
 

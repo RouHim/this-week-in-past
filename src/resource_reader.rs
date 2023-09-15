@@ -15,7 +15,7 @@ use crate::{exif_reader, filesystem_client, ResourceReader};
 
 /// Returns all available resources
 impl ResourceReader {
-    pub fn read_all(&self) -> Vec<RemoteResource> {
+    pub fn read_all(&self) -> Vec<ImageResource> {
         self.local_resource_paths
             .par_iter()
             .map(|path_str| Path::new(path_str.as_str()))
@@ -25,9 +25,9 @@ impl ResourceReader {
     }
 }
 
-/// A remote resource that is available on the filesystem
+/// A image resource that is available on the filesystem
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct RemoteResource {
+pub struct ImageResource {
     pub id: String,
     pub path: String,
     pub content_type: String,
@@ -39,7 +39,7 @@ pub struct RemoteResource {
     pub orientation: Option<ImageOrientation>,
 }
 
-impl RemoteResource {
+impl ImageResource {
     /// Checks if the resource was taken in the past but in this calendar week
     pub fn is_this_week(&self) -> bool {
         if self.taken.is_none() {
@@ -57,7 +57,7 @@ impl RemoteResource {
 }
 
 /// Renders the resource as a string
-impl Display for RemoteResource {
+impl Display for ImageResource {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -78,7 +78,7 @@ impl Display for RemoteResource {
 /// The meta information is extracted from the exif data
 /// If the exif data is not available, the meta information is extracted from the gps data
 /// If the gps data is not available, the meta information is extracted from the file name
-pub fn fill_exif_data(resource: &RemoteResource, maybe_exif_data: Option<Exif>) -> RemoteResource {
+pub fn fill_exif_data(resource: &ImageResource, maybe_exif_data: Option<Exif>) -> ImageResource {
     let mut taken_date = None;
     let mut location = None;
     let mut orientation = None;
