@@ -121,7 +121,6 @@ pub fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {
     let parsed: Vec<NaiveDate> = resource_path
         .replace(['/', ' ', '.'], "_")
         .split('_')
-        .into_iter()
         .filter_map(parse_from_str)
         .collect();
 
@@ -136,7 +135,7 @@ pub fn detect_date_by_name(resource_path: &str) -> Option<NaiveDateTime> {
 /// Returns None if the string could not be parsed
 fn parse_from_str(shard: &str) -> Option<NaiveDate> {
     // https://docs.rs/chrono/latest/chrono/format/strftime/index.html
-    let parse_results: Vec<NaiveDate> = vec![
+    let parse_results: Vec<NaiveDate> = [
         "%F",     // 2001-07-08
         "%Y%m%d", // 20010708
         "signal-%Y-%m-%d-%Z",

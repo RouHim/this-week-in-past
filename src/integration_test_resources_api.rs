@@ -23,7 +23,7 @@ const TEST_FOLDER_NAME: &str = "integration_test_rest_api";
 
 #[actix_web::test]
 async fn test_get_all_resources() {
-    // GIVEN is a folder structure with two assets and another file type
+    // GIVEN is a folder structure with two assets
     let base_test_dir = create_temp_folder().await;
     let test_image_1 = create_test_image(
         &base_test_dir,
@@ -230,8 +230,46 @@ async fn test_get_resource_description_by_id() {
 }
 
 #[actix_web::test]
+async fn test_ignore_file_in_resources() {
+    // GIVEN is a folder structure with two assets
+    // AND a file with the name .ignore
+    let base_test_dir = create_temp_folder().await;
+    create_test_image(
+        &base_test_dir,
+        "sub1",
+        "test_image_1.jpg",
+        TEST_JPEG_EXIF_URL,
+    )
+    .await;
+    let test_image_2 = create_test_image(
+        &base_test_dir,
+        "sub2",
+        "test_image_2.jpg",
+        TEST_JPEG_EXIF_URL,
+    )
+    .await;
+    create_test_image(&base_test_dir, "sub1", ".ignore", TEST_JPEG_URL).await;
+
+    // AND a running this-week-in-past instance
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+
+    // WHEN requesting all resources
+    let response: Vec<String> = test::call_and_read_body_json(
+        &app_server,
+        TestRequest::get().uri("/api/resources").to_request(),
+    )
+    .await;
+
+    // THEN the response should contain only the second resource
+    assert_that!(response).contains_exactly(vec![utils::md5(test_image_2.as_str())]);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
 async fn get_hidden_resources() {
-    // GIVEN is a folder structure with two assets and another file type
+    // GIVEN is a folder structure with one assets
     let base_test_dir = create_temp_folder().await;
     let test_image_1_id = utils::md5(
         create_test_image(
@@ -272,7 +310,7 @@ async fn get_hidden_resources() {
 
 #[actix_web::test]
 async fn get_hidden_resources_when_set_visible_again() {
-    // GIVEN is a folder structure with two assets and another file type
+    // GIVEN is a folder structure with one assets and another file type
     let base_test_dir = create_temp_folder().await;
     let test_image_1_id = utils::md5(
         create_test_image(

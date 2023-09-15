@@ -143,7 +143,7 @@ All configuration is done via environment variables:
 | HOME_ASSISTANT_API_TOKEN | Home assistant api access token                                                                       |                               |                           |
 | SHOW_HIDE_BUTTON         | Show the hide button on the slideshow                                                                 | false                         | x                         |
 | RANDOM_SLIDESHOW         | Show only random images instead of images from this week in previous years                            | false                         | x                         |
-| IGNORE_FOLDERS           | A list of folder names which should be ignored (comma separated).                                     |                               |                           |
+| IGNORED_FOLDERS          | A list of folder names which should be ignored (comma separated).                                     |                               |                           |
 
 > Some parameters, as marked in the table, can be overwritten as URL parameter
 > e.g.: http://localhost:8080/?SLIDESHOW_INTERVAL=10&SHOW_HIDE_BUTTON=false
@@ -152,8 +152,8 @@ All configuration is done via environment variables:
 
 There are two ways to ignore folders:
 
-1) Set the environment variable `IGNORE_FOLDERS` to a comma separated list of folder names which should be ignored.
-   Example: `IGNORE_FOLDERS=thumbnails,$RECYLE.BIN`` 
+1) Set the environment variable `IGNORED_FOLDERS` to a comma separated list of folder names which should be ignored.
+   Example: `IGNORED_FOLDERS=thumbnails,$RECYLE.BIN``
 2) Create a file named `.ignore` in the folder which should be ignored. The file should be empty.
 
 ## Resources

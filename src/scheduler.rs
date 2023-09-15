@@ -65,5 +65,5 @@ pub fn index_resources(resource_reader: ResourceReader, resource_store: Resource
     info!("Cleanup database");
     resource_store.vacuum();
 
-    info!("Job done in {}s!", s.elapsed().as_secs());
+    info!("Job done in {:?}!", s.elapsed());
 }
