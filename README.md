@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/RouHim/this-week-in-past/main/banner.png" width="500">
+  <img src="https://raw.githubusercontent.com/RouHim/this-week-in-past/main/.github/readme/banner.png" width="500">
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/RouHim/this-week-in-past/main/screenshot.jpg" width="500">
+  <img src="https://raw.githubusercontent.com/RouHim/this-week-in-past/main/.github/readme/screenshot.jpg" width="500">
 </p>
 
 ## Motivation

@@ -166,13 +166,13 @@ jobs:
       - name: Build static application binary
         run: |
           # Prepare rust-cross/rust-musl-cross for cross compiling
-          source prep-build-env.sh
+          source .github/workflows/scripts/prep-build-env.sh
           
           # Compile the desired target
           build-rust-static-bin ${{ matrix.target }}
           
           # Translate ${{ matrix.target }} to rust target triple
-          export TARGET_TRIPPLE=$(bash translate-arch-to-rust-tripple.sh ${{ matrix.target }})
+          export TARGET_TRIPPLE=$(bash .github/workflows/scripts/translate-arch-to-rust-tripple.sh ${{ matrix.target }})
           echo "TARGET_TRIPPLE=${TARGET_TRIPPLE}"
           echo "TARGET_TRIPPLE=${TARGET_TRIPPLE}" >> $GITHUB_ENV
 
@@ -278,28 +278,28 @@ jobs:
 
       - name: Upload the x86 built binaries to the release
         run: |
-          bash .github/scripts/upload-asset-to-release.sh \
+          bash .github/workflows/scripts/upload-asset-to-release.sh \
             ${{ secrets.RELEASE_TOKEN }} \
             "./target/x86_64-unknown-linux-musl/release/this-week-in-past" \
             "this-week-in-past-x86_64-unknown-linux-musl"
 
       - name: Upload the aarch64 built binaries to the release
         run: |
-          bash .github/scripts/upload-asset-to-release.sh \
+          bash .github/workflows/scripts/upload-asset-to-release.sh \
           ${{ secrets.RELEASE_TOKEN }} \
           "./target/aarch64-unknown-linux-musl/release/this-week-in-past" \
           "this-week-in-past-aarch64-unknown-linux-musl"
 
       - name: Upload the armv7 built binaries to the release
         run: |
-          bash .github/scripts/upload-asset-to-release.sh \
+          bash .github/workflows/scripts/upload-asset-to-release.sh \
           ${{ secrets.RELEASE_TOKEN }} \
           "./target/armv7-unknown-linux-musleabihf/release/this-week-in-past" \
           "this-week-in-past-armv7-unknown-linux-musleabihf"
 
       - name: Upload the arm v6 built binaries to the release
         run: |
-          bash .github/scripts/upload-asset-to-release.sh \
+          bash .github/workflows/scripts/upload-asset-to-release.sh \
           ${{ secrets.RELEASE_TOKEN }} \
           "./target/arm-unknown-linux-musleabihf/release/this-week-in-past" \
           "this-week-in-past-arm-unknown-linux-musleabihf"
