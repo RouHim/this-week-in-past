@@ -80,7 +80,7 @@ impl ResourceStore {
             .prepare("INSERT OR REPLACE INTO data_cache(id, data) VALUES(?, ?)")
             .unwrap();
         stmt.execute((&id, data))
-            .unwrap_or_else(|_| panic!("Insertion of {id} failed"));
+            .unwrap_or_else(|error| panic!("Insertion of {id} failed:n{}", error));
     }
 
     /// Get a image cache entry
@@ -107,7 +107,7 @@ impl ResourceStore {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection.prepare("DELETE FROM data_cache").unwrap();
         stmt.execute(())
-            .unwrap_or_else(|_| panic!("Deletion of table 'data_cache' failed"));
+            .unwrap_or_else(|error| panic!("Deletion of table 'data_cache' failed.\n{}", error));
     }
 
     /// Returns an id list of all resources, including hidden resources
@@ -165,7 +165,7 @@ impl ResourceStore {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection.prepare("DELETE FROM resources").unwrap();
         stmt.execute(())
-            .unwrap_or_else(|_| panic!("Deletion of table 'resources' failed"));
+            .unwrap_or_else(|error| panic!("Deletion of table 'resources' failed.\n{}", error));
     }
 
     /// Batch inserts or updates resources
@@ -180,7 +180,7 @@ impl ResourceStore {
                 "INSERT OR REPLACE INTO resources(id, value) VALUES(?, ?)",
                 (id.as_str(), value.as_str()),
             )
-            .unwrap_or_else(|_| panic!("Insertion of {id} failed"));
+            .unwrap_or_else(|error| panic!("Insertion of {id} failed.\n{}", error));
         });
 
         tx.commit().expect("Transaction commit failed");
@@ -193,7 +193,7 @@ impl ResourceStore {
             .prepare("INSERT OR REPLACE INTO geo_location_cache(id, value) VALUES(?, ?)")
             .unwrap();
         stmt.execute((&id, value))
-            .unwrap_or_else(|_| panic!("Insertion of {id} failed"));
+            .unwrap_or_else(|error| panic!("Insertion of {id} failed:n{}", error));
     }
 
     /// Get a geo location entry by id entry
@@ -234,12 +234,24 @@ impl ResourceStore {
 /// Creates data folder if it does not exists
 /// Also creates all tables if needed
 pub fn initialize(data_folder: &str) -> ResourceStore {
-    fs::create_dir_all(data_folder).unwrap_or_else(|_| panic!("Could not create {}", data_folder));
+    fs::create_dir_all(data_folder)
+        .unwrap_or_else(|error| panic!("Could not create data folder: {}", error));
     let database_path = PathBuf::from(data_folder).join("resources.db");
 
-    // Create persistent file store
-    let persistent_file_store_pool = Pool::new(SqliteConnectionManager::file(database_path))
-        .expect("persistent storage pool creation failed");
+    // Create persistent file store and enable WAL mode
+    let sqlite_manager = SqliteConnectionManager::file(database_path).with_init(|c| {
+        c.execute_batch(
+            "
+            PRAGMA journal_mode=WAL;            -- better write-concurrency
+            PRAGMA synchronous=NORMAL;          -- fsync only in critical moments
+            PRAGMA wal_autocheckpoint=1000;     -- write WAL changes back every 1000 pages
+            PRAGMA wal_checkpoint(TRUNCATE);    -- free some space by truncating possibly massive WAL files from the last run
+        ",
+        )
+    });
+
+    let persistent_file_store_pool = Pool::new(sqlite_manager)
+        .unwrap_or_else(|error| panic!("Could not create persistent file store: {}", error));
 
     create_table_hidden(&persistent_file_store_pool);
     create_table_data_cache(&persistent_file_store_pool);
@@ -259,7 +271,7 @@ fn create_table_hidden(pool: &Pool<SqliteConnectionManager>) {
             "CREATE TABLE IF NOT EXISTS hidden (id TEXT PRIMARY KEY);",
             (),
         )
-        .expect("table creation of 'hidden' failed");
+        .unwrap_or_else(|error| panic!("table creation of 'hidden' failed.\n{}", error));
 }
 
 /// Creates the "data_cache" database table
@@ -270,7 +282,7 @@ fn create_table_data_cache(pool: &Pool<SqliteConnectionManager>) {
             "CREATE TABLE IF NOT EXISTS data_cache (id TEXT PRIMARY KEY, data BLOB);",
             (),
         )
-        .expect("table creation of 'data_cache' failed");
+        .unwrap_or_else(|error| panic!("table creation of 'data_cache' failed.\n{}", error));
 }
 
 /// Creates the "geo_location_cache" database table
@@ -281,7 +293,9 @@ fn create_table_geo_location_cache(pool: &Pool<SqliteConnectionManager>) {
             "CREATE TABLE IF NOT EXISTS geo_location_cache (id TEXT PRIMARY KEY, value TEXT);",
             (),
         )
-        .expect("table creation of 'geo_location_cache' failed");
+        .unwrap_or_else(|error| {
+            panic!("table creation of 'geo_location_cache' failed.\n{}", error)
+        });
 }
 
 /// Creates the "resources" database table
@@ -292,5 +306,5 @@ fn create_table_resources(pool: &Pool<SqliteConnectionManager>) {
             "CREATE TABLE IF NOT EXISTS resources (id TEXT PRIMARY KEY, value TEXT);",
             (),
         )
-        .expect("table creation of 'resources' failed");
+        .unwrap_or_else(|error| panic!("table creation of 'resources' failed.\n{}", error));
 }
