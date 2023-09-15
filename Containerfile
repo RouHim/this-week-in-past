@@ -13,7 +13,7 @@ RUN apk update && apk add --no-cache bash file
 RUN mkdir /work
 WORKDIR /work
 COPY target .
-COPY stage-arch-bin.sh /work
+COPY .container/stage-arch-bin.sh /work
 
 # This will copy the cpu arch corresponding binary to /target/this-week-in-past
 RUN bash stage-arch-bin.sh this-week-in-past

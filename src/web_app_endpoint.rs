@@ -21,12 +21,12 @@ pub async fn script_js() -> HttpResponse {
 
 #[get("/images/hide.png")]
 pub async fn hide_png() -> HttpResponse {
-    let png: &[u8] = include_bytes!("../web-app/images/hide.png");
-    HttpResponse::Ok().content_type("image/png").body(png)
+    let hide_icon: &[u8] = include_bytes!("../web-app/images/hide.png");
+    HttpResponse::Ok().content_type("image/png").body(hide_icon)
 }
 
 #[get("/icon.png")]
 pub async fn icon_png() -> HttpResponse {
-    let png: &[u8] = include_bytes!("../icon.png");
-    HttpResponse::Ok().content_type("image/png").body(png)
+    let icon: &[u8] = include_bytes!("../icon.png");
+    HttpResponse::Ok().content_type("image/png").body(icon)
 }
