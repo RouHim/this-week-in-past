@@ -65,14 +65,6 @@ fn should_skip_folder(path: &Path) -> bool {
             .collect();
     };
 
-    for folder in IGNORED_FOLDERS.iter() {
-        println!(
-            "{:?} == {:?}",
-            path.file_name().unwrap().to_str().unwrap(),
-            folder
-        );
-    }
-
     let folder_name = path.file_name().unwrap().to_str().unwrap();
     if IGNORED_FOLDERS.contains(&folder_name.to_string()) {
         info!("Skipping folder: {:?} because it is ignored", path);
