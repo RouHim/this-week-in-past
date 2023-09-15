@@ -1,3 +1,11 @@
+# [1.10.0](https://github.com/RouHim/this-week-in-past/compare/v1.9.0...v1.10.0) (2023-09-15)
+
+
+### Features
+
+* **resources:** add documentation for hidden folder ([5499d00](https://github.com/RouHim/this-week-in-past/commit/5499d006186ecdf20b5c51157cc7248158397396))
+* **resources:** ignore ignored folder ([f899f01](https://github.com/RouHim/this-week-in-past/commit/f899f015fb13ab1b553559c0c25021d0f9e0a5ab))
+
 # [1.9.0](https://github.com/RouHim/this-week-in-past/compare/v1.8.19...v1.9.0) (2023-09-15)
 
 
