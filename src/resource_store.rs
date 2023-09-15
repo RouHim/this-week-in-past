@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-use r2d2::{ManageConnection, Pool};
+use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 
 #[derive(Clone)]
@@ -242,17 +242,13 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
     let sqlite_manager = SqliteConnectionManager::file(database_path).with_init(|c| {
         c.execute_batch(
             "
-            PRAGMA journal_mode=WAL;
-            PRAGMA synchronous=NORMAL;
-            PRAGMA wal_autocheckpoint=1000;
+            PRAGMA journal_mode=WAL;            -- better write-concurrency
+            PRAGMA synchronous=NORMAL;          -- fsync only in critical moments
+            PRAGMA wal_autocheckpoint=1000;     -- write WAL changes back every 1000 pages
+            PRAGMA wal_checkpoint(TRUNCATE);    -- free some space by truncating possibly massive WAL files from the last run
         ",
         )
     });
-
-    let connection = sqlite_manager.connect().unwrap();
-    connection
-        .execute("PRAGMA wal_checkpoint(TRUNCATE);", [])
-        .unwrap();
 
     let persistent_file_store_pool = Pool::new(sqlite_manager)
         .unwrap_or_else(|error| panic!("Could not create persistent file store: {}", error));
