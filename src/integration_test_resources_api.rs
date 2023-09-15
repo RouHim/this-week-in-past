@@ -187,7 +187,7 @@ async fn test_get_resource_metadata_by_id() {
             .len(),
     );
     assert_that!(response.taken).is_equal_to(Some(
-        NaiveDateTime::parse_from_str("2008-11-01T21:15:07", "%Y-%m-%dT%H:%M:%S").unwrap(),
+        NaiveDateTime::parse_from_str("2008-10-22T16:28:39", "%Y-%m-%dT%H:%M:%S").unwrap(),
     ));
     assert_that!(response.location).is_equal_to(Some(GeoLocation {
         latitude: 43.46745,
@@ -223,7 +223,7 @@ async fn test_get_resource_description_by_id() {
     .unwrap();
 
     // THEN the response should contain the resized image
-    assert_that!(response).is_equal_to("01.11.2008, Arezzo".to_string());
+    assert_that!(response).is_equal_to("22.10.2008, Arezzo".to_string());
 
     // cleanup
     cleanup(&base_test_dir).await;

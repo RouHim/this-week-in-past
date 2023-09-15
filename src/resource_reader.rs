@@ -3,6 +3,7 @@ use std::path::Path;
 
 use chrono::{Local, NaiveDateTime, TimeZone};
 use exif::Exif;
+
 use now::DateTimeNow;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;

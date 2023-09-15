@@ -70,7 +70,7 @@ fn read_jpg_with_exif_image_resource() {
     // THEN the resource metadata should be correct
     assert_eq!(
         resources_read.taken,
-        Some(NaiveDateTime::parse_from_str("2008-11-01T21:15:07", "%Y-%m-%dT%H:%M:%S").unwrap())
+        Some(NaiveDateTime::parse_from_str("2008-10-22T16:28:39", "%Y-%m-%dT%H:%M:%S").unwrap())
     );
     assert_eq!(
         resources_read.orientation,

@@ -10,7 +10,7 @@ use crate::image_processor::ImageOrientation;
 /// If the exif date is not available, the gps date is used
 pub fn get_exif_date(exif_data: &Exif) -> Option<NaiveDateTime> {
     let mut exif_date: Option<NaiveDateTime> = detect_exif_date(
-        vec![Tag::DateTime, Tag::DateTimeOriginal, Tag::DateTimeDigitized],
+        vec![Tag::DateTimeOriginal, Tag::DateTimeDigitized, Tag::DateTime],
         exif_data,
     );
 
@@ -57,12 +57,21 @@ fn parse_exif_date(date: String) -> Option<NaiveDateTime> {
 /// If the location is not found, the location is set to None
 pub fn detect_location(exif_data: &Exif) -> Option<GeoLocation> {
     let maybe_latitude = exif_data.get_field(Tag::GPSLatitude, In::PRIMARY);
+    let maybe_latitude_ref = exif_data.get_field(Tag::GPSLatitudeRef, In::PRIMARY);
     let maybe_longitude = exif_data.get_field(Tag::GPSLongitude, In::PRIMARY);
+    let maybe_longitude_ref = exif_data.get_field(Tag::GPSLongitudeRef, In::PRIMARY);
 
-    if let (Some(latitude), Some(longitude)) = (maybe_latitude, maybe_longitude) {
+    if let (Some(latitude), Some(longitude), Some(latitude_ref), Some(longitude_ref)) = (
+        maybe_latitude,
+        maybe_longitude,
+        maybe_latitude_ref,
+        maybe_longitude_ref,
+    ) {
         return geo_location::from_degrees_minutes_seconds(
-            latitude.display_value().to_string(),
-            longitude.display_value().to_string(),
+            &latitude.display_value().to_string(),
+            &longitude.display_value().to_string(),
+            &latitude_ref.display_value().to_string(),
+            &longitude_ref.display_value().to_string(),
         );
     }
 
