@@ -61,11 +61,6 @@ impl ImageResource {
         let begin_of_week = now.beginning_of_week().date_naive();
         let end_of_week = now.end_of_week().date_naive();
 
-        // print debug information
-        println!("begin_of_week: {}", begin_of_week);
-        println!("taken_date: {}", taken_date);
-        println!("end_of_week: {}", end_of_week);
-
         // Only compare day and month, not year
         // Because we want to compare the same day range in the past years
         let taken_date = taken_date.with_year(now.year()).unwrap();
