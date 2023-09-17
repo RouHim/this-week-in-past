@@ -1,10 +1,9 @@
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 
-use chrono::{Local, NaiveDateTime, TimeZone};
+use chrono::{Local, NaiveDateTime};
 use exif::Exif;
 
-use now::DateTimeNow;
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
@@ -40,19 +39,17 @@ pub struct ImageResource {
 }
 
 impl ImageResource {
-    /// Checks if the resource was taken in the past but in this calendar week
+    /// Checks if the resource was taken on this day in the past +/- 3 days
+    /// This is done by comparing the taken date with the current date
+    /// If the difference is less than 3 days, the resource is considered to be taken this week
     pub fn is_this_week(&self) -> bool {
-        if self.taken.is_none() {
-            return false;
-        }
-
-        let current_week_of_year = Local::now().week_of_year();
-        let resource_week_of_year = Local
-            .from_local_datetime(&self.taken.unwrap())
-            .unwrap()
-            .week_of_year();
-
-        current_week_of_year == resource_week_of_year
+        let taken_date = match self.taken {
+            Some(date) => date,
+            None => return false,
+        };
+        let now = Local::now().naive_local();
+        let days = now.signed_duration_since(taken_date).num_days();
+        days.abs() <= 3
     }
 }
 
