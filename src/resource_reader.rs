@@ -1,8 +1,9 @@
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 
-use chrono::{Local, NaiveDateTime};
+use chrono::{Datelike, Local, NaiveDateTime};
 use exif::Exif;
+use now::DateTimeNow;
 
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
@@ -47,9 +48,17 @@ impl ImageResource {
             Some(date) => date,
             None => return false,
         };
-        let now = Local::now().naive_local();
-        let days = now.signed_duration_since(taken_date).num_days();
-        days.abs() <= 3
+
+        let now = Local::now();
+        let begin_of_week = now.beginning_of_week().naive_local();
+        let end_of_week = now.end_of_week().naive_local();
+
+        // Only compare day and month, not year
+        // Because we want to compare the same day range in the past years
+        let taken_date = taken_date.with_year(now.year()).unwrap();
+
+        // Check if the taken date is between the begin and end of the week, thus this week
+        taken_date >= begin_of_week && taken_date <= end_of_week
     }
 }
 
