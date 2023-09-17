@@ -40,18 +40,31 @@ pub struct ImageResource {
 }
 
 impl ImageResource {
+    pub fn with_taken_date(&self, taken_date: NaiveDateTime) -> ImageResource {
+        let mut resource = self.clone();
+        resource.taken = Some(taken_date);
+        resource
+    }
+}
+
+impl ImageResource {
     /// Checks if the resource was taken on this day in the past +/- 3 days
     /// This is done by comparing the taken date with the current date
     /// If the difference is less than 3 days, the resource is considered to be taken this week
     pub fn is_this_week(&self) -> bool {
         let taken_date = match self.taken {
-            Some(date) => date,
+            Some(date) => date.date(),
             None => return false,
         };
 
         let now = Local::now();
-        let begin_of_week = now.beginning_of_week().naive_local();
-        let end_of_week = now.end_of_week().naive_local();
+        let begin_of_week = now.beginning_of_week().date_naive();
+        let end_of_week = now.end_of_week().date_naive();
+
+        // print debug information
+        println!("begin_of_week: {}", begin_of_week);
+        println!("taken_date: {}", taken_date);
+        println!("end_of_week: {}", end_of_week);
 
         // Only compare day and month, not year
         // Because we want to compare the same day range in the past years
@@ -77,6 +90,23 @@ impl Display for ImageResource {
             self.taken,
             self.location,
         )
+    }
+}
+
+/// Impl Default for ImageResource
+impl Default for ImageResource {
+    fn default() -> Self {
+        ImageResource {
+            id: "".to_string(),
+            path: "".to_string(),
+            content_type: "".to_string(),
+            name: "".to_string(),
+            content_length: 0,
+            last_modified: Local::now().naive_local(),
+            taken: None,
+            location: None,
+            orientation: None,
+        }
     }
 }
 
