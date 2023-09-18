@@ -1,3 +1,13 @@
+# [1.11.0](https://github.com/RouHim/this-week-in-past/compare/v1.10.2...v1.11.0) (2023-09-18)
+
+
+### Features
+
+* **resources:** add some tests ([33e3fb9](https://github.com/RouHim/this-week-in-past/commit/33e3fb93017b798bdbc9bb1049cd090252b41936))
+* **resources:** remove debug code ([57fa018](https://github.com/RouHim/this-week-in-past/commit/57fa018409bc80418b8aebc8fe3ff7a018b498ac))
+* **resources:** replace 3 days +- with begin of week day and end of week day ([cdeaf6a](https://github.com/RouHim/this-week-in-past/commit/cdeaf6a31b8a7d9e37ad026569385e0d683d6ae4))
+* **resources:** replace week of year comparison with 3 day distance of today ([c41ca84](https://github.com/RouHim/this-week-in-past/commit/c41ca84e00dc493b5bf41777bc0a0bb73111d05a))
+
 ## [1.10.2](https://github.com/RouHim/this-week-in-past/compare/v1.10.1...v1.10.2) (2023-09-15)
 
 ## [1.10.1](https://github.com/RouHim/this-week-in-past/compare/v1.10.0...v1.10.1) (2023-09-15)
