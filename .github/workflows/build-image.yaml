@@ -347,9 +347,13 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           REPO="RouHim/this-week-in-past"
-          LATEST_RELEASE_VERSION=$(curl --silent "https://api.github.com/repos/$REPO/releases/latest" | jq -r ".tag_name")
-          echo "Latest release is $LATEST_RELEASE_VERSION"
-          echo "VERSION=$LATEST_RELEASE_VERSION" >> $GITHUB_ENV
+          VERSION=$(curl --silent "https://api.github.com/repos/$REPO/releases/latest" | jq -r ".tag_name")
+          MINOR_VERSION=$(echo $VERSION | cut -d. -f2)
+          MAJOR_VERSION=$(echo $VERSION | cut -d. -f1)
+          echo "Latest release is $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "MINOR_VERSION=$MINOR_VERSION" >> $GITHUB_ENV
+          echo "MAJOR_VERSION=$MAJOR_VERSION" >> $GITHUB_ENV
 
       - name: Download x86_64-musl binary
         uses: actions/download-artifact@v3
@@ -406,7 +410,7 @@ jobs:
         uses: docker/build-push-action@v5
         if: env.VERSION != ''
         with:
-          tags: ${{ env.IMAGE_NAME }}:${{ join('.', split(env.VERSION, '.')[0], split(env.VERSION, '.')[1]) }}
+          tags: ${{ env.IMAGE_NAME }}:${{ env.MINOR_VERSION }}
           platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
           context: .
           file: ./Containerfile
@@ -417,7 +421,7 @@ jobs:
         uses: docker/build-push-action@v5
         if: env.VERSION != ''
         with:
-          tags: ${{ env.IMAGE_NAME }}:${{ split(env.VERSION, '.')[0] }}
+          tags: ${{ env.IMAGE_NAME }}:${{ env.MAJOR_VERSION }}
           platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
           context: .
           file: ./Containerfile
