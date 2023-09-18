@@ -2,7 +2,7 @@ extern crate core;
 
 use std::env;
 
-use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
 
 use env_logger::Builder;
 use log::{info, warn, LevelFilter};
@@ -48,6 +48,12 @@ async fn main() -> std::io::Result<()> {
         .filter(Some("actix_web::middleware::logger"), LevelFilter::Error)
         .init();
 
+    // Print cargo version to console
+    info!(
+        "👋 Welcome to this-week-in-past version {}",
+        env!("CARGO_PKG_VERSION")
+    );
+
     // Create a new resource reader based on the provided resources path
     let resource_reader = resource_reader::new(
         env::var("RESOURCE_PATHS")
@@ -73,7 +79,7 @@ async fn main() -> std::io::Result<()> {
         env::var("PORT").unwrap_or_else(|_| "8080".to_string())
     );
     // Run the actual web server and hold the main thread here
-    info!(" 🚀 Launching webserver on http://{} 🚀 ", bind_address);
+    info!("🚀 Launching webserver on http://{} 🚀", bind_address);
     let http_server_result = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(resource_store.clone()))
@@ -110,6 +116,15 @@ async fn main() -> std::io::Result<()> {
                     .service(config_endpoint::get_hide_button_enabled)
                     .service(config_endpoint::get_random_slideshow_enabled),
             )
+            .service(web::resource("/api/version").route(web::get().to(
+                |_: HttpRequest, _: web::Payload| async move {
+                    Ok::<_, actix_web::Error>(
+                        HttpResponse::Ok()
+                            .content_type("plain/text")
+                            .body(env!("CARGO_PKG_VERSION")),
+                    )
+                },
+            )))
             .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
     })
     .bind(bind_address)?
