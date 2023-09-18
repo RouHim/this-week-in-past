@@ -1,3 +1,12 @@
+# [1.13.0](https://github.com/RouHim/this-week-in-past/compare/1.12.1...1.13.0) (2023-09-18)
+
+
+### Features
+
+* **pipeline:** build major / minor / patch docker releases ([d393f6e](https://github.com/RouHim/this-week-in-past/commit/d393f6ef056dae97ea0107e216568f66e3e8dac5))
+* **pipeline:** build major / minor / patch docker releases ([8331d42](https://github.com/RouHim/this-week-in-past/commit/8331d422d3f7ad812ac5be6a8732f3879417d32a))
+* **pipeline:** build major / minor / patch docker releases ([010c237](https://github.com/RouHim/this-week-in-past/commit/010c2375e1db2b2505c556b5002242a075b63824))
+
 ## [1.12.1](https://github.com/RouHim/this-week-in-past/compare/v1.12.0...1.12.1) (2023-09-18)
 
 
