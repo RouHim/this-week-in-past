@@ -26,7 +26,7 @@ pub async fn build_display_value(
     };
 
     // Append city name
-    let city_name = get_city_name(resource, resource_store).await;
+    let city_name = get_city_name(&resource, resource_store).await;
     if let Some(city_name) = city_name {
         display_value.push_str(", ");
         display_value.push_str(city_name.as_str());
@@ -38,7 +38,7 @@ pub async fn build_display_value(
 /// Returns the city name for the specified resource
 /// The city name is taken from the cache, if available
 /// If not, the city name is taken from the geo location service
-async fn get_city_name(resource: ImageResource, resource_store: &ResourceStore) -> Option<String> {
+async fn get_city_name(resource: &ImageResource, resource_store: &ResourceStore) -> Option<String> {
     let resource_location = resource.location?;
     let resource_location_string = resource_location.to_string();
 
