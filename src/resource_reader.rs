@@ -3,8 +3,6 @@ use std::path::Path;
 
 use chrono::{Datelike, Local, NaiveDateTime};
 use exif::Exif;
-use now::DateTimeNow;
-
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
@@ -57,16 +55,15 @@ impl ImageResource {
             None => return false,
         };
 
-        let now = Local::now();
-        let begin_of_week = now.beginning_of_week().date_naive();
-        let end_of_week = now.end_of_week().date_naive();
+        let now = Local::now().naive_local().date();
+        let current_weekday = now.weekday();
+        let days_since_monday = current_weekday.num_days_from_monday();
+        let start_of_week = now - chrono::Duration::days(days_since_monday as i64);
+        let end_of_week = start_of_week + chrono::Duration::days(6);
 
-        // Only compare day and month, not year
-        // Because we want to compare the same day range in the past years
-        let taken_date = taken_date.with_year(now.year()).unwrap();
-
-        // Check if the taken date is between the begin and end of the week, thus this week
-        taken_date >= begin_of_week && taken_date <= end_of_week
+        taken_date.month() == start_of_week.month()
+            && taken_date.day() >= start_of_week.day()
+            && taken_date.day() <= end_of_week.day()
     }
 }
 
