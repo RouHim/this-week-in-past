@@ -141,10 +141,43 @@ jobs:
       - name: Test code
         run: cargo test
 
+  create-release:
+    name: Create version
+    needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
+
+      # Create a new release based on semantic versioning
+      - name: Set up Node.js
+        if: github.ref == 'refs/heads/main'
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+
+      - name: Install Dependencies
+        if: github.ref == 'refs/heads/main'
+        run: |
+          npm install -g \
+             semantic-release  \
+            @semantic-release/git  \
+            @semantic-release/gitlab  \
+            @semantic-release/changelog  \
+            @semantic-release/exec \
+            @semantic-release/commit-analyzer \
+            conventional-changelog-conventionalcommits
+
+      - name: Generate Semantic Release Notes and Create Release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: npx semantic-release
+
 
   build-binaries:
     name: Build
-    needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
+    needs: [ check-oci-config, check-repo, check-code-style, check-code, test, create-release ]
     runs-on: ubuntu-latest
     # Run all targets in parallel
     strategy:
@@ -158,6 +191,20 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+
+      - name: Set version to environment
+        shell: bash
+        run: |
+          REPO="RouHim/this-week-in-past"
+          LATEST_RELEASE_VERSION=$(curl --silent "https://api.github.com/repos/$REPO/releases/latest" | jq -r ".tag_name")
+          echo "Latest release is $LATEST_RELEASE_VERSION"
+          echo "VERSION=$LATEST_RELEASE_VERSION" >> $GITHUB_ENV
+
+      - name: Set version
+        shell: bash
+        run: |
+          sed -i "s/version = \"0.0.0\"/version = \"${{ env.VERSION }}\"/g" Cargo.toml
+          echo "Cargo version is now" $(cargo metadata --no-deps --format-version 1 | jq -r ".packages[0].version")
 
       - uses: Swatinem/rust-cache@v2 # use rust / cargo caching
         with:
@@ -224,7 +271,7 @@ jobs:
         run: docker kill test-container && docker rm test-container
 
 
-  release-artifacts:
+  upload-artifacts:
     name: Release artifacts
     needs: [ build-binaries ]
     runs-on: ubuntu-latest
@@ -253,28 +300,6 @@ jobs:
         with:
           name: arm-musleabihf
           path: target/arm-unknown-linux-musleabihf/release/
-
-      # Create a new release based on semantic versioning
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18.x
-
-      - name: Install Dependencies
-        run: |
-          npm install -g \
-             semantic-release  \
-            @semantic-release/git  \
-            @semantic-release/gitlab  \
-            @semantic-release/changelog  \
-            @semantic-release/exec \
-            @semantic-release/commit-analyzer \
-            conventional-changelog-conventionalcommits
-
-      - name: Generate Semantic Release Notes and Create Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: npx semantic-release
 
       - name: Upload the x86 built binaries to the release
         run: |
@@ -314,6 +339,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
 
+      - name: Set version to environment
+        shell: bash
+        if: github.ref == 'refs/heads/main'
+        run: |
+          REPO="RouHim/this-week-in-past"
+          LATEST_RELEASE_VERSION=$(curl --silent "https://api.github.com/repos/$REPO/releases/latest" | jq -r ".tag_name")
+          echo "Latest release is $LATEST_RELEASE_VERSION"
+          echo "VERSION=$LATEST_RELEASE_VERSION" >> $GITHUB_ENV
+
       - name: Download x86_64-musl binary
         uses: actions/download-artifact@v3
         with:
@@ -348,6 +382,17 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           tags: ${{ env.IMAGE_NAME }}:${{ needs.set_image_tag.outputs.IMAGE_TAG }}
+          platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
+          context: .
+          file: ./Containerfile
+          load: false
+          push: true
+
+      - name: Build and push versioned multi platform container image
+        uses: docker/build-push-action@v5
+        if: env.VERSION != ''
+        with:
+          tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
           context: .
           file: ./Containerfile
