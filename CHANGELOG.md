@@ -1,3 +1,12 @@
+# [1.12.0](https://github.com/RouHim/this-week-in-past/compare/v1.11.0...v1.12.0) (2023-09-18)
+
+
+### Features
+
+* **api:** add version endpoint and log message ([cbab2f8](https://github.com/RouHim/this-week-in-past/commit/cbab2f86e31e1fc518159873fcf4b52933bc5055))
+* **pipeline:** add version information to binary ([d65d161](https://github.com/RouHim/this-week-in-past/commit/d65d161763cfa2329ae24922fd9047989cc60f05))
+* **pipeline:** only set version on main ([2819501](https://github.com/RouHim/this-week-in-past/commit/28195014cdbd45db478d71df0ae7d6ee00474572))
+
 # [1.11.0](https://github.com/RouHim/this-week-in-past/compare/v1.10.2...v1.11.0) (2023-09-18)
 
 
