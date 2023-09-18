@@ -1,10 +1,10 @@
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 
-use chrono::{Local, NaiveDateTime, TimeZone};
+use chrono::{Datelike, Local, NaiveDateTime};
 use exif::Exif;
-
 use now::DateTimeNow;
+
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
@@ -40,19 +40,33 @@ pub struct ImageResource {
 }
 
 impl ImageResource {
-    /// Checks if the resource was taken in the past but in this calendar week
+    pub fn with_taken_date(&self, taken_date: NaiveDateTime) -> ImageResource {
+        let mut resource = self.clone();
+        resource.taken = Some(taken_date);
+        resource
+    }
+}
+
+impl ImageResource {
+    /// Checks if the resource was taken on this day in the past +/- 3 days
+    /// This is done by comparing the taken date with the current date
+    /// If the difference is less than 3 days, the resource is considered to be taken this week
     pub fn is_this_week(&self) -> bool {
-        if self.taken.is_none() {
-            return false;
-        }
+        let taken_date = match self.taken {
+            Some(date) => date.date(),
+            None => return false,
+        };
 
-        let current_week_of_year = Local::now().week_of_year();
-        let resource_week_of_year = Local
-            .from_local_datetime(&self.taken.unwrap())
-            .unwrap()
-            .week_of_year();
+        let now = Local::now();
+        let begin_of_week = now.beginning_of_week().date_naive();
+        let end_of_week = now.end_of_week().date_naive();
 
-        current_week_of_year == resource_week_of_year
+        // Only compare day and month, not year
+        // Because we want to compare the same day range in the past years
+        let taken_date = taken_date.with_year(now.year()).unwrap();
+
+        // Check if the taken date is between the begin and end of the week, thus this week
+        taken_date >= begin_of_week && taken_date <= end_of_week
     }
 }
 
@@ -71,6 +85,23 @@ impl Display for ImageResource {
             self.taken,
             self.location,
         )
+    }
+}
+
+/// Impl Default for ImageResource
+impl Default for ImageResource {
+    fn default() -> Self {
+        ImageResource {
+            id: "".to_string(),
+            path: "".to_string(),
+            content_type: "".to_string(),
+            name: "".to_string(),
+            content_length: 0,
+            last_modified: Local::now().naive_local(),
+            taken: None,
+            location: None,
+            orientation: None,
+        }
     }
 }
 

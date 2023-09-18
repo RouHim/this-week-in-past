@@ -9,3 +9,5 @@ content-*
 *.db
 .env
 this-week-in-past
+flamegraph*
+perf.data*

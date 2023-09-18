@@ -1,12 +1,15 @@
+use assertor::{assert_that, BooleanAssertion};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-use chrono::NaiveDateTime;
+use chrono::{Datelike, Days, Local, NaiveDateTime};
+use now::DateTimeNow;
 use rand::Rng;
 
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
+use crate::resource_reader::ImageResource;
 use crate::{filesystem_client, utils};
 
 const TEST_JPEG_EXIF_URL: &str =
@@ -177,6 +180,79 @@ fn read_non_existent_folder() {
 
     // cleanup
     cleanup(&base_test_dir);
+}
+
+#[test]
+fn exceeds_week_by_one() {
+    // GIVEN is a remote resource not from this week
+    let end_of_week_plus_1 = Local::now()
+        .end_of_week()
+        .naive_local()
+        .checked_add_days(Days::new(1))
+        .unwrap()
+        .with_year(2000)
+        .unwrap();
+    let resource = ImageResource::default().with_taken_date(end_of_week_plus_1);
+
+    // WHEN checking if the resource is from this week
+    let is_this_week = resource.is_this_week();
+
+    // THEN the resource should not be from this week
+    assert_that!(is_this_week).is_false();
+}
+
+#[test]
+fn end_of_week_is_in() {
+    // GIVEN is a remote resource from this week
+    let end_of_week = Local::now()
+        .end_of_week()
+        .naive_local()
+        .with_year(2000)
+        .unwrap();
+    let resource = ImageResource::default().with_taken_date(end_of_week);
+
+    // WHEN checking if the resource is from this week
+    let is_this_week = resource.is_this_week();
+
+    // THEN the resource should be from this week
+    assert_that!(is_this_week).is_true();
+}
+
+#[test]
+fn begin_of_week_is_in() {
+    // GIVEN is a remote resource from this week
+    let begin_of_week = Local::now()
+        .beginning_of_week()
+        .naive_local()
+        .with_year(2000)
+        .unwrap();
+    let resource = ImageResource::default().with_taken_date(begin_of_week);
+
+    // WHEN checking if the resource is from this week
+    let is_this_week = resource.is_this_week();
+
+    // THEN the resource should be from this week
+    assert_that!(is_this_week).is_true();
+}
+
+#[test]
+fn exceeds_week_by_minus_one() {
+    // GIVEN is a remote resource not from this week
+    // AND a taken date from this week
+    let beginning_of_week_minus_1 = Local::now()
+        .beginning_of_week()
+        .naive_local()
+        .checked_sub_days(Days::new(1))
+        .unwrap()
+        .with_year(2000)
+        .unwrap();
+    let resource = ImageResource::default().with_taken_date(beginning_of_week_minus_1);
+
+    // WHEN checking if the resource is from this week
+    let is_this_week = resource.is_this_week();
+
+    // THEN the resource should not be from this week
+    assert_that!(is_this_week).is_false();
 }
 
 /// Creates a test image withing a folder
