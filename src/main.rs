@@ -49,7 +49,10 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     // Print cargo version to console
-    info!("👋 Welcome to this-week-in-past version {}", env!("CARGO_PKG_VERSION"));
+    info!(
+        "👋 Welcome to this-week-in-past version {}",
+        env!("CARGO_PKG_VERSION")
+    );
 
     // Create a new resource reader based on the provided resources path
     let resource_reader = resource_reader::new(
