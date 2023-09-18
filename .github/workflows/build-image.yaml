@@ -348,12 +348,12 @@ jobs:
         run: |
           REPO="RouHim/this-week-in-past"
           VERSION=$(curl --silent "https://api.github.com/repos/$REPO/releases/latest" | jq -r ".tag_name")
-          MINOR_VERSION=$(echo $VERSION | cut -d. -f2)
-          MAJOR_VERSION=$(echo $VERSION | cut -d. -f1)
+          MINOR_PART=$(echo $VERSION | cut -d. -f2)
+          MAJOR_PART=$(echo $VERSION | cut -d. -f1)
           echo "Latest release is $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "MINOR_VERSION=$MINOR_VERSION" >> $GITHUB_ENV
-          echo "MAJOR_VERSION=$MAJOR_VERSION" >> $GITHUB_ENV
+          echo "MINOR_VERSION=$MAJOR_PART.$MINOR_PART" >> $GITHUB_ENV
+          echo "MAJOR_VERSION=$MAJOR_PART" >> $GITHUB_ENV
 
       - name: Download x86_64-musl binary
         uses: actions/download-artifact@v3
