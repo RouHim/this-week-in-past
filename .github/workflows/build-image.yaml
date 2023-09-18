@@ -402,6 +402,28 @@ jobs:
           load: false
           push: true
 
+      - name: Build and push minor versioned multi platform container image
+        uses: docker/build-push-action@v5
+        if: env.VERSION != ''
+        with:
+          tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION%.* }}
+          platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
+          context: .
+          file: ./Containerfile
+          load: false
+          push: true
+
+      - name: Build and push major versioned multi platform container image
+        uses: docker/build-push-action@v5
+        if: env.VERSION != ''
+        with:
+          tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION%%.* }}
+          platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
+          context: .
+          file: ./Containerfile
+          load: false
+          push: true
+
       - name: Delete old releases
         uses: dev-drprasad/delete-older-releases@v0.2.1
         with:
