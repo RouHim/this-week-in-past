@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -31,28 +32,32 @@ impl ResourceStore {
         ids
     }
 
-    /// Gets a list of all visible resources this week in a random order
-    /// Returns a list of resource IDs
-    pub fn get_resource_this_week_visible_random(&self) -> Vec<String> {
+    /// Gets a list of all visible resources for the current week
+    /// Returns a list of tuples containing the resource id and the taken date
+    pub fn get_resources_this_week_visible(&self) -> Vec<(String, Option<NaiveDate>)> {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
             .prepare(
-                r#"SELECT DISTINCT resources.id
+                r#"
+                   SELECT DISTINCT resources.id, json.value
                    FROM resources,
                         json_each(resources.value) json
                    WHERE json.key = 'taken'
                      AND json.value NOT NULL
-                     AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', date('now', '-3 days')) AND strftime('%m-%d', date('now', '+3 days'))
+                     AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', '-3 days') AND strftime('%m-%d', 'now', '+3 days')
                      AND resources.id NOT IN (SELECT id FROM hidden)
-                   ORDER BY RANDOM();"#,
+                   ;"#,
             )
             .unwrap();
         let mut rows = stmt.query([]).unwrap();
-        let mut ids: Vec<String> = Vec::new();
+        let mut resources: Vec<(String, Option<NaiveDate>)> = Vec::new();
         while let Ok(Some(row)) = rows.next() {
-            ids.push(row.get(0).unwrap());
+            let id: String = row.get(0).unwrap();
+            let taken_date: String = row.get(1).unwrap();
+            let taken_date = NaiveDate::parse_from_str(&taken_date, "%Y-%m-%dT%H:%M:%S").ok();
+            resources.push((id, taken_date));
         }
-        ids
+        resources
     }
 
     /// Sets the specified resource id as hidden
