@@ -142,7 +142,7 @@ jobs:
         run: cargo test
 
   create-release:
-    name: Create version
+    name: Create release
     needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
     runs-on: ubuntu-latest
     steps:
@@ -193,6 +193,7 @@ jobs:
           toolchain: stable
 
       - name: Set version to environment
+        if: github.ref == 'refs/heads/main'
         shell: bash
         run: |
           REPO="RouHim/this-week-in-past"
@@ -201,6 +202,7 @@ jobs:
           echo "VERSION=$LATEST_RELEASE_VERSION" >> $GITHUB_ENV
 
       - name: Set version
+        if: github.ref == 'refs/heads/main'
         shell: bash
         run: |
           sed -i "s/version = \"0.0.0\"/version = \"${{ env.VERSION }}\"/g" Cargo.toml
