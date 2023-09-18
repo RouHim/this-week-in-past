@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/RouHim/this-week-in-past/compare/v1.12.0...1.12.1) (2023-09-18)
+
+
+### Bug Fixes
+
+* **release:** remove v in-front of version ([75f917e](https://github.com/RouHim/this-week-in-past/commit/75f917e2e93b56b72f1e5b794023929152e9c062))
+
 # [1.12.0](https://github.com/RouHim/this-week-in-past/compare/v1.11.0...v1.12.0) (2023-09-18)
 
 
