@@ -406,7 +406,7 @@ jobs:
         uses: docker/build-push-action@v5
         if: env.VERSION != ''
         with:
-          tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION%.* }}
+          tags: ${{ env.IMAGE_NAME }}:${{ join('.', split(env.VERSION, '.')[0], split(env.VERSION, '.')[1]) }}
           platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
           context: .
           file: ./Containerfile
@@ -417,7 +417,7 @@ jobs:
         uses: docker/build-push-action@v5
         if: env.VERSION != ''
         with:
-          tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION%%.* }}
+          tags: ${{ env.IMAGE_NAME }}:${{ split(env.VERSION, '.')[0] }}
           platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
           context: .
           file: ./Containerfile
