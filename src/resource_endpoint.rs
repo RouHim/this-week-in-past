@@ -20,9 +20,9 @@ pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> Http
 
 #[get("week")]
 pub async fn get_this_week_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
-    let resource_ids: Vec<String> = resource_store
+    let resource_ids = resource_store
         .as_ref()
-        .get_resource_this_week_visible_random();
+        .get_resources_this_week_visible_random();
 
     HttpResponse::Ok()
         .content_type("application/json")

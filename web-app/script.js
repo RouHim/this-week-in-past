@@ -201,8 +201,6 @@ function getCurrentTemperatureDataFromHomeAssistant() {
  * @param resource_id the id of the resource
  */
 function setImage(resource_id) {
-    current_resource_id = resource_id;
-
     // build the image url
     let imageUrl = `/api/resources/${resource_id}/${window.screen.availWidth}/${window.screen.availHeight}`;
 
@@ -248,6 +246,9 @@ function setImage(resource_id) {
         photoMetadataRequest.open("GET", "/api/resources/" + resource_id + "/description");
         photoMetadataRequest.send();
         photoMetadataRequest.onload = () => slideShowMetadata.innerText = photoMetadataRequest.response;
+
+        // At last, set the current resource id
+        current_resource_id = resource_id;
     })
 }
 

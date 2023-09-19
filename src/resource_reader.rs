@@ -1,10 +1,7 @@
-use std::fmt::{Display, Formatter};
 use std::path::Path;
 
-use chrono::{Datelike, Local, NaiveDateTime};
+use chrono::{Local, NaiveDateTime};
 use exif::Exif;
-use now::DateTimeNow;
-
 use rayon::iter::IntoParallelRefIterator;
 use rayon::iter::ParallelIterator;
 use serde::{Deserialize, Serialize};
@@ -44,47 +41,6 @@ impl ImageResource {
         let mut resource = self.clone();
         resource.taken = Some(taken_date);
         resource
-    }
-}
-
-impl ImageResource {
-    /// Checks if the resource was taken on this day in the past +/- 3 days
-    /// This is done by comparing the taken date with the current date
-    /// If the difference is less than 3 days, the resource is considered to be taken this week
-    pub fn is_this_week(&self) -> bool {
-        let taken_date = match self.taken {
-            Some(date) => date.date(),
-            None => return false,
-        };
-
-        let now = Local::now();
-        let begin_of_week = now.beginning_of_week().date_naive();
-        let end_of_week = now.end_of_week().date_naive();
-
-        // Only compare day and month, not year
-        // Because we want to compare the same day range in the past years
-        let taken_date = taken_date.with_year(now.year()).unwrap();
-
-        // Check if the taken date is between the begin and end of the week, thus this week
-        taken_date >= begin_of_week && taken_date <= end_of_week
-    }
-}
-
-/// Renders the resource as a string
-impl Display for ImageResource {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} {} {} {} {} {} {:?} {:?}",
-            self.id,
-            self.path,
-            self.content_type,
-            self.name,
-            self.content_length,
-            self.last_modified,
-            self.taken,
-            self.location,
-        )
     }
 }
 

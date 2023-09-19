@@ -1,7 +1,7 @@
 # # # # # # # # # # # # # # # # # # # #
 # Builder
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM docker.io/alpine:20230901 as builder
+FROM docker.io/alpine:3 as builder
 
 # Create an empty directory that will be used in the final image
 RUN mkdir "/empty_dir"

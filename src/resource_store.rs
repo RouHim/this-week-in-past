@@ -31,28 +31,31 @@ impl ResourceStore {
         ids
     }
 
-    /// Gets a list of all visible resources this week in a random order
-    /// Returns a list of resource IDs
-    pub fn get_resource_this_week_visible_random(&self) -> Vec<String> {
+    /// Gets a list of all visible resources for the current week
+    /// Returns a list of resource ids
+    pub fn get_resources_this_week_visible_random(&self) -> Vec<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
             .prepare(
-                r#"SELECT DISTINCT resources.id
+                r#"
+                   SELECT DISTINCT resources.id
                    FROM resources,
                         json_each(resources.value) json
                    WHERE json.key = 'taken'
                      AND json.value NOT NULL
-                     AND strftime('%W', json.value) = strftime('%W', 'now')
+                     AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', '-3 days') AND strftime('%m-%d', 'now', '+3 days')
                      AND resources.id NOT IN (SELECT id FROM hidden)
-                   ORDER BY RANDOM();"#,
+                   ORDER BY RANDOM()
+                   ;"#,
             )
             .unwrap();
         let mut rows = stmt.query([]).unwrap();
-        let mut ids: Vec<String> = Vec::new();
+        let mut resources: Vec<String> = Vec::new();
         while let Ok(Some(row)) = rows.next() {
-            ids.push(row.get(0).unwrap());
+            let id = row.get(0).unwrap();
+            resources.push(id);
         }
-        ids
+        resources
     }
 
     /// Sets the specified resource id as hidden
