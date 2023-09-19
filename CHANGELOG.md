@@ -1,3 +1,19 @@
+# [1.15.0](https://github.com/RouHim/this-week-in-past/compare/1.14.0...1.15.0) (2023-09-19)
+
+
+### Bug Fixes
+
+* **resources:** broken week day calculation ([8b6bbe5](https://github.com/RouHim/this-week-in-past/commit/8b6bbe530d73f39b03eb6e319de73aa1069c45ae))
+* **resources:** broken week day calculation ([5b260ce](https://github.com/RouHim/this-week-in-past/commit/5b260ce616dc0dfdc147b7447f177f1fc0c63394))
+* **resources:** simplified random calculation ([ecac3d5](https://github.com/RouHim/this-week-in-past/commit/ecac3d5449acac788e68bac055db4b8bfe5a09fb))
+* **ui:** change current slideshow item, after the animation ([e024902](https://github.com/RouHim/this-week-in-past/commit/e024902e9f92506ad311ae0f2ad5a317d51d7276))
+
+
+### Features
+
+* **resources:** add weighted random to slideshow ([77ca8de](https://github.com/RouHim/this-week-in-past/commit/77ca8de9d214c2e041fbd6bf265e1a5df9297d15))
+* **resources:** replace begin of week day and end of week day with 3 days +- ([fd273ac](https://github.com/RouHim/this-week-in-past/commit/fd273ace08495739ac1decb0f901fd817aa95a28))
+
 # [1.14.0](https://github.com/RouHim/this-week-in-past/compare/1.13.0...1.14.0) (2023-09-18)
 
 
