@@ -20,9 +20,9 @@ pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> Http
 
 #[get("week")]
 pub async fn get_this_week_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
-    let resources = resource_store.as_ref().get_resources_this_week_visible();
-
-    let resource_ids = resource_processor::shuffle_date_weighted(resources);
+    let resource_ids = resource_store
+        .as_ref()
+        .get_resources_this_week_visible_random();
 
     HttpResponse::Ok()
         .content_type("application/json")

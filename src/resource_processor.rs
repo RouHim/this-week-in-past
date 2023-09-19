@@ -1,6 +1,3 @@
-use chrono::{Local, NaiveDate};
-use rand::{thread_rng, Rng};
-use std::cmp::Ordering;
 use std::env;
 
 use crate::geo_location;
@@ -59,41 +56,4 @@ async fn get_city_name(resource: &ImageResource, resource_store: &ResourceStore)
 
         city_name
     }
-}
-
-/// Shuffles the resources based on the date they were taken.
-/// The resources that were taken closer to today are more likely to be at the beginning of the list.
-/// The resources that were taken further away from today are more likely to be at the end of the list.
-pub fn shuffle_date_weighted(resources: Vec<(String, Option<NaiveDate>)>) -> Vec<String> {
-    let today = Local::now().naive_local().date();
-
-    // Calculate weights based on the distance in days to today
-    let weights: Vec<f64> = resources
-        .iter()
-        .map(|(_, date)| {
-            let taken_date = match date {
-                Some(date) => *date,
-                None => return 0.0,
-            };
-            let distance = (today - taken_date).num_days().abs();
-            1.0 / (1.0 + distance as f64)
-        })
-        .collect();
-
-    // Sort the vector based on the calculated weights
-    let mut sorted_resources = resources.clone();
-    sorted_resources.sort_by(|a, b| {
-        let a_weight = weights[resources.iter().position(|x| x == a).unwrap()];
-        let b_weight = weights[resources.iter().position(|x| x == b).unwrap()];
-        b_weight.partial_cmp(&a_weight).unwrap_or(Ordering::Equal)
-    });
-
-    // Shuffle the resources with a bias towards the beginning
-    let mut shuffled_ids: Vec<String> = sorted_resources.into_iter().map(|(id, _)| id).collect();
-    for i in (1..shuffled_ids.len()).rev() {
-        let j = thread_rng().gen_range(0..=i);
-        shuffled_ids.swap(i, j);
-    }
-
-    shuffled_ids
 }
