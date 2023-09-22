@@ -1,3 +1,5 @@
+## [1.15.4](https://github.com/RouHim/this-week-in-past/compare/1.15.3...1.15.4) (2023-09-22)
+
 ## [1.15.3](https://github.com/RouHim/this-week-in-past/compare/1.15.2...1.15.3) (2023-09-22)
 
 ## [1.15.2](https://github.com/RouHim/this-week-in-past/compare/1.15.1...1.15.2) (2023-09-21)
