@@ -32,39 +32,9 @@ The meta information of all images are read at startup and cached in memory. Whe
 this calendar week from previous years are displayed. If no images from the calendar year are found, random images are
 displayed.
 
-## Performance
-
-### Example 1
-
-* Hardware: i3-12100T, 3xWD_BLACK SN750 (RAID-Z1), 32GB RAM
-* Photos: ~80k
-* Indexing: 6 seconds
-* Uncached slideshow change: < 1 second
-
-### Example 2
-
-* Hardware: Raspberry Pi Model B, Class 10 SD Card, 1GHz (OC) 32-Bit arm/v6, 512MB RAM
-* Photos: ~6k
-* Indexing: 38 seconds
-* Uncached slideshow change: ~7 seconds
-
-### Example 3
-
-* Hardware: LG G3 (Android Smartphone), Internal Storage, Snapdragon 801 4C 32-Bit arm/v7, 3GB RAM
-* Photos: ~8k
-* Indexing: 50 seconds
-* Uncached slideshow change: < 1 second
-
-> Indexing scales with storage performance
-
-> Slideshow change scales with CPU performance
-
 ## Run the application
 
 ### Native execution
-
-Since the binary is compiled [completely statically](https://github.com/rust-cross/rust-musl-cross), there are no
-dependencies on system libraries like glibc.
 
 Download the latest release for your system from
 the [releases page](https://github.com/RouHim/this-week-in-past/releases):
@@ -91,6 +61,9 @@ DATA_FOLDER=data \
 SLIDESHOW_INTERVAL=60 \
 ./this-week-in-past
 ```
+
+> Since the binary is compiled [completely statically](https://github.com/rust-cross/rust-musl-cross), there are no
+> dependencies on system libraries like glibc.
 
 ### Docker
 
@@ -155,6 +128,33 @@ There are two ways to ignore folders:
 1) Set the environment variable `IGNORED_FOLDERS` to a comma separated list of folder names which should be ignored.
    Example: `IGNORED_FOLDERS=thumbnails,$RECYLE.BIN``
 2) Create a file named `.ignore` in the folder which should be ignored. The file should be empty.
+
+## Performance
+
+### Example 1
+
+* Hardware: i3-12100T, 3xWD_BLACK SN750 (RAID-Z1), 32GB RAM
+* Photos: ~80k
+* Indexing: 6 seconds
+* Uncached slideshow change: < 1 second
+
+### Example 2
+
+* Hardware: Raspberry Pi Model B, Class 10 SD Card, 1GHz (OC) 32-Bit arm/v6, 512MB RAM
+* Photos: ~6k
+* Indexing: 38 seconds
+* Uncached slideshow change: ~7 seconds
+
+### Example 3
+
+* Hardware: LG G3 (Android Smartphone), Internal Storage, Snapdragon 801 4C 32-Bit arm/v7, 3GB RAM
+* Photos: ~8k
+* Indexing: 50 seconds
+* Uncached slideshow change: < 1 second
+
+> Indexing scales with storage performance
+
+> Slideshow change scales with CPU performance
 
 ## Resources
 
