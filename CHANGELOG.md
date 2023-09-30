@@ -1,3 +1,5 @@
+## [1.15.8](https://github.com/RouHim/this-week-in-past/compare/1.15.7...1.15.8) (2023-09-30)
+
 ## [1.15.7](https://github.com/RouHim/this-week-in-past/compare/1.15.6...1.15.7) (2023-09-28)
 
 ## [1.15.6](https://github.com/RouHim/this-week-in-past/compare/1.15.5...1.15.6) (2023-09-27)
