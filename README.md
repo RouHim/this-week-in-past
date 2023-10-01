@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-    <i>Aggregate images taken this week, from previous years and presents them on a web page with slideshow.</i>
+    <i>Aggregate images taken this week, from previous years and presents them on a web page with a slideshow.</i>
 </p>
 
 <p align="center">
