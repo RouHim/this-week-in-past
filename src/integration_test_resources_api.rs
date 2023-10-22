@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use std::ops::Add;
+use std::ops::{Add, Sub};
 use std::{env, fs};
 
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
@@ -61,10 +61,11 @@ async fn test_get_all_resources() {
 }
 
 #[actix_web::test]
-async fn test_this_week_in_past_resources() {
-    // GIVEN is one image assets
+async fn test_this_week_in_past_resources_end_range() {
+    // GIVEN is one in week range
     let base_test_dir = create_temp_folder().await;
-    let today_date_string = Local::now().date_naive().format("%Y%m%d").to_string();
+    let upper_bound = Local::now().add(Duration::days(3));
+    let today_date_string = upper_bound.date_naive().format("%Y%m%d").to_string();
     let test_image_1 = create_test_image(
         &base_test_dir,
         "",
@@ -97,6 +98,135 @@ async fn test_this_week_in_past_resources() {
 
     // THEN the response should contain the resource
     assert_that!(response).contains_exactly(vec![utils::md5(test_image_1.as_str())]);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
+async fn test_this_week_in_past_resources_begin_range() {
+    // GIVEN is one image in week rnage
+    let base_test_dir = create_temp_folder().await;
+    let lower_bound = Local::now().sub(Duration::days(3));
+    let today_date_string = lower_bound.date_naive().format("%Y%m%d").to_string();
+    let test_image_1 = create_test_image(
+        &base_test_dir,
+        "",
+        format!("IMG_{}.jpg", today_date_string).as_str(),
+        TEST_JPEG_URL,
+    )
+    .await;
+    let another_date_string = Local::now()
+        .date_naive()
+        .add(Duration::weeks(4))
+        .format("%Y%m%d")
+        .to_string();
+    let _ = create_test_image(
+        &base_test_dir,
+        "",
+        format!("IMG_{}.jpg", another_date_string).as_str(),
+        TEST_JPEG_URL,
+    )
+    .await;
+
+    // AND a running this-week-in-past instance
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+
+    // WHEN requesting of this week in past resources
+    let response: Vec<String> = test::call_and_read_body_json(
+        &app_server,
+        TestRequest::get().uri("/api/resources/week").to_request(),
+    )
+    .await;
+
+    // THEN the response should contain the resource
+    assert_that!(response).contains_exactly(vec![utils::md5(test_image_1.as_str())]);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
+async fn test_this_week_in_past_resources_out_of_end_range() {
+    // GIVEN is one image that is out of range
+    let base_test_dir = create_temp_folder().await;
+    let upper_bound = Local::now().add(Duration::days(4));
+    let today_date_string = upper_bound.date_naive().format("%Y%m%d").to_string();
+    let _test_image_1 = create_test_image(
+        &base_test_dir,
+        "",
+        format!("IMG_{}.jpg", today_date_string).as_str(),
+        TEST_JPEG_URL,
+    )
+    .await;
+    let another_date_string = Local::now()
+        .date_naive()
+        .add(Duration::weeks(4))
+        .format("%Y%m%d")
+        .to_string();
+    let _ = create_test_image(
+        &base_test_dir,
+        "",
+        format!("IMG_{}.jpg", another_date_string).as_str(),
+        TEST_JPEG_URL,
+    )
+    .await;
+
+    // AND a running this-week-in-past instance
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+
+    // WHEN requesting of this week in past resources
+    let response: Vec<String> = test::call_and_read_body_json(
+        &app_server,
+        TestRequest::get().uri("/api/resources/week").to_request(),
+    )
+    .await;
+
+    // THEN the response should not contain the resource
+    assert_that!(response).is_empty();
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
+async fn test_this_week_in_past_resources_out_of_begin_range() {
+    // GIVEN is a image that is out of range
+    let base_test_dir = create_temp_folder().await;
+    let lower_bound = Local::now().sub(Duration::days(4));
+    let today_date_string = lower_bound.date_naive().format("%Y%m%d").to_string();
+    let _test_image_1 = create_test_image(
+        &base_test_dir,
+        "",
+        format!("IMG_{}.jpg", today_date_string).as_str(),
+        TEST_JPEG_URL,
+    )
+    .await;
+    let another_date_string = Local::now()
+        .date_naive()
+        .add(Duration::weeks(4))
+        .format("%Y%m%d")
+        .to_string();
+    let _ = create_test_image(
+        &base_test_dir,
+        "",
+        format!("IMG_{}.jpg", another_date_string).as_str(),
+        TEST_JPEG_URL,
+    )
+    .await;
+
+    // AND a running this-week-in-past instance
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+
+    // WHEN requesting of this week in past resources
+    let response: Vec<String> = test::call_and_read_body_json(
+        &app_server,
+        TestRequest::get().uri("/api/resources/week").to_request(),
+    )
+    .await;
+
+    // THEN the response should not contain the resource
+    assert_that!(response).is_empty();
 
     // cleanup
     cleanup(&base_test_dir).await;
