@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/RouHim/this-week-in-past/compare/1.15.12...1.16.0) (2023-10-22)
+
+
+### Features
+
+* **tests:** improve week testing ([cdb1c1d](https://github.com/RouHim/this-week-in-past/commit/cdb1c1df419b7887952c601ba3b40567c2c049f6))
+
 ## [1.15.12](https://github.com/RouHim/this-week-in-past/compare/1.15.11...1.15.12) (2023-10-19)
 
 ## [1.15.11](https://github.com/RouHim/this-week-in-past/compare/1.15.10...1.15.11) (2023-10-10)
