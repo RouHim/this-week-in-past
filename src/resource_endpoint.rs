@@ -3,11 +3,12 @@ use actix_web::get;
 use actix_web::post;
 use actix_web::web;
 use actix_web::HttpResponse;
+use log::debug;
 use std::fs;
 
 use crate::resource_reader::ImageResource;
 use crate::resource_store::ResourceStore;
-use crate::{image_processor, resource_processor, ResourceReader};
+use crate::{image_processor, resource_processor};
 
 #[get("")]
 pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
@@ -46,13 +47,24 @@ pub async fn random_resource(resource_store: web::Data<ResourceStore>) -> HttpRe
 #[get("{resource_id}/{display_width}/{display_height}")]
 pub async fn get_resource_by_id_and_resolution(
     resources_id: web::Path<(String, u32, u32)>,
-    resource_reader: web::Data<ResourceReader>,
     resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
     let path_params = resources_id.into_inner();
     let resource_id = path_params.0.as_str();
     let display_width = path_params.1;
     let display_height = path_params.2;
+
+    // If RUST_LOG is DEBUG, print resource metadata
+    if log::log_enabled!(log::Level::Debug) {
+        let image_resource: Option<ImageResource> = resource_store
+            .get_resource(resource_id)
+            .and_then(|resource_json_string| {
+                serde_json::from_str(resource_json_string.as_str()).ok()
+            });
+        if let Some(image_resource) = image_resource {
+            debug!("Resource: {:?}", image_resource);
+        }
+    }
 
     // Check cache, if successful return it
     let cached_data = resource_store
@@ -75,7 +87,6 @@ pub async fn get_resource_by_id_and_resolution(
 
     // If we found the requested resource, read the image data and adjust the image to the display
     let image_resource = image_resource.unwrap();
-    let _resource_reader1 = resource_reader.as_ref();
     let resource_data = fs::read(image_resource.path.clone())
         .ok()
         .and_then(|resource_data| {

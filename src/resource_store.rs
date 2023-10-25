@@ -1,3 +1,4 @@
+use log::error;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -16,7 +17,10 @@ impl ResourceStore {
     pub fn vacuum(&self) {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection.prepare("VACUUM").unwrap();
-        stmt.execute([]).expect("Vacuum failed");
+        stmt.execute([]).unwrap_or_else(|error| {
+            error!("VACUUM failed. Error:\n{}", error);
+            0
+        });
     }
 
     /// Returns a list of all hidden resource ids

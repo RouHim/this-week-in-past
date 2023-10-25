@@ -15,11 +15,21 @@ pub fn read_files_recursive(path: &Path) -> Vec<ImageResource> {
     let folder_path = fs::File::open(path);
 
     if folder_path.is_err() {
-        error!("Could not open folder: {:?}", path);
+        error!(
+            "Could not open folder: {:?}. Error:\n{:?}",
+            path,
+            folder_path.err()
+        );
         return vec![];
     }
     let folder_path = folder_path.unwrap();
-    let metadata = folder_path.metadata().unwrap();
+    let metadata = folder_path.metadata().unwrap_or_else(|error| {
+        panic!(
+            "Failed to read metadata for: {} Error:\n{}",
+            path.to_str().unwrap(),
+            error
+        )
+    });
 
     if metadata.is_file() {
         return vec![];
@@ -41,7 +51,13 @@ pub fn read_files_recursive(path: &Path) -> Vec<ImageResource> {
     paths
         .flatten()
         .flat_map(|dir_entry| {
-            let metadata = dir_entry.metadata().expect("Failed to read metadata");
+            let metadata = dir_entry.metadata().unwrap_or_else(|error| {
+                panic!(
+                    "Failed to read metadata for: {} Error:\n{}",
+                    dir_entry.path().to_str().unwrap(),
+                    error
+                )
+            });
 
             if metadata.is_file() {
                 read_resource(&dir_entry.path())
@@ -81,7 +97,13 @@ fn should_skip_folder(path: &Path) -> bool {
         })
         .flatten()
         .any(|entry| {
-            let metadata = entry.metadata().unwrap();
+            let metadata = entry.metadata().unwrap_or_else(|error| {
+                panic!(
+                    "Failed to read metadata for: {} Error:\n{}",
+                    entry.path().to_str().unwrap(),
+                    error
+                )
+            });
             metadata.is_file() && entry.file_name().to_str().unwrap() == ".ignore"
         });
     if contains_ignore_file {
@@ -145,7 +167,12 @@ fn read_resource(file_path: &PathBuf) -> Vec<ImageResource> {
 /// Reads the exif data from the file and augments the image resource with this information
 pub fn fill_exif_data(resource: &ImageResource) -> ImageResource {
     let file_path = resource.path.as_str();
-    let file = fs::File::open(file_path).unwrap();
+    let file = fs::File::open(file_path).unwrap_or_else(|error| {
+        panic!(
+            "Failed to read exif data from file {}: {}",
+            file_path, error
+        );
+    });
 
     let mut bufreader = std::io::BufReader::new(&file);
     let exif_reader = exif::Reader::new();
