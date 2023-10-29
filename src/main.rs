@@ -44,7 +44,6 @@ async fn main() -> std::io::Result<()> {
     // Configure logger
     let mut builder = Builder::from_default_env();
     builder
-        .filter(None, LevelFilter::Info)
         .filter(Some("actix_web::middleware::logger"), LevelFilter::Error)
         .init();
 
