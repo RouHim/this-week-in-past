@@ -47,8 +47,8 @@ impl ResourceStore {
                         json_each(resources.value) json
                    WHERE json.key = 'taken'
                      AND json.value NOT NULL
-                     AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', '-3 days') AND strftime('%m-%d', 'now', '+3 days')
                      AND resources.id NOT IN (SELECT id FROM hidden)
+                     AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', '-3 days') AND strftime('%m-%d', 'now', '+3 days')
                    ORDER BY RANDOM()
                    ;"#,
             )

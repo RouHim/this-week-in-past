@@ -3,7 +3,7 @@ use actix_web::get;
 use actix_web::post;
 use actix_web::web;
 use actix_web::HttpResponse;
-use log::debug;
+use log::{debug, log_enabled};
 use std::fs;
 
 use crate::resource_reader::ImageResource;
@@ -55,7 +55,7 @@ pub async fn get_resource_by_id_and_resolution(
     let display_height = path_params.2;
 
     // If RUST_LOG is DEBUG, print resource metadata
-    if log::log_enabled!(log::Level::Debug) {
+    if log_enabled!(log::Level::Debug) {
         let image_resource: Option<ImageResource> = resource_store
             .get_resource(resource_id)
             .and_then(|resource_json_string| {
