@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@4
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@4
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@4
 
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
@@ -101,7 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@4
 
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
@@ -126,7 +126,7 @@ jobs:
       OPEN_WEATHER_MAP_API_KEY: ${{ secrets.OPEN_WEATHER_MAP_API_KEY }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@4
 
       - name: Install rust toolchain
         uses: actions-rs/toolchain@v1
@@ -148,7 +148,7 @@ jobs:
     steps:
       - name: Checkout code
         if: github.ref == 'refs/heads/main'
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@4
 
       # Create a new release based on semantic versioning
       - name: Set up Node.js
@@ -186,12 +186,7 @@ jobs:
         target: [ x86_64-musl, aarch64-musl, armv7-musleabihf, arm-musleabihf ]
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-
-      - name: Install rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
+        uses: actions/checkout@4
 
       - name: Set version to environment
         if: github.ref == 'refs/heads/main'
@@ -201,6 +196,17 @@ jobs:
           LATEST_RELEASE_VERSION=$(curl --silent "https://api.github.com/repos/$REPO/releases/latest" | jq -r ".tag_name")
           echo "Latest release is $LATEST_RELEASE_VERSION"
           echo "VERSION=$LATEST_RELEASE_VERSION" >> $GITHUB_ENV
+          
+          # Ensure that version is valid
+          if ! [[ $LATEST_RELEASE_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Latest release version is not invalid: $LATEST_RELEASE_VERSION"
+              exit 1
+          fi
+
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
       - name: Set version
         if: github.ref == 'refs/heads/main'
@@ -239,7 +245,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@4
 
       - name: Download x86_64-musl static application binary
         uses: actions/download-artifact@v3
@@ -281,7 +287,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@4
 
       - name: Download x86_64-musl binary
         uses: actions/download-artifact@v3
@@ -340,7 +346,7 @@ jobs:
     if: github.event_name == 'push'
     steps:
       - name: Checkout code
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        uses: actions/checkout@4
 
       - name: Set version to environment
         shell: bash
