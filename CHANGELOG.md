@@ -1,3 +1,11 @@
+## [1.16.3](https://github.com/RouHim/this-week-in-past/compare/1.16.2...1.16.3) (2023-10-29)
+
+
+### Bug Fixes
+
+* **pipeline:** improve version detection ([0dc8928](https://github.com/RouHim/this-week-in-past/commit/0dc8928e009d45b9914621c3edbf3d893542f152))
+* **pipeline:** improve version detection ([0f71c6a](https://github.com/RouHim/this-week-in-past/commit/0f71c6a3e77c8f6473fa873a0034b7d2a59f3f92))
+
 ## [1.16.2](https://github.com/RouHim/this-week-in-past/compare/1.16.1...1.16.2) (2023-10-29)
 
 ## [1.16.1](https://github.com/RouHim/this-week-in-past/compare/1.16.0...1.16.1) (2023-10-23)
