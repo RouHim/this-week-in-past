@@ -75,6 +75,8 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or_else(|_| "./data".to_string());
     let resource_store = resource_store::initialize(&data_folder);
 
+    info!("📅 Database time: {}", resource_store.get_database_time());
+
     // Start scheduler to run at midnight
     let scheduler_handle =
         scheduler::schedule_indexer(resource_reader.clone(), resource_store.clone());

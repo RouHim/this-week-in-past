@@ -1,8 +1,8 @@
-use log::error;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
+use log::error;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 
@@ -48,7 +48,7 @@ impl ResourceStore {
                    WHERE json.key = 'taken'
                      AND json.value NOT NULL
                      AND resources.id NOT IN (SELECT id FROM hidden)
-                     AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', '-3 days') AND strftime('%m-%d', 'now', '+3 days')
+                     AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND strftime('%m-%d', 'now', 'localtime', '+3 days')
                    ORDER BY RANDOM()
                    ;"#,
             )
@@ -233,6 +233,26 @@ impl ResourceStore {
         let count: i32 = rows.next().unwrap().unwrap().get(0).unwrap();
 
         count == 1
+    }
+
+    /// Returns the current time of the database
+    pub fn get_database_time(&self) -> String {
+        let connection = self.persistent_file_store_pool.get().unwrap();
+        let mut stmt = connection
+            .prepare("SELECT datetime('now', 'localtime')")
+            .unwrap();
+        let mut rows = stmt.query([]).unwrap();
+
+        let first_entry = rows.next();
+
+        if let Ok(first_entry) = first_entry {
+            first_entry
+                .map(|entry| entry.get(0))
+                .and_then(|entry| entry.ok())
+                .unwrap_or("N/A".to_string())
+        } else {
+            "N/A".to_string()
+        }
     }
 }
 
