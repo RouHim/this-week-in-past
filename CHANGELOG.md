@@ -1,3 +1,10 @@
+## [1.17.1](https://github.com/RouHim/this-week-in-past/compare/1.17.0...1.17.1) (2023-10-31)
+
+
+### Bug Fixes
+
+* **date:** use local time in database queries ([3ee35ab](https://github.com/RouHim/this-week-in-past/commit/3ee35ababcdd64ba44f933df52d81602704ca468))
+
 # [1.17.0](https://github.com/RouHim/this-week-in-past/compare/1.16.3...1.17.0) (2023-10-31)
 
 
