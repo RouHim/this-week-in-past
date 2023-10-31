@@ -1,3 +1,15 @@
+# [1.17.0](https://github.com/RouHim/this-week-in-past/compare/1.16.3...1.17.0) (2023-10-31)
+
+
+### Bug Fixes
+
+* **codestyle:** wrong format ([d251018](https://github.com/RouHim/this-week-in-past/commit/d251018af90ef25292ab10f385fa81abe0d00fee))
+
+
+### Features
+
+* **logging:** print server time to log ([f69ff15](https://github.com/RouHim/this-week-in-past/commit/f69ff158f957cb680b66f0e681a00720430380c1))
+
 ## [1.16.3](https://github.com/RouHim/this-week-in-past/compare/1.16.2...1.16.3) (2023-10-29)
 
 
