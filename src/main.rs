@@ -54,7 +54,10 @@ async fn main() -> std::io::Result<()> {
     );
 
     // Print system date and time
-    info!("📅 System time: {}", chrono::Local::now().format("%Y-%m-%d %H:%M:%S"));
+    info!(
+        "📅 System time: {}",
+        chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+    );
 
     // Create a new resource reader based on the provided resources path
     let resource_reader = resource_reader::new(

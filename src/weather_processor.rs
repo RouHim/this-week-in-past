@@ -16,8 +16,8 @@ pub async fn get_current_weather() -> Option<String> {
         "https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units={units}&lang={language}"
     ).as_str()).call();
 
-    if response.is_ok() {
-        response.unwrap().into_string().ok()
+    if let Ok(response) = response {
+        response.into_string().ok()
     } else {
         None
     }
@@ -43,8 +43,8 @@ pub async fn get_home_assistant_data() -> Option<String> {
             )
             .call();
 
-    if response.is_ok() {
-        response.unwrap().into_string().ok()
+    if let Ok(response) = response {
+        response.into_string().ok()
     } else {
         None
     }
