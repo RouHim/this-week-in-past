@@ -91,6 +91,8 @@ services:
       - /path/to/pictures:/resources:ro # mount read only
     ports:
       - "8080:8080"
+    environment:
+      SLIDESHOW_INTERVAL: 10
 ```
 
 ## Configuration
