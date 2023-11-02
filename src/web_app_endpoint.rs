@@ -30,3 +30,9 @@ pub async fn icon_png() -> HttpResponse {
     let icon: &[u8] = include_bytes!("../icon.png");
     HttpResponse::Ok().content_type("image/png").body(icon)
 }
+
+#[get("/font.ttf")]
+pub async fn font() -> HttpResponse {
+    let font: &[u8] = include_bytes!("../web-app/fonts/Inter-Regular.ttf");
+    HttpResponse::Ok().content_type("font/ttf").body(font)
+}

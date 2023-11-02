@@ -97,6 +97,7 @@ async fn main() -> std::io::Result<()> {
             .service(web_app_endpoint::script_js)
             .service(web_app_endpoint::hide_png)
             .service(web_app_endpoint::icon_png)
+            .service(web_app_endpoint::font)
             .service(
                 web::scope("/api/resources")
                     .service(resource_endpoint::get_all_resources)
