@@ -32,7 +32,7 @@ rand = "0.8"
 mime_guess = { git = "https://github.com/knopp/mime_guess", branch = "add_heif_jxl" }
 r2d2 = "0.8"
 rusqlite = { version = "0.30", features = ["bundled"] }
-r2d2_sqlite = "0.22"
+r2d2_sqlite = "0.23"
 
 [dev-dependencies]
 assertor = "0.0"
