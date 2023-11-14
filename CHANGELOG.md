@@ -1,3 +1,10 @@
+## [1.18.3](https://github.com/RouHim/this-week-in-past/compare/1.18.2...1.18.3) (2023-11-14)
+
+
+### Bug Fixes
+
+* **pipe:** do not fail for wrong config ([62a0f26](https://github.com/RouHim/this-week-in-past/commit/62a0f26dc774cca4d62c2c1acab2bce88487b162))
+
 ## [1.18.2](https://github.com/RouHim/this-week-in-past/compare/1.18.1...1.18.2) (2023-11-14)
 
 ## [1.18.1](https://github.com/RouHim/this-week-in-past/compare/1.18.0...1.18.1) (2023-11-12)
