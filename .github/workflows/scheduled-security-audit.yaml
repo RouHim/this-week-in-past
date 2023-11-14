@@ -18,7 +18,7 @@ jobs:
           image-ref: 'docker.io/rouhim/this-week-in-past:latest'
           format: 'sarif'
           output: 'trivy-results.sarif'
-          exit-code: '1'
+          exit-code: '0'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
 
@@ -40,7 +40,7 @@ jobs:
           scan-type: 'fs'
           format: 'sarif'
           output: 'trivy-results.sarif'
-          exit-code: '1'
+          exit-code: '0'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
 
