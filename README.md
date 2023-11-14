@@ -131,6 +131,11 @@ There are two ways to ignore folders:
    Example: `IGNORED_FOLDERS=thumbnails,$RECYLE.BIN``
 2) Create a file named `.ignore` in the folder which should be ignored. The file should be empty.
 
+## Limitations
+
+* Due to [this issue](https://github.com/image-rs/image/issues/1375) of the image crate, there is currently no **HEIC**
+  image support.
+
 ## Performance
 
 ### Example 1
