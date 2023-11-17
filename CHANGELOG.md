@@ -1,3 +1,11 @@
+## [1.18.5](https://github.com/RouHim/this-week-in-past/compare/1.18.4...1.18.5) (2023-11-17)
+
+
+### Bug Fixes
+
+* **scheduler:** start indexing at 00:05 instead of 00:00 ([e1efd1d](https://github.com/RouHim/this-week-in-past/commit/e1efd1da5c918892de4dad8245644d0c7cbd0e38))
+* **scheduler:** start indexing at 00:30 instead of 00:00 ([465c158](https://github.com/RouHim/this-week-in-past/commit/465c1587892a9a291cb9bde348193f9f912783cd))
+
 ## [1.18.4](https://github.com/RouHim/this-week-in-past/compare/1.18.3...1.18.4) (2023-11-14)
 
 ## [1.18.3](https://github.com/RouHim/this-week-in-past/compare/1.18.2...1.18.3) (2023-11-14)
