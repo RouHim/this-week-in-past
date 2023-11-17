@@ -22,7 +22,7 @@ pub fn schedule_indexer(
     // Fetch resources at midnight
     scheduler
         .every(1.day())
-        .at("00:00")
+        .at("00:30")
         .run(move || index_resources(resource_reader.clone(), resource_store.clone()));
 
     // For the first time on application start
