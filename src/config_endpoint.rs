@@ -14,7 +14,7 @@ pub async fn get_slideshow_interval() -> HttpResponse {
 pub async fn get_refresh_interval() -> HttpResponse {
     HttpResponse::Ok()
         .content_type("plain/text")
-        .body(env::var("REFRESH_INTERVAL").unwrap_or_else(|_| "180".to_string()))
+        .body(env::var("REFRESH_INTERVAL").unwrap_or_else(|_| "60".to_string()))
 }
 
 #[get("show-hide-button")]
