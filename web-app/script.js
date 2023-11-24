@@ -202,7 +202,20 @@ function getCurrentTemperatureDataFromHomeAssistant() {
  */
 function setImage(resource_id) {
     // build the image url
-    let imageUrl = `/api/resources/${resource_id}/${window.screen.availWidth}/${window.screen.availHeight}`;
+    let imageWidth, imageHeight;
+
+    if (window.screen.orientation.type.includes('portrait')) {
+        // In Portrait-Mode
+        // Swap width and height
+        imageWidth = window.screen.availHeight;
+        imageHeight = window.screen.availWidth;
+    } else {
+        // In Landscape-Mode
+        imageWidth = window.screen.availWidth;
+        imageHeight = window.screen.availHeight;
+    }
+
+    let imageUrl = `/api/resources/${resource_id}/${imageWidth}/${imageHeight}`;
 
     // obtain the image elements
     let backgroundImage = document.getElementById('background-image');
