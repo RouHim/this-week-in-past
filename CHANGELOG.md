@@ -1,3 +1,12 @@
+## [1.18.8](https://github.com/RouHim/this-week-in-past/compare/1.18.7...1.18.8) (2023-11-27)
+
+
+### Bug Fixes
+
+* **image:** broken css for fullscreen mode ([21ed0a4](https://github.com/RouHim/this-week-in-past/commit/21ed0a45042164d703571903a934a0c1859e992c))
+* **image:** scale image after it was rotated ([31d74ec](https://github.com/RouHim/this-week-in-past/commit/31d74ec29615c176ae7f7d4661280b3f5c1eaaae))
+* **image:** swap height and width in portrait mode ([a3c1a3b](https://github.com/RouHim/this-week-in-past/commit/a3c1a3bfe348f9833ddea87b81a11ca8085871cf))
+
 ## [1.18.7](https://github.com/RouHim/this-week-in-past/compare/1.18.6...1.18.7) (2023-11-20)
 
 ## [1.18.6](https://github.com/RouHim/this-week-in-past/compare/1.18.5...1.18.6) (2023-11-19)
