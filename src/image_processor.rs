@@ -35,17 +35,15 @@ pub fn adjust_image(
     }
 
     // Resize the image to the needed display size
-    let resized = read_result
-        .unwrap()
-        .resize(display_width, display_height, FilterType::Triangle);
+    let base_image = read_result.unwrap();
 
     // Rotate or flip the image if needed
     let fixed_orientation = if let Some(orientation) = image_orientation {
         let rotated = match orientation.rotation {
-            90 => resized.rotate90(),
-            180 => resized.rotate180(),
-            270 => resized.rotate270(),
-            _ => resized,
+            90 => base_image.rotate90(),
+            180 => base_image.rotate180(),
+            270 => base_image.rotate270(),
+            _ => base_image,
         };
 
         if orientation.mirror_vertically {
@@ -54,12 +52,14 @@ pub fn adjust_image(
             rotated
         }
     } else {
-        resized
+        base_image
     };
+
+    let resized = fixed_orientation.resize(display_width, display_height, FilterType::Triangle);
 
     // Write the image to a buffer
     let mut bytes: Vec<u8> = Vec::new();
-    fixed_orientation
+    resized
         .write_to(&mut Cursor::new(&mut bytes), image::ImageOutputFormat::Png)
         .unwrap();
     Some(bytes)

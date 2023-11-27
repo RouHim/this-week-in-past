@@ -202,7 +202,9 @@ function getCurrentTemperatureDataFromHomeAssistant() {
  */
 function setImage(resource_id) {
     // build the image url
-    let imageUrl = `/api/resources/${resource_id}/${window.screen.availWidth}/${window.screen.availHeight}`;
+    let screenWidth = window.screen.availWidth;
+    let screenHeight = window.screen.availHeight;
+    let imageUrl = `/api/resources/${resource_id}/${screenWidth}/${screenHeight}`;
 
     // obtain the image elements
     let backgroundImage = document.getElementById('background-image');
