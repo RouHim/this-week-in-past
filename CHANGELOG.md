@@ -1,3 +1,10 @@
+## [1.18.9](https://github.com/RouHim/this-week-in-past/compare/1.18.8...1.18.9) (2023-11-27)
+
+
+### Bug Fixes
+
+* **ui:** elevate hide button ([53748d0](https://github.com/RouHim/this-week-in-past/commit/53748d061c97e815d30f338a901de0fb5c177413))
+
 ## [1.18.8](https://github.com/RouHim/this-week-in-past/compare/1.18.7...1.18.8) (2023-11-27)
 
 
