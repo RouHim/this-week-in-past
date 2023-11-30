@@ -87,8 +87,7 @@ fn should_skip_folder(path: &Path) -> bool {
     }
 
     let folder_name = path.file_name().unwrap().to_str().unwrap();
-    if IGNORE_FOLDER_REGEX.is_some()
-        && IGNORE_FOLDER_REGEX.as_ref().unwrap().is_match(folder_name)
+    if IGNORE_FOLDER_REGEX.is_some() && IGNORE_FOLDER_REGEX.as_ref().unwrap().is_match(folder_name)
     {
         info!(
             "⏭️ Skipping folder: {:?} because it is ignored by regular expression {:?}",
