@@ -128,7 +128,7 @@ All configuration is done via environment variables:
 
 There are two ways to ignore folders:
 
-1) By file name: If a folder contains a file with the name specified in `IGNORE_FOLDER_MARKER_FILES`, the folder is
+1) By ignore file: If a folder contains a file with the name specified in `IGNORE_FOLDER_MARKER_FILES`, the folder is
    ignored.
 2) By folder name: If a folder name matches the regular expression specified in `IGNORE_FOLDER_REGEX`, the folder is
    ignored.
