@@ -122,7 +122,7 @@ fn should_skip_folder(path: &Path) -> bool {
         info!(
             "⏭️ Skipping folder: {:?} because it contains any of these files {:?}",
             path,
-            std::env::var("IGNORE_FOLDER_REGEX")
+            std::env::var("IGNORE_FOLDER_MARKER_FILES")
         );
         return true;
     }
