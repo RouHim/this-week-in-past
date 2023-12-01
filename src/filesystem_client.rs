@@ -81,6 +81,7 @@ fn should_skip_folder(path: &Path) -> bool {
             std::env::var("IGNORE_FOLDER_MARKER_FILES")
                 .unwrap_or(".ignore".to_string())
                 .as_str()
+                .trim()
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .collect();
