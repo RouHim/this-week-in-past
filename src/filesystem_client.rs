@@ -82,7 +82,7 @@ fn should_skip_folder(path: &Path) -> bool {
                 .unwrap_or(".ignore".to_string())
                 .as_str()
                 .split(',')
-                .map(|s| s.to_string())
+                .map(|s| s.trim().to_string())
                 .collect();
     }
 
