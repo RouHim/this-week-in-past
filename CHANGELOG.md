@@ -1,3 +1,19 @@
+# [1.19.0](https://github.com/RouHim/this-week-in-past/compare/1.18.9...1.19.0) (2023-12-02)
+
+
+### Bug Fixes
+
+* codestyle ([b66b5f4](https://github.com/RouHim/this-week-in-past/commit/b66b5f41dea8914f2217038773d884db8da44272))
+* trim whitespaces ([187f538](https://github.com/RouHim/this-week-in-past/commit/187f538c4c745a98ab1d09693ac62c80fbccad80))
+* wrong error message ([7637a45](https://github.com/RouHim/this-week-in-past/commit/7637a45c3382d6589b25315e30d79fe9edbcb358))
+
+
+### Features
+
+* **ignore:** implement suggestions from [#112](https://github.com/RouHim/this-week-in-past/issues/112) ([871b7f2](https://github.com/RouHim/this-week-in-past/commit/871b7f2888c6122f1928ce31daacc6a36c0bd648))
+* more trimming ([3e959fd](https://github.com/RouHim/this-week-in-past/commit/3e959fd688ef3f3fdd4ecf88521ac61fd6f29a3a))
+* omit concurrent pipelines builds ([f55fbdf](https://github.com/RouHim/this-week-in-past/commit/f55fbdf8387e3aa755a1145bd7df24c10baaa488))
+
 ## [1.18.9](https://github.com/RouHim/this-week-in-past/compare/1.18.8...1.18.9) (2023-11-27)
 
 
