@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use image::ImageFormat;
 use lazy_static::lazy_static;
 use log::{error, info, warn};
+use regex::Regex;
 
 use crate::resource_reader::ImageResource;
 use crate::{resource_reader, utils};
@@ -68,22 +69,32 @@ pub fn read_files_recursive(path: &Path) -> Vec<ImageResource> {
         .collect()
 }
 
-/// Checks if the folder should be skipped, because it is ignored or contains a .ignore file
+/// Checks if the folder should be skipped, because it is ignored or contains certain .ignore file
 /// Returns true if the folder should be skipped
 /// Returns false if the folder should be processed
 fn should_skip_folder(path: &Path) -> bool {
     lazy_static! {
-        static ref IGNORED_FOLDERS: Vec<String> = std::env::var("IGNORED_FOLDERS")
-            .unwrap_or("".to_string())
-            .as_str()
-            .split(',')
-            .map(|s| s.to_string())
-            .collect();
-    };
+        static ref IGNORE_FOLDER_REGEX: Option<Regex> = std::env::var("IGNORE_FOLDER_REGEX")
+            .ok()
+            .map(|ignore_folders| Regex::new(&ignore_folders).unwrap());
+        static ref IGNORE_FOLDER_MARKER_FILES: Vec<String> =
+            std::env::var("IGNORE_FOLDER_MARKER_FILES")
+                .unwrap_or(".ignore".to_string())
+                .as_str()
+                .trim()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect();
+    }
 
     let folder_name = path.file_name().unwrap().to_str().unwrap();
-    if IGNORED_FOLDERS.contains(&folder_name.to_string()) {
-        info!("Skipping folder: {:?} because it is ignored", path);
+    if IGNORE_FOLDER_REGEX.is_some() && IGNORE_FOLDER_REGEX.as_ref().unwrap().is_match(folder_name)
+    {
+        info!(
+            "⏭️ Skipping folder: {:?} because it is ignored by regular expression {:?}",
+            path,
+            std::env::var("IGNORE_FOLDER_REGEX").unwrap()
+        );
         return true;
     }
 
@@ -104,12 +115,15 @@ fn should_skip_folder(path: &Path) -> bool {
                     error
                 )
             });
-            metadata.is_file() && entry.file_name().to_str().unwrap() == ".ignore"
+            metadata.is_file()
+                && IGNORE_FOLDER_MARKER_FILES
+                    .contains(&entry.file_name().to_str().unwrap().to_string())
         });
     if contains_ignore_file {
         info!(
-            "Skipping folder: {:?} because it contains a .ignore file",
-            path
+            "⏭️ Skipping folder: {:?} because it contains any of these files {:?}",
+            path,
+            std::env::var("IGNORE_FOLDER_MARKER_FILES")
         );
         return true;
     }
