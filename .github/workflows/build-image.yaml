@@ -252,7 +252,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download x86_64-musl static application binary
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: x86_64-musl
           path: target/x86_64-unknown-linux-musl/release/
@@ -294,22 +294,22 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download x86_64-musl binary
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: x86_64-musl
           path: target/x86_64-unknown-linux-musl/release/
       - name: Download aarch64-musl binary
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: aarch64-musl
           path: target/aarch64-unknown-linux-musl/release/
       - name: Download armv7-musleabihf binary
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: armv7-musleabihf
           path: target/armv7-unknown-linux-musleabihf/release/
       - name: Download arm-musleabihf binary
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: arm-musleabihf
           path: target/arm-unknown-linux-musleabihf/release/
@@ -366,22 +366,22 @@ jobs:
           echo "MAJOR_VERSION=$MAJOR_PART" >> $GITHUB_ENV
 
       - name: Download x86_64-musl binary
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: x86_64-musl
           path: target/x86_64-unknown-linux-musl/release/
       - name: Download aarch64-musl binary
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: aarch64-musl
           path: target/aarch64-unknown-linux-musl/release/
       - name: Download armv7-musleabihf binary
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: armv7-musleabihf
           path: target/armv7-unknown-linux-musleabihf/release/
       - name: Download arm-musleabihf binary
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: arm-musleabihf
           path: target/arm-unknown-linux-musleabihf/release/
