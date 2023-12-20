@@ -133,6 +133,8 @@ There are two ways to ignore folders:
 2) By folder name: If a folder name matches the regular expression specified in `IGNORE_FOLDER_REGEX`, the folder is
    ignored.
 
+> If a folder is ignored, all its sub-elements (files and folders) are also ignored.
+
 ## Limitations
 
 * Due to [this issue](https://github.com/image-rs/image/issues/1375) of the image crate, there is currently no **HEIC**
