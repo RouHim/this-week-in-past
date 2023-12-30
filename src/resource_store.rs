@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use chrono::Datelike;
 
 use log::error;
 use r2d2::Pool;
@@ -39,9 +40,8 @@ impl ResourceStore {
     /// Returns a list of resource ids
     pub fn get_resources_this_week_visible_random(&self) -> Vec<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection
-            .prepare(
-                r#"
+
+        let mut week_query = r#"
                    SELECT DISTINCT resources.id
                    FROM resources,
                         json_each(resources.value) json
@@ -50,7 +50,16 @@ impl ResourceStore {
                      AND resources.id NOT IN (SELECT id FROM hidden)
                      AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND strftime('%m-%d', 'now', 'localtime', '+3 days')
                    ORDER BY RANDOM()
-                   ;"#,
+                   ;"#;
+
+        // If today +-3 hits new year, we need a special query
+        if hits_new_year() {
+            week_query = get_new_year_query();
+        }
+
+        let mut stmt = connection
+            .prepare(
+                week_query,
             )
             .unwrap();
         let mut rows = stmt.query([]).unwrap();
@@ -61,6 +70,7 @@ impl ResourceStore {
         }
         resources
     }
+
 
     /// Sets the specified resource id as hidden
     pub fn add_hidden(&self, resource_id: &str) {
@@ -187,7 +197,7 @@ impl ResourceStore {
                 "INSERT OR REPLACE INTO resources(id, value) VALUES(?, ?)",
                 (id.as_str(), value.as_str()),
             )
-            .unwrap_or_else(|error| panic!("Insertion of {id} failed.\n{}", error));
+                .unwrap_or_else(|error| panic!("Insertion of {id} failed.\n{}", error));
         });
 
         tx.commit().expect("Transaction commit failed");
@@ -255,6 +265,7 @@ impl ResourceStore {
         }
     }
 }
+
 
 /// Initializes a new datastore in the $DATA_FOLDER folder and returns the instance
 /// If no $DATA_FOLDER env var is configured, ./data/ is used
@@ -334,4 +345,23 @@ fn create_table_resources(pool: &Pool<SqliteConnectionManager>) {
             (),
         )
         .unwrap_or_else(|error| panic!("table creation of 'resources' failed.\n{}", error));
+}
+
+/// Checks if today +-3 hits new year
+fn hits_new_year() -> bool {
+    chrono::Local::now().month() == 12 && chrono::Local::now().day() >= 29 || chrono::Local::now().month() == 1 && chrono::Local::now().day() <= 3
+}
+
+fn get_new_year_query() -> &'static str {
+    // TODO
+    r#"
+       SELECT DISTINCT resources.id
+       FROM resources,
+            json_each(resources.value) json
+       WHERE json.key = 'taken'
+         AND json.value NOT NULL
+         AND resources.id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND strftime('%m-%d', 'now', 'localtime', '+3 days')
+       ORDER BY RANDOM()
+   ;"#
 }
