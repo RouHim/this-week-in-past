@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::fs;
-
-use chrono::Datelike;
 use std::path::PathBuf;
 
+use chrono::Datelike;
 use log::{debug, error};
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
+use rand::seq::SliceRandom;
 
 #[derive(Clone)]
 pub struct ResourceStore {
@@ -44,11 +44,15 @@ impl ResourceStore {
 
         // Check if we are in the new year week
         // If yes, we need to query differently
-        if query_hits_new_year() {
+        if range_hits_new_year() {
             debug!("🎊 New year week detected");
-            let mut resources = execute_query(&connection, get_last_year_query());
-            resources.append(&mut execute_query(&connection, get_next_year_query()));
-            return resources;
+            let mut new_year_resources = [
+                execute_query(&connection, get_last_year_query()),
+                execute_query(&connection, get_next_year_query()),
+            ]
+            .concat();
+            new_year_resources.shuffle(&mut rand::thread_rng());
+            return new_year_resources;
         }
 
         // Otherwise, we can query normally
@@ -340,23 +344,9 @@ fn create_table_resources(pool: &Pool<SqliteConnectionManager>) {
 }
 
 /// Checks if today +-3 hits new year
-fn query_hits_new_year() -> bool {
+fn range_hits_new_year() -> bool {
     let today = chrono::Local::now();
     today.month() == 12 && today.day() >= 29 || today.month() == 1 && today.day() <= 3
-}
-
-/// Returns the week query for the last year
-fn get_last_year_query() -> &'static str {
-    r#"
-       SELECT DISTINCT resources.id
-       FROM resources,
-            json_each(resources.value) json
-       WHERE json.key = 'taken'
-         AND json.value NOT NULL
-         AND resources.id NOT IN (SELECT id FROM hidden)
-         AND strftime('%m-%d', json.value) BETWEEN '01-01' AND strftime('%m-%d', 'now', 'localtime', '+3 days')
-       ORDER BY RANDOM()
-   ;"#
 }
 
 /// Returns the week query for the next year
@@ -368,8 +358,20 @@ fn get_next_year_query() -> &'static str {
        WHERE json.key = 'taken'
          AND json.value NOT NULL
          AND resources.id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', json.value) BETWEEN '01-01' AND strftime('%m-%d', 'now', 'localtime', '+3 days')
+   ;"#
+}
+
+/// Returns the week query for the last year
+fn get_last_year_query() -> &'static str {
+    r#"
+       SELECT DISTINCT resources.id
+       FROM resources,
+            json_each(resources.value) json
+       WHERE json.key = 'taken'
+         AND json.value NOT NULL
+         AND resources.id NOT IN (SELECT id FROM hidden)
          AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND '12-31'
-       ORDER BY RANDOM()
    ;"#
 }
 
