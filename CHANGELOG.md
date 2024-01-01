@@ -1,3 +1,12 @@
+## [1.19.4](https://github.com/RouHim/this-week-in-past/compare/1.19.3...1.19.4) (2024-01-01)
+
+
+### Bug Fixes
+
+* **week:** [#124](https://github.com/RouHim/this-week-in-past/issues/124) add different queries for the new year week ([1b1b214](https://github.com/RouHim/this-week-in-past/commit/1b1b21478ddff4f230f82bf8e19e5b6190dcf205))
+* **week:** [#124](https://github.com/RouHim/this-week-in-past/issues/124) fix week query for new year ([e53f24c](https://github.com/RouHim/this-week-in-past/commit/e53f24c4271f92692fcabfc201f1f516c6034641))
+* **week:** [#124](https://github.com/RouHim/this-week-in-past/issues/124) fix week query for new year ([af4ca66](https://github.com/RouHim/this-week-in-past/commit/af4ca66d38cf2a752e77fa808bf750953bdc996c))
+
 ## [1.19.3](https://github.com/RouHim/this-week-in-past/compare/1.19.2...1.19.3) (2023-12-20)
 
 ## [1.19.2](https://github.com/RouHim/this-week-in-past/compare/1.19.1...1.19.2) (2023-12-19)
