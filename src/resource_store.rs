@@ -2,9 +2,11 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-use log::error;
-use r2d2::Pool;
+use chrono::Datelike;
+use log::{debug, error};
+use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
+use rand::seq::SliceRandom;
 
 #[derive(Clone)]
 pub struct ResourceStore {
@@ -39,9 +41,22 @@ impl ResourceStore {
     /// Returns a list of resource ids
     pub fn get_resources_this_week_visible_random(&self) -> Vec<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection
-            .prepare(
-                r#"
+
+        // Check if we are in the new year week
+        // If yes, we need to query differently
+        if range_hits_new_year() {
+            debug!("🎊 New year week detected");
+            let mut new_year_resources = [
+                execute_query(&connection, get_last_year_query()),
+                execute_query(&connection, get_next_year_query()),
+            ]
+            .concat();
+            new_year_resources.shuffle(&mut rand::thread_rng());
+            return new_year_resources;
+        }
+
+        // Otherwise, we can query normally
+        let regular_week_query = r#"
                    SELECT DISTINCT resources.id
                    FROM resources,
                         json_each(resources.value) json
@@ -50,16 +65,8 @@ impl ResourceStore {
                      AND resources.id NOT IN (SELECT id FROM hidden)
                      AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND strftime('%m-%d', 'now', 'localtime', '+3 days')
                    ORDER BY RANDOM()
-                   ;"#,
-            )
-            .unwrap();
-        let mut rows = stmt.query([]).unwrap();
-        let mut resources: Vec<String> = Vec::new();
-        while let Ok(Some(row)) = rows.next() {
-            let id = row.get(0).unwrap();
-            resources.push(id);
-        }
-        resources
+                   ;"#;
+        execute_query(&connection, regular_week_query)
     }
 
     /// Sets the specified resource id as hidden
@@ -334,4 +341,51 @@ fn create_table_resources(pool: &Pool<SqliteConnectionManager>) {
             (),
         )
         .unwrap_or_else(|error| panic!("table creation of 'resources' failed.\n{}", error));
+}
+
+/// Checks if today +-3 hits new year
+fn range_hits_new_year() -> bool {
+    let today = chrono::Local::now();
+    today.month() == 12 && today.day() >= 29 || today.month() == 1 && today.day() <= 3
+}
+
+/// Returns the week query for the next year
+fn get_next_year_query() -> &'static str {
+    r#"
+       SELECT DISTINCT resources.id
+       FROM resources,
+            json_each(resources.value) json
+       WHERE json.key = 'taken'
+         AND json.value NOT NULL
+         AND resources.id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', json.value) BETWEEN '01-01' AND strftime('%m-%d', 'now', 'localtime', '+3 days')
+   ;"#
+}
+
+/// Returns the week query for the last year
+fn get_last_year_query() -> &'static str {
+    r#"
+       SELECT DISTINCT resources.id
+       FROM resources,
+            json_each(resources.value) json
+       WHERE json.key = 'taken'
+         AND json.value NOT NULL
+         AND resources.id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND '12-31'
+   ;"#
+}
+
+/// Executes the specified query and returns a list of resource ids
+fn execute_query(
+    connection: &PooledConnection<SqliteConnectionManager>,
+    week_query: &str,
+) -> Vec<String> {
+    let mut stmt = connection.prepare(week_query).unwrap();
+    let mut rows = stmt.query([]).unwrap();
+    let mut resources: Vec<String> = Vec::new();
+    while let Ok(Some(row)) = rows.next() {
+        let id = row.get(0).unwrap();
+        resources.push(id);
+    }
+    resources
 }
