@@ -1,3 +1,10 @@
+# [1.20.0](https://github.com/RouHim/this-week-in-past/compare/1.19.5...1.20.0) (2024-01-20)
+
+
+### Features
+
+* **pipeline:** use node version 20 for sem release ([18b954f](https://github.com/RouHim/this-week-in-past/commit/18b954fd094d652150aa43e4c269a65e6b11f8eb))
+
 ## [1.19.5](https://github.com/RouHim/this-week-in-past/compare/1.19.4...1.19.5) (2024-01-01)
 
 ## [1.19.4](https://github.com/RouHim/this-week-in-past/compare/1.19.3...1.19.4) (2024-01-01)
