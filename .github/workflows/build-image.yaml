@@ -159,7 +159,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: 20
 
       - name: Install Dependencies
         if: github.ref == 'refs/heads/main'
