@@ -137,6 +137,7 @@ impl ResourceStore {
     }
 
     /// Get a resource value by id entry
+    /// Returns a optional resource value
     pub fn get_resource(&self, id: &str) -> Option<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
