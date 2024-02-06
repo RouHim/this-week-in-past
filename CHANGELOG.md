@@ -1,3 +1,10 @@
+# [1.21.0](https://github.com/RouHim/this-week-in-past/compare/1.20.2...1.21.0) (2024-02-06)
+
+
+### Features
+
+* **resources:** provide api endpoint for a random image this week ([e192ffc](https://github.com/RouHim/this-week-in-past/commit/e192ffc1da01c6ea99735d6226cec65389f62e3e))
+
 ## [1.20.2](https://github.com/RouHim/this-week-in-past/compare/1.20.1...1.20.2) (2024-02-04)
 
 ## [1.20.1](https://github.com/RouHim/this-week-in-past/compare/1.20.0...1.20.1) (2024-01-25)
