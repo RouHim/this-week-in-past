@@ -10,12 +10,15 @@ use crate::resource_reader::ImageResource;
 use crate::resource_store::ResourceStore;
 use crate::{image_processor, resource_processor};
 
+const CONTENT_TYPE_APPLICATION_JSON: &str = "application/json";
+const CONTENT_TYPE_IMAGE_PNG: &str = "image/png";
+
 #[get("")]
 pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
     let keys: Vec<String> = resource_store.get_ref().get_all_resource_ids();
 
     HttpResponse::Ok()
-        .content_type("application/json")
+        .content_type(CONTENT_TYPE_APPLICATION_JSON)
         .body(serde_json::to_string(&keys).unwrap())
 }
 
@@ -26,8 +29,35 @@ pub async fn get_this_week_resources(resource_store: web::Data<ResourceStore>) -
         .get_resources_this_week_visible_random();
 
     HttpResponse::Ok()
-        .content_type("application/json")
+        .content_type(CONTENT_TYPE_APPLICATION_JSON)
         .body(serde_json::to_string(&resource_ids).unwrap())
+}
+
+#[get("week/image")]
+pub async fn get_random_this_week_resource_image(
+    resource_store: web::Data<ResourceStore>,
+) -> HttpResponse {
+    let resource_image: Option<ImageResource> = resource_store
+        .as_ref()
+        .get_resources_this_week_visible_random()
+        .first()
+        .and_then(|resource_id| resource_store.get_resource(resource_id))
+        .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
+
+    if resource_image.is_none() {
+        return HttpResponse::NotFound().finish();
+    }
+
+    // Read the image data from the file system
+    let resource_data = fs::read(resource_image.unwrap().path).ok();
+
+    if let Some(resource_data) = resource_data {
+        HttpResponse::Ok()
+            .content_type(CONTENT_TYPE_IMAGE_PNG)
+            .body(resource_data)
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
 }
 
 #[get("random")]
@@ -36,7 +66,7 @@ pub async fn random_resource(resource_store: web::Data<ResourceStore>) -> HttpRe
 
     if let Some(resource_id) = resource_id {
         HttpResponse::Ok()
-            .content_type("application/json")
+            .content_type(CONTENT_TYPE_APPLICATION_JSON)
             .body(serde_json::to_string(&resource_id).unwrap())
     } else {
         HttpResponse::InternalServerError().finish()
@@ -72,7 +102,7 @@ pub async fn get_resource_by_id_and_resolution(
         .get_data_cache_entry(format!("{resource_id}_{display_width}_{display_height}"));
     if let Some(cached_data) = cached_data {
         return HttpResponse::Ok()
-            .content_type("image/png")
+            .content_type(CONTENT_TYPE_IMAGE_PNG)
             .body(cached_data);
     }
 
@@ -107,7 +137,7 @@ pub async fn get_resource_by_id_and_resolution(
         );
 
         HttpResponse::Ok()
-            .content_type("image/png")
+            .content_type(CONTENT_TYPE_IMAGE_PNG)
             .body(resource_data)
     } else {
         HttpResponse::InternalServerError().finish()
@@ -123,7 +153,7 @@ pub async fn get_resource_metadata_by_id(
 
     if let Some(metadata) = metadata {
         HttpResponse::Ok()
-            .content_type("application/json")
+            .content_type(CONTENT_TYPE_APPLICATION_JSON)
             .body(metadata)
     } else {
         HttpResponse::InternalServerError().finish()
@@ -175,6 +205,6 @@ pub async fn delete_resource_hidden(
 pub async fn get_all_hidden_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
     let hidden_ids: Vec<String> = resource_store.as_ref().get_all_hidden();
     HttpResponse::Ok()
-        .content_type("application/json")
+        .content_type(CONTENT_TYPE_APPLICATION_JSON)
         .body(serde_json::to_string(&hidden_ids).unwrap())
 }
