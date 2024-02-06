@@ -33,8 +33,30 @@ pub async fn get_this_week_resources(resource_store: web::Data<ResourceStore>) -
         .body(serde_json::to_string(&resource_ids).unwrap())
 }
 
+#[get("week/metadata")]
+pub async fn get_this_week_resources_metadata(
+    resource_store: web::Data<ResourceStore>,
+) -> HttpResponse {
+    let resource_ids = resource_store
+        .as_ref()
+        .get_resources_this_week_visible_random();
+
+    // WARNING: this is not very efficient, but it's ok for a debug endpoint
+    let resources_metadata: Vec<serde_json::Value> = resource_ids
+        .iter()
+        .flat_map(|id| resource_store.as_ref().get_resource(id))
+        .map(|resource_string| {
+            serde_json::from_str::<serde_json::Value>(resource_string.as_str()).unwrap()
+        })
+        .collect();
+
+    HttpResponse::Ok()
+        .content_type(CONTENT_TYPE_APPLICATION_JSON)
+        .body(serde_json::to_string(&resources_metadata).unwrap())
+}
+
 #[get("week/image")]
-pub async fn get_random_this_week_resource_image(
+pub async fn get_this_week_resource_image(
     resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
     let resource_image: Option<ImageResource> = resource_store
