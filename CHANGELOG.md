@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/RouHim/this-week-in-past/compare/1.21.0...1.22.0) (2024-02-07)
+
+
+### Features
+
+* **resources:** provide api endpoint for a this week metadata response ([0b84fa7](https://github.com/RouHim/this-week-in-past/commit/0b84fa7611786ad90c461a2af9091c511851aa56))
+
 # [1.21.0](https://github.com/RouHim/this-week-in-past/compare/1.20.2...1.21.0) (2024-02-06)
 
 
