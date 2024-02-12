@@ -70,8 +70,19 @@ pub async fn get_this_week_resource_image(
         return HttpResponse::NotFound().finish();
     }
 
-    // Read the image data from the file system
-    let resource_data = fs::read(resource_image.unwrap().path).ok();
+    // Read the image data from the file system and adjust the image to the display
+    let image_resource = resource_image.unwrap();
+    let resource_data = fs::read(&image_resource.path)
+        .ok()
+        .and_then(|resource_data| {
+            image_processor::adjust_image(
+                image_resource.path,
+                resource_data,
+                0,
+                0,
+                image_resource.orientation,
+            )
+        });
 
     if let Some(resource_data) = resource_data {
         HttpResponse::Ok()
