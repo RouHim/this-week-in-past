@@ -1,3 +1,10 @@
+## [1.22.1](https://github.com/RouHim/this-week-in-past/compare/1.22.0...1.22.1) (2024-02-12)
+
+
+### Bug Fixes
+
+* **resources:** random image week resource, adjust orientation ([87ec3c5](https://github.com/RouHim/this-week-in-past/commit/87ec3c532111449830e162c3eacdc35e0a14eac9))
+
 # [1.22.0](https://github.com/RouHim/this-week-in-past/compare/1.21.0...1.22.0) (2024-02-07)
 
 
