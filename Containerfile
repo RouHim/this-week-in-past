@@ -1,7 +1,7 @@
 # # # # # # # # # # # # # # # # # # # #
 # Builder
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM docker.io/alpine:20231219 as builder
+FROM docker.io/alpine as builder
 
 # Create an empty directory that will be used in the final image
 RUN mkdir "/empty_dir"
@@ -41,4 +41,4 @@ COPY --chown=$USER:$USER --from=builder /work/this-week-in-past /this-week-in-pa
 EXPOSE 8080
 USER $USER
 
-CMD ["/this-week-in-past"]
+ENTRYPOINT ["/this-week-in-past"]
