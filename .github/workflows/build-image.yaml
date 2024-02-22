@@ -229,7 +229,7 @@ jobs:
           source .github/workflows/scripts/prep-build-env.sh
           
           # Compile the desired target
-            build-rust-static-bin ${{ matrix.target }}
+          build-rust-static-bin ${{ matrix.target }}
           
           # Translate ${{ matrix.target }} to rust target triple
           export TARGET_TRIPPLE=$(bash .github/workflows/scripts/translate-arch-to-rust-tripple.sh ${{ matrix.target }})
