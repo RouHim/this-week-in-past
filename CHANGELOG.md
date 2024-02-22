@@ -1,3 +1,11 @@
+# [1.23.0](https://github.com/RouHim/this-week-in-past/compare/1.22.2...1.23.0) (2024-02-22)
+
+
+### Features
+
+* improve containerfile and bump 3rd party deps ([4368684](https://github.com/RouHim/this-week-in-past/commit/4368684edc3f8a4477da9d70eb2c25ae09a81aec))
+* improve containerfile and bump 3rd party deps ([d2a5eb8](https://github.com/RouHim/this-week-in-past/commit/d2a5eb8e22168166af923c520fbd066430600881))
+
 ## [1.22.2](https://github.com/RouHim/this-week-in-past/compare/1.22.1...1.22.2) (2024-02-17)
 
 ## [1.22.1](https://github.com/RouHim/this-week-in-past/compare/1.22.0...1.22.1) (2024-02-12)
