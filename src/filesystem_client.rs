@@ -96,7 +96,12 @@ fn should_skip_folder(path: &Path) -> bool {
             )
         })
         .to_str()
-        .unwrap();
+        .unwrap_or_else(|| {
+            panic!(
+                "Failed to convert folder name to string for path: {}",
+                path.to_str().unwrap()
+            )
+        });
 
     if IGNORE_FOLDER_REGEX.is_some() && IGNORE_FOLDER_REGEX.as_ref().unwrap().is_match(folder_name)
     {
