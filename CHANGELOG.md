@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/RouHim/this-week-in-past/compare/1.23.2...1.24.0) (2024-04-11)
+
+
+### Features
+
+* improve logging and remove deprecation warning ([b14383c](https://github.com/RouHim/this-week-in-past/commit/b14383cc063f90d7d78ee83931f2952d101d6a83))
+
 ## [1.23.2](https://github.com/RouHim/this-week-in-past/compare/1.23.1...1.23.2) (2024-04-11)
 
 ## [1.23.1](https://github.com/RouHim/this-week-in-past/compare/1.23.0...1.23.1) (2024-02-28)
