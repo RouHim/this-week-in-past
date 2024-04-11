@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/RouHim/this-week-in-past/compare/1.24.2...1.25.0) (2024-04-11)
+
+
+### Features
+
+* improve logging for folder name conversion ([3d8cf26](https://github.com/RouHim/this-week-in-past/commit/3d8cf26decd3a2217ddf30ada61bf55b8a19beee))
+
 ## [1.24.2](https://github.com/RouHim/this-week-in-past/compare/1.24.1...1.24.2) (2024-04-11)
 
 
