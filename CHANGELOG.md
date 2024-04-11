@@ -1,3 +1,10 @@
+## [1.24.2](https://github.com/RouHim/this-week-in-past/compare/1.24.1...1.24.2) (2024-04-11)
+
+
+### Bug Fixes
+
+* adjust broken code after image crate update ([84865a7](https://github.com/RouHim/this-week-in-past/commit/84865a79ac5162938a2b93341a624564484d32fd))
+
 ## [1.24.1](https://github.com/RouHim/this-week-in-past/compare/1.24.0...1.24.1) (2024-04-11)
 
 # [1.24.0](https://github.com/RouHim/this-week-in-past/compare/1.23.2...1.24.0) (2024-04-11)
