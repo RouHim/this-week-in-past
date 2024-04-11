@@ -87,7 +87,17 @@ fn should_skip_folder(path: &Path) -> bool {
                 .collect();
     }
 
-    let folder_name = path.file_name().unwrap().to_str().unwrap();
+    let folder_name = path
+        .file_name()
+        .unwrap_or_else(|| {
+            panic!(
+                "Failed to get folder name for path: {}",
+                path.to_str().unwrap()
+            )
+        })
+        .to_str()
+        .unwrap();
+
     if IGNORE_FOLDER_REGEX.is_some() && IGNORE_FOLDER_REGEX.as_ref().unwrap().is_match(folder_name)
     {
         info!(
