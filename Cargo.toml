@@ -21,7 +21,7 @@ ureq = "2.9"
 actix-http = { version = "3.6", features = ["rustls"] }
 actix-web = { version = "4.5.1", features = ["rustls"] }
 clokwerk = "0.4"
-kamadak-exif = "0.5"
+kamadak-exif = "0.5.5"
 rayon = "1.10"
 regex = "1.10"
 image = "0.25"
