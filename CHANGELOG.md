@@ -1,3 +1,11 @@
+## [1.25.1](https://github.com/RouHim/this-week-in-past/compare/1.25.0...1.25.1) (2024-05-01)
+
+
+### Bug Fixes
+
+* **deps:** update dependencies ([ed096a2](https://github.com/RouHim/this-week-in-past/commit/ed096a22ca824471c98a8392463269e0f27c1f75))
+* **logging:** dont panic on panic message ([2c68c90](https://github.com/RouHim/this-week-in-past/commit/2c68c9080cbe21d6533cb26e209e4a6bf4f63acd))
+
 # [1.25.0](https://github.com/RouHim/this-week-in-past/compare/1.24.2...1.25.0) (2024-04-11)
 
 
