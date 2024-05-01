@@ -89,17 +89,12 @@ fn should_skip_folder(path: &Path) -> bool {
 
     let folder_name = path
         .file_name()
-        .unwrap_or_else(|| {
-            panic!(
-                "Failed to get folder name for path: {}",
-                path.to_str().unwrap()
-            )
-        })
+        .unwrap_or_else(|| panic!("Failed to get folder name for path: {}", path.display()))
         .to_str()
         .unwrap_or_else(|| {
             panic!(
                 "Failed to convert folder name to string for path: {}",
-                path.to_str().unwrap()
+                path.display()
             )
         });
 
@@ -117,7 +112,7 @@ fn should_skip_folder(path: &Path) -> bool {
         .unwrap_or_else(|error| {
             panic!(
                 "Failed to read directory: {} Error:\n{}",
-                path.to_str().unwrap(),
+                path.display(),
                 error
             )
         })
@@ -126,7 +121,7 @@ fn should_skip_folder(path: &Path) -> bool {
             let metadata = entry.metadata().unwrap_or_else(|error| {
                 panic!(
                     "Failed to read metadata for: {} Error:\n{}",
-                    entry.path().to_str().unwrap(),
+                    entry.path().display(),
                     error
                 )
             });
