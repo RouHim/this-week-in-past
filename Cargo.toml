@@ -27,7 +27,7 @@ regex = "1.10"
 image = "0.25.1"
 log = "0.4.21"
 env_logger = "0.11.3"
-rand = "0.8"
+rand = "0.8.5"
 # Use git version (https://github.com/knopp/mime_guess) of mime_guess until https://github.com/abonander/mime_guess/pull/82 is merged
 mime_guess = { git = "https://github.com/knopp/mime_guess", branch = "add_heif_jxl" }
 r2d2 = "0.8.10"
