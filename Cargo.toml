@@ -23,7 +23,7 @@ actix-web = { version = "4.5.1", features = ["rustls"] }
 clokwerk = "0.4"
 kamadak-exif = "0.5"
 rayon = "1.10"
-regex = "1.10"
+regex = "1.10.4"
 image = "0.25.1"
 log = "0.4.21"
 env_logger = "0.11.3"
