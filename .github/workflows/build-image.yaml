@@ -261,7 +261,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build x86 image and load into local repo
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           tags: ${{ env.IMAGE_NAME }}:${{ needs.set_image_tag.outputs.IMAGE_TAG }}
           context: .
@@ -396,7 +396,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Build and push multi platform container image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           tags: ${{ env.IMAGE_NAME }}:${{ needs.set_image_tag.outputs.IMAGE_TAG }}
           platforms: linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6
@@ -406,7 +406,7 @@ jobs:
           push: true
 
       - name: Build and push versioned multi platform container image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         if: env.VERSION != ''
         with:
           tags: ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
@@ -417,7 +417,7 @@ jobs:
           push: true
 
       - name: Build and push minor versioned multi platform container image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         if: env.VERSION != ''
         with:
           tags: ${{ env.IMAGE_NAME }}:${{ env.MINOR_VERSION }}
@@ -428,7 +428,7 @@ jobs:
           push: true
 
       - name: Build and push major versioned multi platform container image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         if: env.VERSION != ''
         with:
           tags: ${{ env.IMAGE_NAME }}:${{ env.MAJOR_VERSION }}
