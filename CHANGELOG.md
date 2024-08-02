@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/RouHim/this-week-in-past/compare/1.25.39...1.26.0) (2024-08-02)
+
+
+### Features
+
+* update sqlite ([f6fbe1f](https://github.com/RouHim/this-week-in-past/commit/f6fbe1f7635f1643c0079055496b1f743547efcc))
+
 ## [1.25.39](https://github.com/RouHim/this-week-in-past/compare/1.25.38...1.25.39) (2024-08-02)
 
 ## [1.25.38](https://github.com/RouHim/this-week-in-past/compare/1.25.37...1.25.38) (2024-07-29)
