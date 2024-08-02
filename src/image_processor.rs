@@ -1,7 +1,7 @@
 use std::io::Cursor;
 
 use image::imageops::FilterType;
-use image::io::Reader;
+use image::ImageReader;
 use log::error;
 use serde::{Deserialize, Serialize};
 
@@ -24,7 +24,7 @@ pub fn adjust_image(
     display_height: u32,
     image_orientation: Option<ImageOrientation>,
 ) -> Option<Vec<u8>> {
-    let read_result = Reader::new(Cursor::new(&resource_data))
+    let read_result = ImageReader::new(Cursor::new(&resource_data))
         .with_guessed_format()
         .unwrap()
         .decode();
