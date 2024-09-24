@@ -35,7 +35,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 r2d2_sqlite = "0.25"
 
 [dev-dependencies]
-assertor = "0.0.2"
+assertor = "0.0.3"
 pretty_assertions = "1.4"
 actix-rt = "2.9"
 ureq = "2.9.7"
