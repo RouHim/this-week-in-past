@@ -1,3 +1,5 @@
+## [1.26.30](https://github.com/RouHim/this-week-in-past/compare/1.26.29...1.26.30) (2024-11-06)
+
 ## [1.26.29](https://github.com/RouHim/this-week-in-past/compare/1.26.28...1.26.29) (2024-11-05)
 
 ## [1.26.28](https://github.com/RouHim/this-week-in-past/compare/1.26.27...1.26.28) (2024-11-03)
