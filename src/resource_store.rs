@@ -156,23 +156,24 @@ impl ResourceStore {
         }
     }
 
-    /// Returns a single random, non-hidden, resource id
-    pub fn get_random_resource(&self) -> Option<String> {
+    /// Returns random resources, non-hidden, resource id
+    pub fn get_random_resources(&self) -> Vec<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
-            .prepare("SELECT id FROM resources WHERE id NOT IN (SELECT id FROM hidden) ORDER BY RANDOM() LIMIT 1;")
+            .prepare(
+                r#"
+                SELECT id FROM resources 
+                WHERE id NOT IN (SELECT id FROM hidden) 
+                ORDER BY RANDOM() 
+                LIMIT 1000;"#,
+            )
             .unwrap();
         let mut rows = stmt.query([]).unwrap();
-
-        let first_entry = rows.next();
-
-        if let Ok(first_entry) = first_entry {
-            first_entry
-                .map(|entry| entry.get(0))
-                .and_then(|entry| entry.ok())
-        } else {
-            None
+        let mut ids: Vec<String> = Vec::new();
+        while let Some(row) = rows.next().unwrap() {
+            ids.push(row.get(0).unwrap());
         }
+        ids
     }
 
     /// Clears the complete resources cache

@@ -41,13 +41,33 @@ function shouldOnlyPlayRandom() {
 }
 
 /**
- * Initializes a new slideshow
+ * Initializes a new slideshow, if random is active fetch a random playlist.
+ * Otherwise, fetch the current week's playlist.
+ * If no images are available, fetch a random playlist.
+ * If the slideshow is forced to be random, fetch a random playlist.
  */
 function initSlideshow() {
-    fetch('/api/resources/week')
-        .then(response => response.json())
-        .then(resources => beginSlideshow(resources))
-        .catch(error => console.error('Error loading available images:', error));
+    if (forceRandomSlideshow) {
+        fetch('/api/resources/random')
+            .then(response => response.json())
+            .then(resources => beginSlideshow(resources))
+            .catch(error => console.error('Error loading available images:', error));
+    } else {
+        fetch('/api/resources/week/count')
+            .then(response => response.json())
+            .then(count => {
+                if (count === 0) {
+                    return fetch('/api/resources/random')
+                        .then(response => response.json())
+                        .then(resources => beginSlideshow(resources));
+                } else {
+                    return fetch('/api/resources/week')
+                        .then(response => response.json())
+                        .then(resources => beginSlideshow(resources));
+                }
+            })
+            .catch(error => console.error('Error loading available images:', error));
+    }
 }
 
 /**
@@ -255,9 +275,9 @@ function setImage(resource_id) {
 }
 
 /**
- * @returns {any|null} a random resource from the backend API
+ * @returns {any|null} a random resources from the backend API
  */
-function getRandomResource() {
+function getRandomResources() {
     let request = new XMLHttpRequest();
     request.open('GET', `/api/resources/random`, false);
     request.send(null);
@@ -274,22 +294,6 @@ function getRandomResource() {
  * Set the slideshow image and its meta information.
  */
 function slideshowTick() {
-    // If the user wants to force a random slideshow
-    // Or if no image for this week was found, select a random one
-    // If no random could be found, show an alert message and stop slideshow
-    if (forceRandomSlideshow || resourcesThisWeek.length === 0) {
-        let randomResource = getRandomResource();
-
-        if (randomResource === null) {
-            alert("Could not find any photos!");
-            clearInterval(intervalID);
-            return;
-        }
-
-        setImage(randomResource);
-        return;
-    }
-
     // Proceeds with the regular "this week" slideshow
     setImage(resourcesThisWeek[currentIndex]);
 
