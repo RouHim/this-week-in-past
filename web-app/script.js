@@ -48,6 +48,7 @@ function shouldOnlyPlayRandom() {
  */
 function initSlideshow() {
     if (forceRandomSlideshow) {
+        console.log("Forcing random slideshow");
         fetch('/api/resources/random')
             .then(response => response.json())
             .then(resources => beginSlideshow(resources))
@@ -56,11 +57,14 @@ function initSlideshow() {
         fetch('/api/resources/week/count')
             .then(response => response.json())
             .then(count => {
+                console.log("Available images this week:", count);
                 if (count === 0) {
+                    console.log("No images available, starting random slideshow");
                     return fetch('/api/resources/random')
                         .then(response => response.json())
                         .then(resources => beginSlideshow(resources));
                 } else {
+                    console.log("Starting this week's slideshow");
                     return fetch('/api/resources/week')
                         .then(response => response.json())
                         .then(resources => beginSlideshow(resources));

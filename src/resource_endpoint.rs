@@ -37,11 +37,9 @@ pub async fn get_this_week_resources(resource_store: web::Data<ResourceStore>) -
 pub async fn get_this_week_resources_count(
     resource_store: web::Data<ResourceStore>,
 ) -> HttpResponse {
-    // TODO: improve this, by not loading all resources, but just counting them
     let resource_count = resource_store
         .as_ref()
-        .get_resources_this_week_visible_random()
-        .len();
+        .get_resources_this_week_visible_count();
 
     HttpResponse::Ok()
         .content_type(CONTENT_TYPE_APPLICATION_JSON)
@@ -112,13 +110,9 @@ pub async fn get_this_week_resource_image(
 pub async fn random_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
     let resource_id: Vec<String> = resource_store.get_random_resources();
 
-    if let Some(resource_id) = resource_id.first() {
-        HttpResponse::Ok()
-            .content_type(CONTENT_TYPE_APPLICATION_JSON)
-            .body(serde_json::to_string(&resource_id).unwrap())
-    } else {
-        HttpResponse::InternalServerError().finish()
-    }
+    HttpResponse::Ok()
+        .content_type(CONTENT_TYPE_APPLICATION_JSON)
+        .body(serde_json::to_string(&resource_id).unwrap())
 }
 
 // TODO: Refactor me
