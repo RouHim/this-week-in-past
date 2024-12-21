@@ -69,6 +69,36 @@ impl ResourceStore {
         execute_query(&connection, regular_week_query)
     }
 
+    /// Returns the count of all visible resources for the current week
+    pub fn get_resources_this_week_visible_count(&self) -> usize {
+        let connection = self.persistent_file_store_pool.get().unwrap();
+
+        // Check if we are in the new year week
+        // If yes, we need to query differently
+        if range_hits_new_year() {
+            debug!("🎊 New year week detected");
+            let new_year_resources_count = [
+                execute_count_query(&connection, get_last_year_count_query()),
+                execute_count_query(&connection, get_next_year_count_query()),
+            ]
+            .iter()
+            .sum();
+            return new_year_resources_count;
+        }
+
+        // Otherwise, we can query normally
+        let regular_week_query = r#"
+               SELECT COUNT(DISTINCT resources.id)
+               FROM resources,
+                    json_each(resources.value) json
+               WHERE json.key = 'taken'
+                 AND json.value NOT NULL
+                 AND resources.id NOT IN (SELECT id FROM hidden)
+                 AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND strftime('%m-%d', 'now', 'localtime', '+3 days')
+               ;"#;
+        execute_count_query(&connection, regular_week_query)
+    }
+
     /// Sets the specified resource id as hidden
     pub fn add_hidden(&self, resource_id: &str) {
         let connection = self.persistent_file_store_pool.get().unwrap();
@@ -156,23 +186,24 @@ impl ResourceStore {
         }
     }
 
-    /// Returns a single random, non-hidden, resource id
-    pub fn get_random_resource(&self) -> Option<String> {
+    /// Returns random resources, non-hidden, resource id
+    pub fn get_random_resources(&self) -> Vec<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
-            .prepare("SELECT id FROM resources WHERE id NOT IN (SELECT id FROM hidden) ORDER BY RANDOM() LIMIT 1;")
+            .prepare(
+                r#"
+                SELECT id FROM resources 
+                WHERE id NOT IN (SELECT id FROM hidden) 
+                ORDER BY RANDOM() 
+                LIMIT 1000;"#,
+            )
             .unwrap();
         let mut rows = stmt.query([]).unwrap();
-
-        let first_entry = rows.next();
-
-        if let Ok(first_entry) = first_entry {
-            first_entry
-                .map(|entry| entry.get(0))
-                .and_then(|entry| entry.ok())
-        } else {
-            None
+        let mut ids: Vec<String> = Vec::new();
+        while let Some(row) = rows.next().unwrap() {
+            ids.push(row.get(0).unwrap());
         }
+        ids
     }
 
     /// Clears the complete resources cache
@@ -389,4 +420,44 @@ fn execute_query(
         resources.push(id);
     }
     resources
+}
+
+/// Executes the specified query and returns the count of resource ids
+fn execute_count_query(
+    connection: &PooledConnection<SqliteConnectionManager>,
+    count_query: &str,
+) -> usize {
+    let mut stmt = connection.prepare(count_query).unwrap();
+    let mut rows = stmt.query([]).unwrap();
+    if let Ok(Some(row)) = rows.next() {
+        row.get(0).unwrap()
+    } else {
+        0
+    }
+}
+
+/// Returns the count query for the next year
+fn get_next_year_count_query() -> &'static str {
+    r#"
+       SELECT COUNT(DISTINCT resources.id)
+       FROM resources,
+            json_each(resources.value) json
+       WHERE json.key = 'taken'
+         AND json.value NOT NULL
+         AND resources.id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', json.value) BETWEEN '01-01' AND strftime('%m-%d', 'now', 'localtime', '+3 days')
+   ;"#
+}
+
+/// Returns the count query for the last year
+fn get_last_year_count_query() -> &'static str {
+    r#"
+       SELECT COUNT(DISTINCT resources.id)
+       FROM resources,
+            json_each(resources.value) json
+       WHERE json.key = 'taken'
+         AND json.value NOT NULL
+         AND resources.id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND '12-31'
+   ;"#
 }
