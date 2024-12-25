@@ -243,14 +243,70 @@ async fn test_get_random_resources() {
     let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // WHEN requesting a random resource
-    let response: String = test::call_and_read_body_json(
+    let response: Vec<String> = test::call_and_read_body_json(
         &app_server,
         TestRequest::get().uri("/api/resources/random").to_request(),
     )
     .await;
 
     // THEN the response should contain the random resources
-    assert_that!(response).is_equal_to(utils::md5(test_image_1.as_str()));
+    assert_that!(response).contains_exactly(vec![utils::md5(test_image_1.as_str())]);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
+async fn test_get_resources_week_count() {
+    // GIVEN is a folder structure with two assets in the week range, and one out of range
+    let base_test_dir = create_temp_folder().await;
+    let upper_bound = Local::now().add(Duration::days(3));
+    let today_date_string = upper_bound.date_naive().format("%Y%m%d").to_string();
+    let _test_image_1 = create_test_image(
+        &base_test_dir,
+        "",
+        format!("IMG_{}.jpg", today_date_string).as_str(),
+        TEST_JPEG_URL,
+    )
+    .await;
+    let lower_bound = Local::now().sub(Duration::days(3));
+    let another_date_string = lower_bound.date_naive().format("%Y%m%d").to_string();
+    let _test_image_2 = create_test_image(
+        &base_test_dir,
+        "",
+        format!("IMG_{}.jpg", another_date_string).as_str(),
+        TEST_JPEG_URL,
+    )
+    .await;
+    let out_of_range_date_string = Local::now()
+        .sub(Duration::days(4))
+        .date_naive()
+        .format("%Y%m%d")
+        .to_string();
+    let _ = create_test_image(
+        &base_test_dir,
+        "",
+        format!("IMG_{}.jpg", out_of_range_date_string).as_str(),
+        TEST_JPEG_URL,
+    )
+    .await;
+
+    // AND a running this-week-in-past instance
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+
+    // WHEN requesting the count of this week resources (text/plain)
+    let response = test::call_and_read_body(
+        &app_server,
+        TestRequest::get()
+            .uri("/api/resources/week/count")
+            .to_request(),
+    )
+    .await;
+    let result = String::from_utf8(response.to_vec()).unwrap();
+    let response = result.parse::<usize>().unwrap();
+
+    // THEN the response should contain the count of the resources
+    assert_that!(response).is_equal_to(2);
 
     // cleanup
     cleanup(&base_test_dir).await;
@@ -508,8 +564,9 @@ fn build_app(
         .service(
             web::scope("/api/resources")
                 .service(resource_endpoint::get_all_resources)
+                .service(resource_endpoint::get_this_week_resources_count)
                 .service(resource_endpoint::get_this_week_resources)
-                .service(resource_endpoint::random_resource)
+                .service(resource_endpoint::random_resources)
                 .service(resource_endpoint::get_resource_by_id_and_resolution)
                 .service(resource_endpoint::get_resource_metadata_by_id)
                 .service(resource_endpoint::get_resource_metadata_description_by_id)

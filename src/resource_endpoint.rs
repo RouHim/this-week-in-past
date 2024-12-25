@@ -11,6 +11,7 @@ use crate::resource_store::ResourceStore;
 use crate::{image_processor, resource_processor};
 
 const CONTENT_TYPE_APPLICATION_JSON: &str = "application/json";
+const CONTENT_TYPE_TEXT_PLAIN: &str = "text/plain";
 const CONTENT_TYPE_IMAGE_PNG: &str = "image/png";
 
 #[get("")]
@@ -31,6 +32,19 @@ pub async fn get_this_week_resources(resource_store: web::Data<ResourceStore>) -
     HttpResponse::Ok()
         .content_type(CONTENT_TYPE_APPLICATION_JSON)
         .body(serde_json::to_string(&resource_ids).unwrap())
+}
+
+#[get("week/count")]
+pub async fn get_this_week_resources_count(
+    resource_store: web::Data<ResourceStore>,
+) -> HttpResponse {
+    let resource_count = resource_store
+        .as_ref()
+        .get_resources_this_week_visible_count();
+
+    HttpResponse::Ok()
+        .content_type(CONTENT_TYPE_TEXT_PLAIN)
+        .body(resource_count.to_string())
 }
 
 #[get("week/metadata")]
@@ -94,16 +108,12 @@ pub async fn get_this_week_resource_image(
 }
 
 #[get("random")]
-pub async fn random_resource(resource_store: web::Data<ResourceStore>) -> HttpResponse {
-    let resource_id: Option<String> = resource_store.get_random_resource();
+pub async fn random_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
+    let resource_ids: Vec<String> = resource_store.get_random_resources();
 
-    if let Some(resource_id) = resource_id {
-        HttpResponse::Ok()
-            .content_type(CONTENT_TYPE_APPLICATION_JSON)
-            .body(serde_json::to_string(&resource_id).unwrap())
-    } else {
-        HttpResponse::InternalServerError().finish()
-    }
+    HttpResponse::Ok()
+        .content_type(CONTENT_TYPE_APPLICATION_JSON)
+        .body(serde_json::to_string(&resource_ids).unwrap())
 }
 
 // TODO: Refactor me
