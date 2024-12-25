@@ -1,3 +1,11 @@
+# [1.27.0](https://github.com/RouHim/this-week-in-past/compare/1.26.40...1.27.0) (2024-12-25)
+
+
+### Features
+
+* add a playlist for random slideshow ([10b7e9c](https://github.com/RouHim/this-week-in-past/commit/10b7e9c47af1a6a4935c7363556740bc272d65d6))
+* improve random slideshow ([8b34424](https://github.com/RouHim/this-week-in-past/commit/8b34424508304a69a437c02e36dffce91bab0329))
+
 ## [1.26.40](https://github.com/RouHim/this-week-in-past/compare/1.26.39...1.26.40) (2024-12-22)
 
 ## [1.26.39](https://github.com/RouHim/this-week-in-past/compare/1.26.38...1.26.39) (2024-12-20)
