@@ -264,14 +264,9 @@ function setImage(resource_id) {
         // when the image is loaded, start the fade in animation
         slideshowImage.onload = () => {
             // fade images in
-            backgroundImage.classList.add("fade-in");
-            backgroundImage.classList.remove("fade-out");
-
-            slideshowImage.classList.add("fade-in");
-            slideshowImage.classList.remove("fade-out");
-
-            slideShowMetadata.classList.add("fade-in");
-            slideShowMetadata.classList.remove("fade-out");
+            backgroundImage.classList.replace("fade-out", "fade-in");
+            slideshowImage.classList.replace("fade-out", "fade-in");
+            slideShowMetadata.classList.replace("fade-out", "fade-in");
 
             // wait for the fade in animation to end
             sleep(500).then(() => {
@@ -279,21 +274,20 @@ function setImage(resource_id) {
                 slideshowImage.classList.remove("fade-in");
                 slideShowMetadata.classList.remove("fade-in");
             });
-        }
+        };
 
         // set image and blurred background image
         backgroundImage.style.backgroundImage = `url(${imageUrl})`;
         slideshowImage.src = imageUrl;
 
         // set image description but fade in is done simultaneously with the fade in of the image, see above
-        let photoMetadataRequest = new XMLHttpRequest();
-        photoMetadataRequest.open("GET", "/api/resources/" + resource_id + "/description");
-        photoMetadataRequest.send();
-        photoMetadataRequest.onload = () => slideShowMetadata.innerText = photoMetadataRequest.response;
+        fetch(`/api/resources/${resource_id}/description`)
+            .then(response => response.text())
+            .then(text => slideShowMetadata.innerText = text);
 
         // At last step, set the current resource id
         current_resource_id = resource_id;
-    })
+    });
 }
 
 /**
@@ -371,6 +365,10 @@ function sleep(ms) {
     return new Promise(resolver => setTimeout(resolver, ms));
 }
 
+/**
+ * Shows the previous image in the slideshow.
+ * Resets the slideshow interval to avoid takeover effect.
+ */
 function showPrevImage() {
     console.log("Showing previous image");
     currentIndex--;
@@ -384,6 +382,10 @@ function showPrevImage() {
     slideshowId = setInterval(slideshowTick, getSlideshowInterval() * 1000);
 }
 
+/**
+ * Pauses or resumes the slideshow.
+ * Updates the button text to reflect the current state.
+ */
 function pauseResumeSlideshow() {
     if (isPaused) {
         console.log("Resuming slideshow");
@@ -399,6 +401,10 @@ function pauseResumeSlideshow() {
     }
 }
 
+/**
+ * Shows the next image in the slideshow.
+ * Resets the slideshow interval to avoid takeover effect.
+ */
 function showNextImage() {
     console.log("Showing next image");
     slideshowTick();
