@@ -191,9 +191,16 @@ impl ResourceStore {
     pub fn get_random_resources(&self) -> Vec<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
         // Request limit is calculated by: (60/SLIDESHOW_INTERVAL)*REFRESH_INTERVAL * 10% buffer
-        let request_limit =
-            (60 / config::get_refresh_interval_value()) * config::get_refresh_interval_value();
-        let request_limit = (request_limit as f32 * 1.1) as usize;
+        let request_limit = (60. / config::get_slideshow_interval_value() as f32)
+            * config::get_refresh_interval_value() as f32;
+        let request_limit = (request_limit * 1.1) as usize;
+        // print all variables
+        println!(
+            "Request limit: {}, Refresh interval: {}, Slideshow interval: {}",
+            request_limit,
+            config::get_refresh_interval_value(),
+            config::get_slideshow_interval_value()
+        );
         let mut stmt = connection
             .prepare(&format!(
                 r#"
