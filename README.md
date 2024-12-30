@@ -82,8 +82,6 @@ docker run -p 8080:8080 \
 Docker compose example:
 
 ```shell
-version: "3.9"
-
 services:
   this-week-in-past:
     image: rouhim/this-week-in-past
