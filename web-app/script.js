@@ -40,6 +40,10 @@ function shouldOnlyPlayRandom() {
     return request.status === 200 && request.responseText === "true";
 }
 
+/**
+ * Checks if images should be preloaded.
+ * @returns {boolean} true if images should be preloaded, false otherwise
+ */
 function shouldPreloadImages() {
     let request = new XMLHttpRequest();
     request.open('GET', `/api/config/preload-images`, false);
