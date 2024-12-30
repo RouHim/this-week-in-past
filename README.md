@@ -105,7 +105,7 @@ All configuration is done via environment variables:
 | DATA_FOLDER                | Path to a folder where the data should be stored, needs to read/write access                                | `/data` (Container only)      |                           |
 | PORT                       | Port on which the application should listen.                                                                | `8080`                        |                           |
 | SLIDESHOW_INTERVAL         | Interval of the slideshow in seconds                                                                        | `30`                          | x                         |
-| REFRESH_INTERVAL           | Interval how often the page should be reloaded in minutes                                                   | `60`                          |                           |
+| REFRESH_INTERVAL           | Interval how often the page should be reloaded in minutes (triggers a new slideshow)                        | `60`                          |                           |
 | DATE_FORMAT                | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html)       | `%d.%m.%Y`                    |                           |
 | BIGDATA_CLOUD_API_KEY      | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com                          |                               |                           |
 | OPEN_WEATHER_MAP_API_KEY   | To receive weather live data. Obtain here: https://openweathermap.org/api                                   |                               |                           |

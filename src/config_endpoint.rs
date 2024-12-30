@@ -1,5 +1,6 @@
 use std::env;
 
+use crate::config;
 use actix_web::get;
 use actix_web::HttpResponse;
 
@@ -7,14 +8,14 @@ use actix_web::HttpResponse;
 pub async fn get_slideshow_interval() -> HttpResponse {
     HttpResponse::Ok()
         .content_type("plain/text")
-        .body(env::var("SLIDESHOW_INTERVAL").unwrap_or_else(|_| "30".to_string()))
+        .body(config::get_slideshow_interval_value().to_string())
 }
 
 #[get("interval/refresh")]
 pub async fn get_refresh_interval() -> HttpResponse {
     HttpResponse::Ok()
         .content_type("plain/text")
-        .body(env::var("REFRESH_INTERVAL").unwrap_or_else(|_| "60".to_string()))
+        .body(config::get_refresh_interval_value().to_string())
 }
 
 #[get("show-hide-button")]

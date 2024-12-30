@@ -7,6 +7,7 @@ use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
 use env_logger::Builder;
 use log::{info, warn, LevelFilter};
 
+mod config;
 mod config_endpoint;
 mod exif_reader;
 mod filesystem_client;
