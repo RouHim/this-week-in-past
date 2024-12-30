@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
+use crate::config;
 use chrono::Datelike;
 use log::{debug, error};
 use r2d2::{Pool, PooledConnection};
@@ -189,14 +190,32 @@ impl ResourceStore {
     /// Returns random resources, non-hidden, resource id
     pub fn get_random_resources(&self) -> Vec<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
+        // Request limit is calculated by: (60/SLIDESHOW_INTERVAL)*REFRESH_INTERVAL * 10% buffer
+        let request_limit =
+            (60 / config::get_refresh_interval_value()) * config::get_refresh_interval_value();
+        let request_limit = (request_limit as f32 * 1.1) as usize;
+        // print all variables
+        println!("Refresh interval: {}", config::get_refresh_interval_value());
+        println!(
+            "Slideshow interval: {}",
+            config::get_slideshow_interval_value()
+        );
+        // print content of env vars: SLIDESHOW_INTERVAL, REFRESH_INTERVAL
+        println!(
+            "SLIDESHOW_INTERVAL: {:?}",
+            std::env::var("SLIDESHOW_INTERVAL")
+        );
+        println!("REFRESH_INTERVAL: {:?}", std::env::var("REFRESH_INTERVAL"));
+        println!("Request limit: {}", request_limit);
         let mut stmt = connection
-            .prepare(
+            .prepare(&format!(
                 r#"
                 SELECT id FROM resources 
                 WHERE id NOT IN (SELECT id FROM hidden) 
                 ORDER BY RANDOM() 
-                LIMIT 1000;"#,
-            )
+                LIMIT {};"#,
+                request_limit
+            ))
             .unwrap();
         let mut rows = stmt.query([]).unwrap();
         let mut ids: Vec<String> = Vec::new();
