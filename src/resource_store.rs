@@ -194,19 +194,6 @@ impl ResourceStore {
         let request_limit =
             (60 / config::get_refresh_interval_value()) * config::get_refresh_interval_value();
         let request_limit = (request_limit as f32 * 1.1) as usize;
-        // print all variables
-        println!("Refresh interval: {}", config::get_refresh_interval_value());
-        println!(
-            "Slideshow interval: {}",
-            config::get_slideshow_interval_value()
-        );
-        // print content of env vars: SLIDESHOW_INTERVAL, REFRESH_INTERVAL
-        println!(
-            "SLIDESHOW_INTERVAL: {:?}",
-            std::env::var("SLIDESHOW_INTERVAL")
-        );
-        println!("REFRESH_INTERVAL: {:?}", std::env::var("REFRESH_INTERVAL"));
-        println!("Request limit: {}", request_limit);
         let mut stmt = connection
             .prepare(&format!(
                 r#"
