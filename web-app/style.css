@@ -105,11 +105,11 @@
 /* ========================     */
 
 .fade-in {
-    animation: fadeIn ease 1s forwards;
-    -webkit-animation: fadeIn ease 1s forwards;
-    -moz-animation: fadeIn ease 1s forwards;
-    -o-animation: fadeIn ease 1s forwards;
-    -ms-animation: fadeIn ease 1s forwards;
+    animation: fadeIn ease 500ms forwards;
+    -webkit-animation: fadeIn ease 500ms forwards;
+    -moz-animation: fadeIn ease 500ms forwards;
+    -o-animation: fadeIn ease 500ms forwards;
+    -ms-animation: fadeIn ease 500ms forwards;
 }
 
 @keyframes fadeIn {
@@ -162,11 +162,11 @@
 /* ========================     */
 
 .fade-out {
-    animation: fadeOut ease 1s forwards;
-    -webkit-animation: fadeOut ease 1s forwards;
-    -moz-animation: fadeOut ease 1s forwards;
-    -o-animation: fadeOut ease 1s forwards;
-    -ms-animation: fadeOut ease 1s forwards;
+    animation: fadeOut ease 500ms forwards;
+    -webkit-animation: fadeOut ease 500ms forwards;
+    -moz-animation: fadeOut ease 500ms forwards;
+    -o-animation: fadeOut ease 500ms forwards;
+    -ms-animation: fadeOut ease 500ms forwards;
 }
 
 @keyframes fadeOut {
@@ -212,4 +212,24 @@
     100% {
         opacity: 0;
     }
+}
+
+#control-panel {
+    position: absolute;
+    bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 3vh;
+    z-index: 3;
+}
+
+#control-panel div {
+    flex: 1;
+    height: 100%;
+    opacity: 0; /* Make the zones invisible */
+    cursor: pointer;
 }

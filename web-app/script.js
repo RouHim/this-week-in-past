@@ -9,6 +9,8 @@ let maxIndex = 0;
 let current_resource_id;
 let intervalID;
 let forceRandomSlideshow = false;
+let isPaused = false;
+let slideshowId;
 
 /**
  * On page load, do the following things:
@@ -103,7 +105,7 @@ function beginSlideshow(foundResourcesOfThisWeek) {
     let intervalInSeconds = getSlideshowInterval();
 
     // Start image slideshow
-    setInterval(() => slideshowTick(), intervalInSeconds * 1000);
+    slideshowId = setInterval(() => slideshowTick(), intervalInSeconds * 1000);
 }
 
 /**
@@ -257,7 +259,7 @@ function setImage(resource_id) {
     slideShowMetadata.classList.add("fade-out");
 
     // wait for the fade out animation to end
-    sleep(1000).then(() => {
+    sleep(500).then(() => {
 
         // when the image is loaded, start the fade in animation
         slideshowImage.onload = () => {
@@ -272,7 +274,7 @@ function setImage(resource_id) {
             slideShowMetadata.classList.remove("fade-out");
 
             // wait for the fade in animation to end
-            sleep(1000).then(() => {
+            sleep(500).then(() => {
                 backgroundImage.classList.remove("fade-in");
                 slideshowImage.classList.remove("fade-in");
                 slideShowMetadata.classList.remove("fade-in");
@@ -289,7 +291,7 @@ function setImage(resource_id) {
         photoMetadataRequest.send();
         photoMetadataRequest.onload = () => slideShowMetadata.innerText = photoMetadataRequest.response;
 
-        // At last, set the current resource id
+        // At last step, set the current resource id
         current_resource_id = resource_id;
     })
 }
@@ -367,4 +369,41 @@ function getRefreshInterval() {
  */
 function sleep(ms) {
     return new Promise(resolver => setTimeout(resolver, ms));
+}
+
+function showPrevImage() {
+    console.log("Showing previous image");
+    currentIndex--;
+    if (currentIndex < 0) {
+        currentIndex = maxIndex;
+    }
+    setImage(resourcesThisWeek[currentIndex]);
+
+    // Reset the slideshow interval to avoid takeover effect
+    clearInterval(slideshowId);
+    slideshowId = setInterval(slideshowTick, getSlideshowInterval() * 1000);
+}
+
+function pauseResumeSlideshow() {
+    if (isPaused) {
+        console.log("Resuming slideshow");
+    } else {
+        console.log("Pausing slideshow");
+    }
+    isPaused = !isPaused;
+    document.getElementById("pause-zone").innerText = isPaused ? "Resume" : "Pause";
+    if (isPaused) {
+        clearInterval(slideshowId);
+    } else {
+        slideshowId = setInterval(slideshowTick, getSlideshowInterval() * 1000);
+    }
+}
+
+function showNextImage() {
+    console.log("Showing next image");
+    slideshowTick();
+
+    // Reset the slideshow interval to avoid takeover effect
+    clearInterval(slideshowId);
+    slideshowId = setInterval(slideshowTick, getSlideshowInterval() * 1000);
 }
