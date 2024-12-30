@@ -1,3 +1,10 @@
+## [1.28.1](https://github.com/RouHim/this-week-in-past/compare/1.28.0...1.28.1) (2024-12-30)
+
+
+### Bug Fixes
+
+* broken request limit calculation ([19d1948](https://github.com/RouHim/this-week-in-past/commit/19d1948be5a1a034d9976ed55a625cb2518773e4))
+
 # [1.28.0](https://github.com/RouHim/this-week-in-past/compare/1.27.2...1.28.0) (2024-12-30)
 
 
