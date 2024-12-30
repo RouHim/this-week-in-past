@@ -194,13 +194,6 @@ impl ResourceStore {
         let request_limit = (60. / config::get_slideshow_interval_value() as f32)
             * config::get_refresh_interval_value() as f32;
         let request_limit = (request_limit * 1.1) as usize;
-        // print all variables
-        println!(
-            "Request limit: {}, Refresh interval: {}, Slideshow interval: {}",
-            request_limit,
-            config::get_refresh_interval_value(),
-            config::get_slideshow_interval_value()
-        );
         let mut stmt = connection
             .prepare(&format!(
                 r#"
