@@ -9,6 +9,8 @@ let maxIndex = 0;
 let current_resource_id;
 let intervalID;
 let forceRandomSlideshow = false;
+let isPaused = false;
+let slideshowId;
 
 /**
  * On page load, do the following things:
@@ -103,7 +105,7 @@ function beginSlideshow(foundResourcesOfThisWeek) {
     let intervalInSeconds = getSlideshowInterval();
 
     // Start image slideshow
-    setInterval(() => slideshowTick(), intervalInSeconds * 1000);
+    slideshowId = setInterval(() => slideshowTick(), intervalInSeconds * 1000);
 }
 
 /**
@@ -257,41 +259,35 @@ function setImage(resource_id) {
     slideShowMetadata.classList.add("fade-out");
 
     // wait for the fade out animation to end
-    sleep(1000).then(() => {
+    sleep(500).then(() => {
 
         // when the image is loaded, start the fade in animation
         slideshowImage.onload = () => {
             // fade images in
-            backgroundImage.classList.add("fade-in");
-            backgroundImage.classList.remove("fade-out");
-
-            slideshowImage.classList.add("fade-in");
-            slideshowImage.classList.remove("fade-out");
-
-            slideShowMetadata.classList.add("fade-in");
-            slideShowMetadata.classList.remove("fade-out");
+            backgroundImage.classList.replace("fade-out", "fade-in");
+            slideshowImage.classList.replace("fade-out", "fade-in");
+            slideShowMetadata.classList.replace("fade-out", "fade-in");
 
             // wait for the fade in animation to end
-            sleep(1000).then(() => {
+            sleep(500).then(() => {
                 backgroundImage.classList.remove("fade-in");
                 slideshowImage.classList.remove("fade-in");
                 slideShowMetadata.classList.remove("fade-in");
             });
-        }
+        };
 
         // set image and blurred background image
         backgroundImage.style.backgroundImage = `url(${imageUrl})`;
         slideshowImage.src = imageUrl;
 
         // set image description but fade in is done simultaneously with the fade in of the image, see above
-        let photoMetadataRequest = new XMLHttpRequest();
-        photoMetadataRequest.open("GET", "/api/resources/" + resource_id + "/description");
-        photoMetadataRequest.send();
-        photoMetadataRequest.onload = () => slideShowMetadata.innerText = photoMetadataRequest.response;
+        fetch(`/api/resources/${resource_id}/description`)
+            .then(response => response.text())
+            .then(text => slideShowMetadata.innerText = text);
 
-        // At last, set the current resource id
+        // At last step, set the current resource id
         current_resource_id = resource_id;
-    })
+    });
 }
 
 /**
@@ -367,4 +363,53 @@ function getRefreshInterval() {
  */
 function sleep(ms) {
     return new Promise(resolver => setTimeout(resolver, ms));
+}
+
+/**
+ * Shows the previous image in the slideshow.
+ * Resets the slideshow interval to avoid takeover effect.
+ */
+function showPrevImage() {
+    console.log("Showing previous image");
+    currentIndex--;
+    if (currentIndex < 0) {
+        currentIndex = maxIndex;
+    }
+    setImage(resourcesThisWeek[currentIndex]);
+
+    // Reset the slideshow interval to avoid takeover effect
+    clearInterval(slideshowId);
+    slideshowId = setInterval(slideshowTick, getSlideshowInterval() * 1000);
+}
+
+/**
+ * Pauses or resumes the slideshow.
+ * Updates the button text to reflect the current state.
+ */
+function pauseResumeSlideshow() {
+    if (isPaused) {
+        console.log("Resuming slideshow");
+    } else {
+        console.log("Pausing slideshow");
+    }
+    isPaused = !isPaused;
+    document.getElementById("pause-zone").innerText = isPaused ? "Resume" : "Pause";
+    if (isPaused) {
+        clearInterval(slideshowId);
+    } else {
+        slideshowId = setInterval(slideshowTick, getSlideshowInterval() * 1000);
+    }
+}
+
+/**
+ * Shows the next image in the slideshow.
+ * Resets the slideshow interval to avoid takeover effect.
+ */
+function showNextImage() {
+    console.log("Showing next image");
+    slideshowTick();
+
+    // Reset the slideshow interval to avoid takeover effect
+    clearInterval(slideshowId);
+    slideshowId = setInterval(slideshowTick, getSlideshowInterval() * 1000);
 }

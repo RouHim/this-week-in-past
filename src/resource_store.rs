@@ -118,7 +118,7 @@ impl ResourceStore {
         stmt.execute([resource_id]).unwrap();
     }
 
-    /// Adds a image cache entry, if an entry already exists it gets updated
+    /// Adds an image cache entry, if an entry already exists it gets updated
     pub fn add_data_cache_entry(&self, id: String, data: &Vec<u8>) {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
@@ -128,7 +128,7 @@ impl ResourceStore {
             .unwrap_or_else(|error| panic!("Insertion of {id} failed:n{}", error));
     }
 
-    /// Get a image cache entry
+    /// Get an image cache entry
     pub fn get_data_cache_entry(&self, id: String) -> Option<Vec<u8>> {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
@@ -194,13 +194,6 @@ impl ResourceStore {
         let request_limit = (60. / config::get_slideshow_interval_value() as f32)
             * config::get_refresh_interval_value() as f32;
         let request_limit = (request_limit * 1.1) as usize;
-        // print all variables
-        println!(
-            "Request limit: {}, Refresh interval: {}, Slideshow interval: {}",
-            request_limit,
-            config::get_refresh_interval_value(),
-            config::get_slideshow_interval_value()
-        );
         let mut stmt = connection
             .prepare(&format!(
                 r#"

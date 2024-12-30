@@ -9,7 +9,7 @@ pub fn get_slideshow_interval_value() -> usize {
 
 pub fn get_refresh_interval_value() -> usize {
     env::var("REFRESH_INTERVAL")
-        .unwrap_or_else(|_| "60".to_string())
+        .unwrap_or_else(|_| "360".to_string())
         .parse()
-        .unwrap_or(60)
+        .unwrap_or(360)
 }
