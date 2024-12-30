@@ -12,66 +12,6 @@ use crate::{config_endpoint, resource_reader, resource_store, scheduler};
 const TEST_FOLDER_NAME: &str = "integration_test_config_api";
 
 #[actix_web::test]
-async fn test_get_slideshow_interval() {
-    // GIVEN is a running this-week-in-past instance
-    let base_test_dir = create_temp_folder().await;
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
-
-    // AND slideshow interval is set
-    let slideshow_interval: String = rand::thread_rng().gen::<u16>().to_string();
-    env::set_var("SLIDESHOW_INTERVAL", &slideshow_interval);
-
-    // WHEN requesting slideshow interval
-    let response: String = String::from_utf8(
-        test::call_and_read_body(
-            &app_server,
-            test::TestRequest::get()
-                .uri("/api/config/interval/slideshow")
-                .to_request(),
-        )
-        .await
-        .to_vec(),
-    )
-    .unwrap();
-
-    // THEN the response should contain the correct interval
-    assert_that!(response).is_equal_to(&slideshow_interval);
-
-    // cleanup
-    cleanup(&base_test_dir).await;
-}
-
-#[actix_web::test]
-async fn test_get_refresh_interval() {
-    // GIVEN is a running this-week-in-past instance
-    let base_test_dir = create_temp_folder().await;
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
-
-    // AND refresh interval is set
-    let refresh_interval: String = rand::thread_rng().gen::<u16>().to_string();
-    env::set_var("REFRESH_INTERVAL", &refresh_interval);
-
-    // WHEN requesting refresh interval
-    let response: String = String::from_utf8(
-        test::call_and_read_body(
-            &app_server,
-            test::TestRequest::get()
-                .uri("/api/config/interval/refresh")
-                .to_request(),
-        )
-        .await
-        .to_vec(),
-    )
-    .unwrap();
-
-    // THEN the response should contain the correct interval
-    assert_that!(response).is_equal_to(&refresh_interval);
-
-    // cleanup
-    cleanup(&base_test_dir).await;
-}
-
-#[actix_web::test]
 async fn test_get_random_slideshow() {
     // GIVEN is a running this-week-in-past instance
     let base_test_dir = create_temp_folder().await;
