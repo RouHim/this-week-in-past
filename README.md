@@ -141,6 +141,14 @@ There are two ways to ignore folders:
 * Due to [this issue](https://github.com/image-rs/image/issues/1375) of the image crate, there is currently no **HEIC**
   image support.
 
+## Visual Interaction
+
+The slideshow can be controlled by clicking on invisible zones on the screen. These zones are divided into three areas:
+
+* **Previous Image**: Clicking on the left side of the screen will show the previous image.
+* **Pause/Resume**: Clicking in the middle of the screen will pause or resume the slideshow.
+* **Next Image**: Clicking on the right side of the screen will show the next image.
+
 ## Performance
 
 ### Example 1
