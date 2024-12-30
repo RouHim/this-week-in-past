@@ -1,3 +1,11 @@
+## [1.27.2](https://github.com/RouHim/this-week-in-past/compare/1.27.1...1.27.2) (2024-12-30)
+
+
+### Bug Fixes
+
+* adjust random fetch limit ([4a536e4](https://github.com/RouHim/this-week-in-past/commit/4a536e43ce91230054c36bf43c21f4de7d3c7d1c))
+* remove broken test ([61c9f96](https://github.com/RouHim/this-week-in-past/commit/61c9f96e189d935ac47806980d8c9ba4db6c450c))
+
 ## [1.27.1](https://github.com/RouHim/this-week-in-past/compare/1.27.0...1.27.1) (2024-12-28)
 
 # [1.27.0](https://github.com/RouHim/this-week-in-past/compare/1.26.40...1.27.0) (2024-12-25)
