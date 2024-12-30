@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/RouHim/this-week-in-past/compare/1.27.2...1.28.0) (2024-12-30)
+
+
+### Features
+
+* add slideshow image preloading ([4cf0177](https://github.com/RouHim/this-week-in-past/commit/4cf0177cf22e81d5486332c03afaf2bb64dde1ec))
+
 ## [1.27.2](https://github.com/RouHim/this-week-in-past/compare/1.27.1...1.27.2) (2024-12-30)
 
 
