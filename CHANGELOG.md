@@ -1,3 +1,20 @@
+# [1.29.0](https://github.com/RouHim/this-week-in-past/compare/1.28.1...1.29.0) (2024-12-30)
+
+
+### Bug Fixes
+
+* broken request limit calculation ([8789a33](https://github.com/RouHim/this-week-in-past/commit/8789a33e9585f9f791fecd66a430a90001b9fa68))
+* code cleanup & fix covered hide button ([1c5151a](https://github.com/RouHim/this-week-in-past/commit/1c5151a433c5bcdc43a1bfab6725a85faf080698))
+* code cleanup & fix covered hide button ([99172b3](https://github.com/RouHim/this-week-in-past/commit/99172b3bcf6792f69bdafb076c916c96bbf05055))
+
+
+### Features
+
+* add slideshow screen navigation ([d9458a7](https://github.com/RouHim/this-week-in-past/commit/d9458a72485ec538ec2f9ae17b8573b613163ea6))
+* add slideshow screen navigation ([1f0ba24](https://github.com/RouHim/this-week-in-past/commit/1f0ba24344de5838f2d9ede2dd392736152a0ca7))
+* increase the default refresh interval from 1h -> 6h / some doc improvements ([415225b](https://github.com/RouHim/this-week-in-past/commit/415225bea7dae533dc66c10e42fdc9adf8fc4045))
+* increase the default refresh interval from 1h -> 6h / some doc improvements ([31dc1a3](https://github.com/RouHim/this-week-in-past/commit/31dc1a38301561612fd9c8d73713cc66a69ff160))
+
 ## [1.28.1](https://github.com/RouHim/this-week-in-past/compare/1.28.0...1.28.1) (2024-12-30)
 
 
