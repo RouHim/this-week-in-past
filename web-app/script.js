@@ -40,6 +40,14 @@ function shouldOnlyPlayRandom() {
     return request.status === 200 && request.responseText === "true";
 }
 
+function shouldPreloadImages() {
+    let request = new XMLHttpRequest();
+    request.open('GET', `/api/config/preload-images`, false);
+    request.send(null);
+
+    return request.status === 200 && request.responseText === "true";
+}
+
 /**
  * Initializes a new slideshow, if random is active fetch a random playlist.
  * Otherwise, fetch the current week's playlist.
@@ -80,6 +88,8 @@ function initSlideshow() {
  * @param foundResourcesOfThisWeek to start the slideshow with
  */
 function beginSlideshow(foundResourcesOfThisWeek) {
+    console.log("Starting slideshow with " + foundResourcesOfThisWeek.length + " images");
+
     resourcesThisWeek = foundResourcesOfThisWeek;
 
     maxIndex = Object.keys(resourcesThisWeek).length - 1;
@@ -225,6 +235,8 @@ function getCurrentTemperatureDataFromHomeAssistant() {
  * @param resource_id the id of the resource
  */
 function setImage(resource_id) {
+    console.log("Showing image: " + resource_id);
+
     // build the image url
     let screenWidth = window.screen.availWidth;
     let screenHeight = window.screen.availHeight;
@@ -279,21 +291,6 @@ function setImage(resource_id) {
 }
 
 /**
- * @returns {any|null} a random resources from the backend API
- */
-function getRandomResources() {
-    let request = new XMLHttpRequest();
-    request.open('GET', `/api/resources/random`, false);
-    request.send(null);
-
-    if (request.status === 200) {
-        return JSON.parse(request.response);
-    } else {
-        return null;
-    }
-}
-
-/**
  * On slideshow tick interval.
  * Set the slideshow image and its meta information.
  */
@@ -305,6 +302,25 @@ function slideshowTick() {
     if (currentIndex > maxIndex) {
         currentIndex = 0;
     }
+
+    // Preload next image if active
+    if (shouldPreloadImages()) {
+        preloadNextImage(resourcesThisWeek[currentIndex]);
+    }
+}
+
+/**
+ * Preloads the next image in the background, this done by requesting the image from the backend, because the backend caches the images.
+ * Thus, consecutive requests for the same image are faster.
+ * @param resource_id the id of the resource to preload
+ */
+function preloadNextImage(resource_id) {
+    console.log("Preloading next image: " + resource_id);
+    let screenWidth = window.screen.availWidth;
+    let screenHeight = window.screen.availHeight;
+    let request = new XMLHttpRequest();
+    request.open("GET", `/api/resources/${resource_id}/${screenWidth}/${screenHeight}`);
+    request.send();
 }
 
 /**

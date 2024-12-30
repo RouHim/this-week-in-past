@@ -31,3 +31,10 @@ pub async fn get_random_slideshow_enabled() -> HttpResponse {
         .content_type("plain/text")
         .body(env::var("RANDOM_SLIDESHOW").unwrap_or_else(|_| "false".to_string()))
 }
+
+#[get("preload-images")]
+pub async fn get_preload_images_enabled() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("plain/text")
+        .body(env::var("PRELOAD_IMAGES").unwrap_or_else(|_| "false".to_string()))
+}

@@ -120,6 +120,7 @@ All configuration is done via environment variables:
 | RANDOM_SLIDESHOW           | Show only random images instead of images from this week in previous years                                  | `false`                       | x                         |
 | IGNORE_FOLDER_MARKER_FILES | A list of file names which causes the folder in which the file is located to be ignored. (comma separated). | `.ignore`                     |                           |
 | IGNORE_FOLDER_REGEX        | A regular expression that causes the folder to be ignored if it matches.                                    |                               |                           |
+| PRELOAD_IMAGES             | Indicates if images should be preloaded curing the slideshow                                                | `false`                       |                           |
 
 > Some parameters, as marked in the table, can be overwritten as URL parameter
 > e.g.: http://localhost:8080/?SLIDESHOW_INTERVAL=10&SHOW_HIDE_BUTTON=false
