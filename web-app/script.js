@@ -19,10 +19,10 @@ let slideshowId;
  *      - Set a page reload interval for each hour
  */
 window.addEventListener('load', () => {
+    forceRandomSlideshow = shouldOnlyPlayRandom();
     initSlideshow();
     loadWeatherInformation();
     initHideButton();
-    forceRandomSlideshow = shouldOnlyPlayRandom();
 
     // Reload page every x minutes
     let refreshIntervalInMinutes = getRefreshInterval();
