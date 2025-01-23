@@ -31,7 +31,7 @@ rand = "0.8.5"
 # Use git version (https://github.com/knopp/mime_guess) of mime_guess until https://github.com/abonander/mime_guess/pull/82 is merged
 mime_guess = { git = "https://github.com/knopp/mime_guess", branch = "add_heif_jxl" }
 r2d2 = "0.8.10"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.33", features = ["bundled"] }
 r2d2_sqlite = "0.25"
 
 [dev-dependencies]
