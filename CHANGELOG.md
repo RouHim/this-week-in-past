@@ -1,3 +1,10 @@
+## [1.29.6](https://github.com/RouHim/this-week-in-past/compare/1.29.5...1.29.6) (2025-01-23)
+
+
+### Bug Fixes
+
+* random slideshow parameter getting ignored ([945ee9e](https://github.com/RouHim/this-week-in-past/commit/945ee9e7b269574741ebb3aca85d3c1dbd265668))
+
 ## [1.29.5](https://github.com/RouHim/this-week-in-past/compare/1.29.4...1.29.5) (2025-01-20)
 
 ## [1.29.4](https://github.com/RouHim/this-week-in-past/compare/1.29.3...1.29.4) (2025-01-19)
