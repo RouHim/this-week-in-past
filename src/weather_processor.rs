@@ -17,7 +17,11 @@ pub async fn get_current_weather() -> Option<String> {
     ).as_str()).call();
 
     if let Ok(response) = response {
-        response.into_string().ok()
+        // Patch JSON response to include units field so the javascript can know whether to report F or C
+        Some(response.into_string().ok()?.replace(
+            "\"weather\":",
+            format!("\"units\":\"{}\",\"weather\":", units).as_str(),
+        ))
     } else {
         None
     }

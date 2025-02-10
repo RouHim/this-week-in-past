@@ -201,7 +201,11 @@ function showCurrentWeather(data) {
             document.getElementById("weather-temperature").innerText =
                 Math.round(homeAssistantData.state) + homeAssistantData.attributes.unit_of_measurement;
         } else {
-            document.getElementById("weather-temperature").innerText = Math.round(data.main.temp) + "°C";
+            if (data.units == "metric"){
+              document.getElementById("weather-temperature").innerText = Math.round(data.main.temp) + "°C";
+            }else{
+              document.getElementById("weather-temperature").innerText = Math.round(data.main.temp) + "°F";
+            }
         }
     });
 }
