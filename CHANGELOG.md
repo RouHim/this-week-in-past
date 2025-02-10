@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/RouHim/this-week-in-past/compare/1.29.8...1.30.0) (2025-02-10)
+
+
+### Features
+
+* trigger release bot ([d3511de](https://github.com/RouHim/this-week-in-past/commit/d3511de30ceb78d7525bf13e9087037df1c237b0))
+
 ## [1.29.8](https://github.com/RouHim/this-week-in-past/compare/1.29.7...1.29.8) (2025-01-28)
 
 ## [1.29.7](https://github.com/RouHim/this-week-in-past/compare/1.29.6...1.29.7) (2025-01-25)
