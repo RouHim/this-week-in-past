@@ -1,3 +1,10 @@
+# [1.31.0](https://github.com/RouHim/this-week-in-past/compare/1.30.1...1.31.0) (2025-02-20)
+
+
+### Features
+
+* **weather:** Allow user to really set the weather unit to imperial or metric ([8f981f3](https://github.com/RouHim/this-week-in-past/commit/8f981f3388d8572875182a9b0392826ab4c2320f))
+
 ## [1.30.1](https://github.com/RouHim/this-week-in-past/compare/1.30.0...1.30.1) (2025-02-20)
 
 # [1.30.0](https://github.com/RouHim/this-week-in-past/compare/1.29.8...1.30.0) (2025-02-10)
