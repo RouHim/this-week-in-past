@@ -1,3 +1,4 @@
+use crate::config;
 use std::env;
 
 /// Returns the current weather data provided by OpenWeatherMap
@@ -10,7 +11,7 @@ pub async fn get_current_weather() -> Option<String> {
 
     let api_key: String = env::var("OPEN_WEATHER_MAP_API_KEY").unwrap();
     let city: String = env::var("WEATHER_LOCATION").unwrap_or_else(|_| "Berlin".to_string());
-    let units: String = env::var("WEATHER_UNIT").unwrap_or_else(|_| "metric".to_string());
+    let units: String = config::get_weather_unit();
     let language: String = env::var("WEATHER_LANGUAGE").unwrap_or_else(|_| "en".to_string());
     let response = ureq::get(format!(
         "https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units={units}&lang={language}"

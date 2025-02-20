@@ -3,7 +3,7 @@ use std::env;
 use actix_web::get;
 use actix_web::HttpResponse;
 
-use crate::weather_processor;
+use crate::{config, weather_processor};
 
 #[get("")]
 pub async fn get_is_weather_enabled() -> HttpResponse {
@@ -49,4 +49,11 @@ pub async fn get_home_assistant_entity_data() -> HttpResponse {
     } else {
         HttpResponse::InternalServerError().finish()
     }
+}
+
+#[get("unit")]
+pub async fn get_weather_unit() -> HttpResponse {
+    HttpResponse::Ok()
+        .content_type("plain/text")
+        .body(config::get_weather_unit())
 }

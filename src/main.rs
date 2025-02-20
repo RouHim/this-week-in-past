@@ -118,7 +118,8 @@ async fn main() -> std::io::Result<()> {
                     .service(weather_endpoint::get_is_weather_enabled)
                     .service(weather_endpoint::get_current_weather)
                     .service(weather_endpoint::get_is_home_assistant_enabled)
-                    .service(weather_endpoint::get_home_assistant_entity_data),
+                    .service(weather_endpoint::get_home_assistant_entity_data)
+                    .service(weather_endpoint::get_weather_unit),
             )
             .service(
                 web::scope("/api/config")

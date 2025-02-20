@@ -13,3 +13,7 @@ pub fn get_refresh_interval_value() -> usize {
         .parse()
         .unwrap_or(360)
 }
+
+pub fn get_weather_unit() -> String {
+    env::var("WEATHER_UNIT").unwrap_or_else(|_| "metric".to_string())
+}

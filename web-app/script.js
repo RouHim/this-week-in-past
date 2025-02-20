@@ -3,6 +3,9 @@ Disclaimer:
     Yes this is vanilla javascript, and no I'm not a professional web developer.
 */
 
+
+const WEATHER_INTERVAL = 1800000; // 30 minutes
+
 let resourcesThisWeek;
 let currentIndex = 0;
 let maxIndex = 0;
@@ -11,6 +14,7 @@ let intervalID;
 let forceRandomSlideshow = false;
 let isPaused = false;
 let slideshowId;
+let weatherUnit;
 
 /**
  * On page load, do the following things:
@@ -146,6 +150,15 @@ function hideCurrentImage() {
 }
 
 
+function fetchWeatherUnit() {
+    fetch(`/api/weather/unit`)
+        .then(response => response.text())
+        .then(unitText => {
+            weatherUnit = unitText;
+        })
+        .catch(error => console.error("Error:", error));
+}
+
 /**
  * Checks if the weather information should be shown, if so load them
  */
@@ -155,6 +168,8 @@ function loadWeatherInformation() {
     if (urlParams.has('WEATHER_ENABLED')) {
         if (urlParams.get('WEATHER_ENABLED') === "true") {
             loadCurrentWeather();
+            setInterval(loadCurrentWeather, WEATHER_INTERVAL); // Update weather every x minutes
+
         }
         return;
     }
@@ -165,15 +180,22 @@ function loadWeatherInformation() {
         .then(showWeather => {
             if (showWeather === true) {
                 loadCurrentWeather();
+                setInterval(loadCurrentWeather, WEATHER_INTERVAL); // Update weather every x minutes
             }
         })
         .catch(error => console.error("Error:", error));
+}
+
+function getWeatherUnit() {
+    return weatherUnit === "metric" ? "°C" : "°F";
 }
 
 /**
  * Loads the current weather from the rest api and shows it
  */
 function loadCurrentWeather() {
+    fetchWeatherUnit();
+
     fetch(`/api/weather/current`)
         .then(response => response.json())
         .then(data => {
@@ -195,14 +217,15 @@ function showCurrentWeather(data) {
     document.getElementById("weather-label").textContent = weather.description + ",";
     document.getElementById("weather-icon").src = `https://openweathermap.org/img/w/${icon}.png`;
 
-    isHomeAssistantEnabled().then((enabled) => {
-        if (enabled) {
+    isHomeAssistantEnabled().then((isHomeAssistantEnabled) => {
+        let temperatureText;
+        if (isHomeAssistantEnabled) {
             let homeAssistantData = JSON.parse(getCurrentTemperatureDataFromHomeAssistant());
-            document.getElementById("weather-temperature").innerText =
-                Math.round(homeAssistantData.state) + homeAssistantData.attributes.unit_of_measurement;
+            temperatureText = Math.round(homeAssistantData.state) + homeAssistantData.attributes.unit_of_measurement;
         } else {
-            document.getElementById("weather-temperature").innerText = Math.round(data.main.temp) + "°C";
+            temperatureText = Math.round(data.main.temp) + getWeatherUnit();
         }
+        document.getElementById("weather-temperature").innerText = temperatureText;
     });
 }
 
