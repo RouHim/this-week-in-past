@@ -151,7 +151,8 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
 
     let response_json = response
         .unwrap()
-        .into_string()
+        .body_mut()
+        .read_to_string()
         .ok()
         .and_then(|json_string| serde_json::from_str::<HashMap<String, Value>>(&json_string).ok());
 

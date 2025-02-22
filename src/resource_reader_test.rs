@@ -189,14 +189,19 @@ fn create_test_image(base_dir: &Path, sub_dir: &str, file_name: &str, image_url:
 
     let test_image_path = target_dir.join(file_name);
 
-    let mut image_data: Vec<u8> = vec![];
-    ureq::get(image_url)
-        .call()
-        .unwrap()
-        .into_reader()
-        .read_to_end(&mut image_data)
+    let mut response = ureq::get(image_url).call().unwrap();
+
+    let content_length = response.headers().get("Content-Length").unwrap();
+    let len: usize = content_length.to_str().unwrap().parse().unwrap();
+
+    let mut data: Vec<u8> = Vec::with_capacity(len);
+    response
+        .body_mut()
+        .as_reader()
+        .read_to_end(&mut data)
         .unwrap();
-    fs::write(&test_image_path, &image_data).unwrap_or_else(|_| {
+
+    fs::write(&test_image_path, &data).unwrap_or_else(|_| {
         panic!(
             "error while writing test image {}",
             test_image_path.to_str().unwrap()

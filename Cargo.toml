@@ -17,7 +17,7 @@ serde_json = "1.0.116"
 chrono = { version = "0.4.38", features = ["serde"] }
 time = "0.3.36"
 md5 = "0.7"
-ureq = "2.9.7"
+ureq = "3.0.0"
 actix-http = { version = "3.6", features = ["rustls"] }
 actix-web = { version = "4.5.1", features = ["rustls"] }
 clokwerk = "0.4"
@@ -37,7 +37,7 @@ r2d2_sqlite = "0.26"
 assertor = "0.0.3"
 pretty_assertions = "1.4"
 actix-rt = "2.9"
-ureq = "2.9.7"
+ureq = "3.0.0"
 
 [profile.release]
 panic = "abort" # Strip expensive panic clean-up logic
