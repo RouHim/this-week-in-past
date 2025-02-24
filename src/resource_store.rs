@@ -52,7 +52,7 @@ impl ResourceStore {
                 execute_query(&connection, get_next_year_query()),
             ]
             .concat();
-            new_year_resources.shuffle(&mut rand::thread_rng());
+            new_year_resources.shuffle(&mut rand::rng());
             return new_year_resources;
         }
 
