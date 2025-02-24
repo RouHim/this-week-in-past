@@ -18,7 +18,7 @@ async fn test_get_random_slideshow() {
     let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // AND random slideshow is set
-    let random_slideshow: String = rand::thread_rng().gen::<bool>().to_string();
+    let random_slideshow: String = rand::rng().random::<bool>().to_string();
     env::set_var("RANDOM_SLIDESHOW", &random_slideshow);
 
     // WHEN requesting random slideshow
@@ -65,7 +65,7 @@ fn build_app(
 
 /// Creates a temp folder with the given name and returns its full path
 async fn create_temp_folder() -> PathBuf {
-    let random_string = rand::thread_rng().gen::<u32>().to_string();
+    let random_string = rand::rng().random::<u32>().to_string();
     let test_dir: PathBuf = env::temp_dir().join(TEST_FOLDER_NAME).join(&random_string);
 
     if test_dir.exists() {

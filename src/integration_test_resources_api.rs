@@ -621,7 +621,7 @@ async fn cleanup(test_dir: &PathBuf) {
 
 /// Creates a temp folder with the given name and returns its full path
 async fn create_temp_folder() -> PathBuf {
-    let random_string = rand::thread_rng().gen::<u32>().to_string();
+    let random_string = rand::rng().random::<u32>().to_string();
     let test_dir: PathBuf = env::temp_dir().join(TEST_FOLDER_NAME).join(random_string);
 
     if test_dir.exists() {
