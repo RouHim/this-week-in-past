@@ -17,8 +17,8 @@ pub async fn get_current_weather() -> Option<String> {
         "https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units={units}&lang={language}"
     ).as_str()).call();
 
-    if let Ok(response) = response {
-        response.into_string().ok()
+    if let Ok(mut response) = response {
+        response.body_mut().read_to_string().ok()
     } else {
         None
     }
@@ -38,14 +38,14 @@ pub async fn get_home_assistant_data() -> Option<String> {
 
     let response =
         ureq::get(format!("{}/api/states/{}", base_url.unwrap(), entity_id.unwrap()).as_str())
-            .set(
+            .header(
                 "Authorization",
                 format!("Bearer {}", api_token.unwrap()).as_str(),
             )
             .call();
 
-    if let Ok(response) = response {
-        response.into_string().ok()
+    if let Ok(mut response) = response {
+        response.body_mut().read_to_string().ok()
     } else {
         None
     }

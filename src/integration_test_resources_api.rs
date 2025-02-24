@@ -10,6 +10,7 @@ use actix_web::{test, web, App, Error};
 use assertor::{assert_that, EqualityAssertion, VecAssertion};
 use chrono::{Duration, Local, NaiveDateTime};
 use rand::Rng;
+use rusqlite::fallible_iterator::FallibleIterator;
 use test::TestRequest;
 
 use crate::geo_location::GeoLocation;
@@ -591,15 +592,17 @@ async fn create_test_image(
 
     let test_image_path = target_dir.join(file_name);
 
-    let response = ureq::get(image_url).call().unwrap();
+    let mut response = ureq::get(image_url).call().unwrap();
 
-    let len: usize = response.header("Content-Length").unwrap().parse().unwrap();
+    let content_length = response.headers().get("Content-Length").unwrap();
+    let len: usize = content_length.to_str().unwrap().parse().unwrap();
 
     let mut data: Vec<u8> = Vec::with_capacity(len);
     response
-        .into_reader()
+        .body_mut()
+        .as_reader()
         .read_to_end(&mut data)
-        .expect("write fail");
+        .unwrap();
 
     fs::write(&test_image_path, data).unwrap_or_else(|_| {
         panic!(
