@@ -1,3 +1,10 @@
+## [1.31.3](https://github.com/RouHim/this-week-in-past/compare/1.31.2...1.31.3) (2025-02-24)
+
+
+### Bug Fixes
+
+* major ureq update ([16bc66f](https://github.com/RouHim/this-week-in-past/commit/16bc66f9e800396521ad97c12ee406a0bbfbd2e8))
+
 ## [1.31.2](https://github.com/RouHim/this-week-in-past/compare/1.31.1...1.31.2) (2025-02-22)
 
 ## [1.31.1](https://github.com/RouHim/this-week-in-past/compare/1.31.0...1.31.1) (2025-02-21)
