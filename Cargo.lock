@@ -349,9 +349,9 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "assertor"
-version = "0.0.3"
+version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b02f2af4042fbbed4d5732c517666629512c574c8e2edb5cfe2cf8a86564d52"
+checksum = "4ff24d87260733dc86d38a11c60d9400ce4a74a05d0dafa2a6f5ab249cd857cb"
 dependencies = [
  "num-traits",
 ]
