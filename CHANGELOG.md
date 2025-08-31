@@ -1,3 +1,5 @@
+## [1.31.42](https://github.com/RouHim/this-week-in-past/compare/1.31.41...1.31.42) (2025-08-31)
+
 ## [1.31.41](https://github.com/RouHim/this-week-in-past/compare/1.31.40...1.31.41) (2025-08-26)
 
 ## [1.31.40](https://github.com/RouHim/this-week-in-past/compare/1.31.39...1.31.40) (2025-08-24)
