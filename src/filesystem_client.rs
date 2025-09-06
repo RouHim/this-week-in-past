@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use image::ImageFormat;
 use lazy_static::lazy_static;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use regex::Regex;
 
 use crate::resource_reader::ImageResource;
@@ -164,9 +164,9 @@ fn read_resource(file_path: &PathBuf) -> Vec<ImageResource> {
 
     // Cancel and print error if no supported image format
     if image_format.is_none() {
-        // If the mime type is image, but the format is not supported, print a warning
+        // If the mime type is image, but the format is not supported, log it
         if mime_type.starts_with("image") {
-            warn!(
+            debug!(
                 "{absolute_file_path} | has unsupported image format: {}",
                 mime_type
             );
