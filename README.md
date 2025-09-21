@@ -10,7 +10,7 @@
     <a href="https://hub.docker.com/r/rouhim/this-week-in-past/tags"><img src="https://img.shields.io/badge/ARCH-amd64_•_arm64/v8_•_arm/v7_•_arm/v6-blueviolet" alt="os-arch"></a>
     <a href="http://152.70.175.46/"><img alt="Online demo" src="https://img.shields.io/static/v1?label=Demo&message=available&color=teal"></a>    
     <a href="https://buymeacoffee.com/rouhim"><img alt="Donate me" src="https://img.shields.io/badge/-buy_me_a%C2%A0coffee-gray?logo=buy-me-a-coffee"></a>  
-    <a href="https://github.com/awesome-selfhosted/awesome-selfhosted#photo-and-video-galleries"><img alt="Awesome" src="https://cdn.jsdelivr.net/gh/sindresorhus/awesome@d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg"></a>  
+    <a href="https://github.com/awesome-selfhosted/awesome-selfhosted?tab=readme-ov-file#photo-galleries"><img alt="Awesome" src="https://cdn.jsdelivr.net/gh/sindresorhus/awesome@d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg"></a>  
 </p>
 
 <p align="center">
