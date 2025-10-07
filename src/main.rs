@@ -2,6 +2,9 @@ extern crate core;
 
 use std::env;
 
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
 use env_logger::Builder;
 use log::{info, warn, LevelFilter};

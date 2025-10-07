@@ -32,6 +32,7 @@ mime_guess = "2.0.5"
 r2d2 = "0.8.10"
 rusqlite = { version = "0.37", features = ["bundled"] }
 r2d2_sqlite = "0.31"
+mimalloc = "0.1"
 
 [dev-dependencies]
 assertor = "0.0.4"
