@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use image::ImageFormat;
 use lazy_static::lazy_static;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use regex::Regex;
 
 use crate::resource_reader::ImageResource;

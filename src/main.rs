@@ -33,6 +33,12 @@ mod resource_processor_test;
 #[cfg(test)]
 mod resource_reader_test;
 
+// Avoid musl's default allocator due to lackluster performance
+// https://nickb.dev/blog/default-musl-allocator-considered-harmful-to-performance
+#[cfg(target_env = "musl")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 #[derive(Clone)]
 pub struct ResourceReader {
     /// Holds all specified local paths
