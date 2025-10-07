@@ -1322,6 +1322,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libmimalloc-sys"
+version = "0.1.44"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "667f4fec20f29dfc6bc7357c582d91796c169ad7e2fce709468aefeb2c099870"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
 name = "libsqlite3-sys"
 version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1401,6 +1411,15 @@ name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
+
+[[package]]
+name = "mimalloc"
+version = "0.1.48"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1ee66a4b64c74f4ef288bcbb9192ad9c3feaad75193129ac8509af543894fd8"
+dependencies = [
+ "libmimalloc-sys",
+]
 
 [[package]]
 name = "mime"
@@ -2256,7 +2275,6 @@ checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
 name = "this-week-in-past"
 version = "0.0.0"
 dependencies = [
- "actix-http",
  "actix-rt",
  "actix-web",
  "assertor",
@@ -2268,6 +2286,7 @@ dependencies = [
  "lazy_static",
  "log",
  "md5",
+ "mimalloc",
  "mime_guess",
  "pretty_assertions",
  "r2d2",
@@ -2278,7 +2297,6 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
- "time",
  "ureq",
 ]
 
