@@ -1,3 +1,10 @@
+# [1.32.0](https://github.com/RouHim/this-week-in-past/compare/1.31.56...1.32.0) (2025-10-07)
+
+
+### Features
+
+* **musl:** integrate mimalloc as the global allocator for improved performance ([3918cfc](https://github.com/RouHim/this-week-in-past/commit/3918cfc997953b3101ab177a69755c491ef26b1c))
+
 ## [1.31.56](https://github.com/RouHim/this-week-in-past/compare/1.31.55...1.31.56) (2025-10-02)
 
 ## [1.31.55](https://github.com/RouHim/this-week-in-past/compare/1.31.54...1.31.55) (2025-09-21)
