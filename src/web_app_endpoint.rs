@@ -1,38 +1,57 @@
-use actix_web::get;
-use actix_web::HttpResponse;
+use std::convert::Infallible;
+use warp::http::{Response, StatusCode};
+use warp::hyper::Body;
 
-#[get("/")]
-pub async fn index() -> HttpResponse {
+pub async fn index() -> Result<Response<Body>, Infallible> {
     let html = include_str!("../web-app/index.html");
-    HttpResponse::Ok().content_type("text/html").body(html)
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "text/html")
+        .body(Body::from(html))
+        .unwrap())
 }
 
-#[get("/style.css")]
-pub async fn style_css() -> HttpResponse {
+pub async fn style_css() -> Result<Response<Body>, Infallible> {
     let css = include_str!("../web-app/style.css");
-    HttpResponse::Ok().content_type("text/css").body(css)
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "text/css")
+        .body(Body::from(css))
+        .unwrap())
 }
 
-#[get("/script.js")]
-pub async fn script_js() -> HttpResponse {
+pub async fn script_js() -> Result<Response<Body>, Infallible> {
     let js = include_str!("../web-app/script.js");
-    HttpResponse::Ok().content_type("text/javascript").body(js)
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "text/javascript")
+        .body(Body::from(js))
+        .unwrap())
 }
 
-#[get("/images/hide.png")]
-pub async fn hide_png() -> HttpResponse {
+pub async fn hide_png() -> Result<Response<Body>, Infallible> {
     let hide_icon: &[u8] = include_bytes!("../web-app/images/hide.png");
-    HttpResponse::Ok().content_type("image/png").body(hide_icon)
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "image/png")
+        .body(Body::from(hide_icon.to_vec()))
+        .unwrap())
 }
 
-#[get("/icon.png")]
-pub async fn icon_png() -> HttpResponse {
+pub async fn icon_png() -> Result<Response<Body>, Infallible> {
     let icon: &[u8] = include_bytes!("../icon.png");
-    HttpResponse::Ok().content_type("image/png").body(icon)
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "image/png")
+        .body(Body::from(icon.to_vec()))
+        .unwrap())
 }
 
-#[get("/font.ttf")]
-pub async fn font() -> HttpResponse {
+pub async fn font() -> Result<Response<Body>, Infallible> {
     let font: &[u8] = include_bytes!("../web-app/fonts/Inter-Regular.ttf");
-    HttpResponse::Ok().content_type("font/ttf").body(font)
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "font/ttf")
+        .body(Body::from(font.to_vec()))
+        .unwrap())
 }

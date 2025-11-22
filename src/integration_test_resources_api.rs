@@ -5,24 +5,24 @@ use std::path::{Path, PathBuf};
 use std::ops::{Add, Sub};
 use std::{env, fs};
 
-use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
-use actix_web::{test, web, App, Error};
 use assertor::{assert_that, EqualityAssertion, VecAssertion};
 use chrono::{Duration, Local, NaiveDateTime};
 use rand::Rng;
-use rusqlite::fallible_iterator::FallibleIterator;
-use test::TestRequest;
+use serde::de::DeserializeOwned;
+use warp::filters::BoxedFilter;
+use warp::reply::Response;
+use warp::test::request;
 
 use crate::geo_location::GeoLocation;
 use crate::resource_reader::ImageResource;
-use crate::{resource_endpoint, resource_reader, resource_store, scheduler, utils};
+use crate::{resource_reader, resource_store, routes, scheduler, utils};
 
 const TEST_JPEG_EXIF_URL: &str =
     "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
 const TEST_JPEG_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.jpg";
 const TEST_FOLDER_NAME: &str = "integration_test_rest_api";
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_get_all_resources() {
     // GIVEN is a folder structure with two assets
     let base_test_dir = create_temp_folder().await;
@@ -42,14 +42,10 @@ async fn test_get_all_resources() {
     .await;
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // WHEN requesting all resources
-    let response: Vec<String> = test::call_and_read_body_json(
-        &app_server,
-        TestRequest::get().uri("/api/resources").to_request(),
-    )
-    .await;
+    let response: Vec<String> = get_json(&app_server, "/api/resources").await;
 
     // THEN the response should contain the two resources
     assert_that!(response).contains_exactly(vec![
@@ -61,7 +57,7 @@ async fn test_get_all_resources() {
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_this_week_in_past_resources_end_range() {
     // GIVEN is one in week range
     let base_test_dir = create_temp_folder().await;
@@ -88,14 +84,10 @@ async fn test_this_week_in_past_resources_end_range() {
     .await;
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // WHEN requesting of this week in past resources
-    let response: Vec<String> = test::call_and_read_body_json(
-        &app_server,
-        TestRequest::get().uri("/api/resources/week").to_request(),
-    )
-    .await;
+    let response: Vec<String> = get_json(&app_server, "/api/resources/week").await;
 
     // THEN the response should contain the resource
     assert_that!(response).contains_exactly(vec![utils::md5(test_image_1.as_str())]);
@@ -104,7 +96,7 @@ async fn test_this_week_in_past_resources_end_range() {
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_this_week_in_past_resources_begin_range() {
     // GIVEN is one image in week rnage
     let base_test_dir = create_temp_folder().await;
@@ -131,14 +123,10 @@ async fn test_this_week_in_past_resources_begin_range() {
     .await;
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // WHEN requesting of this week in past resources
-    let response: Vec<String> = test::call_and_read_body_json(
-        &app_server,
-        TestRequest::get().uri("/api/resources/week").to_request(),
-    )
-    .await;
+    let response: Vec<String> = get_json(&app_server, "/api/resources/week").await;
 
     // THEN the response should contain the resource
     assert_that!(response).contains_exactly(vec![utils::md5(test_image_1.as_str())]);
@@ -147,7 +135,7 @@ async fn test_this_week_in_past_resources_begin_range() {
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_this_week_in_past_resources_out_of_end_range() {
     // GIVEN is one image that is out of range
     let base_test_dir = create_temp_folder().await;
@@ -174,14 +162,10 @@ async fn test_this_week_in_past_resources_out_of_end_range() {
     .await;
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // WHEN requesting of this week in past resources
-    let response: Vec<String> = test::call_and_read_body_json(
-        &app_server,
-        TestRequest::get().uri("/api/resources/week").to_request(),
-    )
-    .await;
+    let response: Vec<String> = get_json(&app_server, "/api/resources/week").await;
 
     // THEN the response should not contain the resource
     assert_that!(response).is_empty();
@@ -190,7 +174,7 @@ async fn test_this_week_in_past_resources_out_of_end_range() {
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_this_week_in_past_resources_out_of_begin_range() {
     // GIVEN is a image that is out of range
     let base_test_dir = create_temp_folder().await;
@@ -217,14 +201,10 @@ async fn test_this_week_in_past_resources_out_of_begin_range() {
     .await;
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // WHEN requesting of this week in past resources
-    let response: Vec<String> = test::call_and_read_body_json(
-        &app_server,
-        TestRequest::get().uri("/api/resources/week").to_request(),
-    )
-    .await;
+    let response: Vec<String> = get_json(&app_server, "/api/resources/week").await;
 
     // THEN the response should not contain the resource
     assert_that!(response).is_empty();
@@ -233,7 +213,7 @@ async fn test_this_week_in_past_resources_out_of_begin_range() {
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_get_random_resources() {
     // GIVEN is one exif image
     let base_test_dir = create_temp_folder().await;
@@ -241,14 +221,10 @@ async fn test_get_random_resources() {
         create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // WHEN requesting a random resource
-    let response: Vec<String> = test::call_and_read_body_json(
-        &app_server,
-        TestRequest::get().uri("/api/resources/random").to_request(),
-    )
-    .await;
+    let response: Vec<String> = get_json(&app_server, "/api/resources/random").await;
 
     // THEN the response should contain the random resources
     assert_that!(response).contains_exactly(vec![utils::md5(test_image_1.as_str())]);
@@ -257,7 +233,7 @@ async fn test_get_random_resources() {
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_get_resources_week_count() {
     // GIVEN is a folder structure with two assets in the week range, and one out of range
     let base_test_dir = create_temp_folder().await;
@@ -293,18 +269,11 @@ async fn test_get_resources_week_count() {
     .await;
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // WHEN requesting the count of this week resources (text/plain)
-    let response = test::call_and_read_body(
-        &app_server,
-        TestRequest::get()
-            .uri("/api/resources/week/count")
-            .to_request(),
-    )
-    .await;
-    let result = String::from_utf8(response.to_vec()).unwrap();
-    let response = result.parse::<usize>().unwrap();
+    let response = get_text(&app_server, "/api/resources/week/count").await;
+    let response = response.parse::<usize>().unwrap();
 
     // THEN the response should contain the count of the resources
     assert_that!(response).is_equal_to(2);
@@ -313,7 +282,7 @@ async fn test_get_resources_week_count() {
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_get_resource_by_id_and_resolution() {
     // GIVEN is an exif image
     let base_test_dir = create_temp_folder().await;
@@ -322,25 +291,23 @@ async fn test_get_resource_by_id_and_resolution() {
     let test_image_1_id = utils::md5(test_image_1.as_str());
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // WHEN requesting a random resource
-    let response = test::call_and_read_body(
-        &app_server,
-        TestRequest::get()
-            .uri(format!("/api/resources/{test_image_1_id}/10/10").as_str())
-            .to_request(),
-    )
-    .await;
+    let response = request()
+        .method("GET")
+        .path(format!("/api/resources/{test_image_1_id}/10/10").as_str())
+        .reply(&app_server)
+        .await;
 
     // THEN the response should contain the resized image
-    assert_that!(response.len()).is_equal_to(316);
+    assert_that!(response.body().len()).is_equal_to(316);
 
     // cleanup
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_get_resource_metadata_by_id() {
     // GIVEN is an exif image
     let base_test_dir = create_temp_folder().await;
@@ -350,14 +317,12 @@ async fn test_get_resource_metadata_by_id() {
     let test_image_1_path = format!("{}/{}", base_test_dir.to_str().unwrap(), test_image_1);
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // WHEN requesting a random resource
-    let response: ImageResource = test::call_and_read_body_json(
+    let response: ImageResource = get_json(
         &app_server,
-        TestRequest::get()
-            .uri(format!("/api/resources/{test_image_1_id}/metadata").as_str())
-            .to_request(),
+        format!("/api/resources/{test_image_1_id}/metadata").as_str(),
     )
     .await;
 
@@ -385,7 +350,7 @@ async fn test_get_resource_metadata_by_id() {
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_get_resource_description_by_id() {
     // GIVEN is an exif image
     let base_test_dir = create_temp_folder().await;
@@ -394,29 +359,27 @@ async fn test_get_resource_description_by_id() {
     let test_image_1_id = utils::md5(test_image_1.as_str());
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // WHEN requesting a description resource
-    let response = String::from_utf8(
-        test::call_and_read_body(
-            &app_server,
-            TestRequest::get()
-                .uri(format!("/api/resources/{test_image_1_id}/description").as_str())
-                .to_request(),
-        )
-        .await
-        .to_vec(),
+    let response = get_text(
+        &app_server,
+        format!("/api/resources/{test_image_1_id}/description").as_str(),
     )
-    .unwrap();
+    .await;
 
     // THEN the response should contain the resized image
-    assert_that!(response).is_equal_to("22.10.2008, Arezzo".to_string());
+    if env::var("BIGDATA_CLOUD_API_KEY").is_ok() {
+        assert_that!(response).is_equal_to("22.10.2008, Arezzo".to_string());
+    } else {
+        assert_that!(response).is_equal_to("22.10.2008".to_string());
+    }
 
     // cleanup
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_ignore_file_in_resources() {
     // GIVEN is a folder structure with two assets
     // AND a file with the name .ignore
@@ -438,14 +401,10 @@ async fn test_ignore_file_in_resources() {
     create_test_image(&base_test_dir, "sub1", ".ignore", TEST_JPEG_URL).await;
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // WHEN requesting all resources
-    let response: Vec<String> = test::call_and_read_body_json(
-        &app_server,
-        TestRequest::get().uri("/api/resources").to_request(),
-    )
-    .await;
+    let response: Vec<String> = get_json(&app_server, "/api/resources").await;
 
     // THEN the response should contain only the second resource
     assert_that!(response).contains_exactly(vec![utils::md5(test_image_2.as_str())]);
@@ -454,7 +413,7 @@ async fn test_ignore_file_in_resources() {
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn get_hidden_resources() {
     // GIVEN is a folder structure with one assets
     let base_test_dir = create_temp_folder().await;
@@ -470,23 +429,17 @@ async fn get_hidden_resources() {
     );
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // AND this image is hidden
-    let _ = test::call_and_read_body(
-        &app_server,
-        TestRequest::post()
-            .uri(format!("/api/resources/hide/{test_image_1_id}").as_str())
-            .to_request(),
-    )
-    .await;
+    let _ = request()
+        .method("POST")
+        .path(format!("/api/resources/hide/{test_image_1_id}").as_str())
+        .reply(&app_server)
+        .await;
 
     // WHEN receiving all hidden resources
-    let response: Vec<String> = test::call_and_read_body_json(
-        &app_server,
-        TestRequest::get().uri("/api/resources/hide").to_request(),
-    )
-    .await;
+    let response: Vec<String> = get_json(&app_server, "/api/resources/hide").await;
 
     // THEN then one image should be hidden
     assert_that!(response).contains_exactly(vec![test_image_1_id]);
@@ -495,7 +448,7 @@ async fn get_hidden_resources() {
     cleanup(&base_test_dir).await;
 }
 
-#[actix_web::test]
+#[tokio::test]
 async fn get_hidden_resources_when_set_visible_again() {
     // GIVEN is a folder structure with one assets and another file type
     let base_test_dir = create_temp_folder().await;
@@ -511,32 +464,24 @@ async fn get_hidden_resources_when_set_visible_again() {
     );
 
     // AND a running this-week-in-past instance
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // AND this image is hidden
-    let _ = test::call_and_read_body(
-        &app_server,
-        TestRequest::post()
-            .uri(format!("/api/resources/hide/{test_image_1_id}").as_str())
-            .to_request(),
-    )
-    .await;
+    let _ = request()
+        .method("POST")
+        .path(format!("/api/resources/hide/{test_image_1_id}").as_str())
+        .reply(&app_server)
+        .await;
 
     // AND this image is set to visible again
-    let _ = test::call_and_read_body(
-        &app_server,
-        TestRequest::delete()
-            .uri(format!("/api/resources/hide/{test_image_1_id}").as_str())
-            .to_request(),
-    )
-    .await;
+    let _ = request()
+        .method("DELETE")
+        .path(format!("/api/resources/hide/{test_image_1_id}").as_str())
+        .reply(&app_server)
+        .await;
 
     // WHEN receiving all hidden resources
-    let response: Vec<String> = test::call_and_read_body_json(
-        &app_server,
-        TestRequest::get().uri("/api/resources/hide").to_request(),
-    )
-    .await;
+    let response: Vec<String> = get_json(&app_server, "/api/resources/hide").await;
 
     // THEN then no image should be hidden
     assert_that!(response).contains_exactly(vec![]);
@@ -545,36 +490,21 @@ async fn get_hidden_resources_when_set_visible_again() {
     cleanup(&base_test_dir).await;
 }
 
-fn build_app(
-    base_test_dir: &str,
-) -> App<
-    impl ServiceFactory<
-        ServiceRequest,
-        Config = (),
-        Response = ServiceResponse,
-        Error = Error,
-        InitError = (),
-    >,
-> {
+fn build_app(base_test_dir: &str) -> BoxedFilter<(Response,)> {
     let resource_reader = resource_reader::new(base_test_dir);
     let resource_store = resource_store::initialize(base_test_dir);
     scheduler::index_resources(resource_reader.clone(), resource_store.clone());
-    App::new()
-        .app_data(web::Data::new(resource_store))
-        .app_data(web::Data::new(resource_reader))
-        .service(
-            web::scope("/api/resources")
-                .service(resource_endpoint::get_all_resources)
-                .service(resource_endpoint::get_this_week_resources_count)
-                .service(resource_endpoint::get_this_week_resources)
-                .service(resource_endpoint::random_resources)
-                .service(resource_endpoint::get_resource_by_id_and_resolution)
-                .service(resource_endpoint::get_resource_metadata_by_id)
-                .service(resource_endpoint::get_resource_metadata_description_by_id)
-                .service(resource_endpoint::get_all_hidden_resources)
-                .service(resource_endpoint::set_resource_hidden)
-                .service(resource_endpoint::delete_resource_hidden),
-        )
+    routes::build_routes(resource_store, resource_reader)
+}
+
+async fn get_json<T: DeserializeOwned>(app: &BoxedFilter<(Response,)>, path: &str) -> T {
+    let response = request().method("GET").path(path).reply(app).await;
+    serde_json::from_slice(response.body()).unwrap()
+}
+
+async fn get_text(app: &BoxedFilter<(Response,)>, path: &str) -> String {
+    let response = request().method("GET").path(path).reply(app).await;
+    String::from_utf8(response.body().to_vec()).unwrap()
 }
 
 /// Creates a test image withing a folder

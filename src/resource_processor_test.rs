@@ -1,10 +1,14 @@
 use assertor::*;
+use std::env;
 
 use crate::geo_location;
 use crate::geo_location::GeoLocation;
 
-#[actix_rt::test]
+#[tokio::test]
 async fn resolve_koblenz() {
+    if !geo_lookup_available() {
+        return;
+    }
     // GIVEN are the geo coordinates for Koblenz
     let geo_location: GeoLocation = GeoLocation {
         latitude: 50.35357,
@@ -18,8 +22,11 @@ async fn resolve_koblenz() {
     assert_that!(city_name).is_equal_to(Some("Koblenz".to_string()));
 }
 
-#[actix_rt::test]
+#[tokio::test]
 async fn resolve_amsterdam() {
+    if !geo_lookup_available() {
+        return;
+    }
     // GIVEN are the geo coordinates for Amsterdam
     let geo_location: GeoLocation = GeoLocation {
         latitude: 52.37403,
@@ -33,8 +40,11 @@ async fn resolve_amsterdam() {
     assert_that!(city_name).is_equal_to(Some("Amsterdam".to_string()));
 }
 
-#[actix_rt::test]
+#[tokio::test]
 async fn resolve_kottenheim() {
+    if !geo_lookup_available() {
+        return;
+    }
     // GIVEN are the geo coordinates for Kottenheim
     let geo_location: GeoLocation = GeoLocation {
         latitude: 50.34604,
@@ -48,8 +58,11 @@ async fn resolve_kottenheim() {
     assert_that!(city_name).is_equal_to(Some("Kottenheim".to_string()));
 }
 
-#[actix_rt::test]
+#[tokio::test]
 async fn resolve_negative_dms() {
+    if !geo_lookup_available() {
+        return;
+    }
     // GIVEN are the degree minutes seconds coordinates for San Bartolomé de Tirajana
     let lat = "27 deg 45 min 22.22 sec";
     let long = "15 deg 34 min 13.76 sec";
@@ -64,7 +77,7 @@ async fn resolve_negative_dms() {
     assert_that!(city_name).is_equal_to(Some("San Bartolomé de Tirajana".to_string()));
 }
 
-#[actix_rt::test]
+#[tokio::test]
 async fn resolve_invalid_data() {
     // GIVEN are invalid geo coordinates
     let geo_location: GeoLocation = GeoLocation {
@@ -77,4 +90,12 @@ async fn resolve_invalid_data() {
 
     // THEN the resolved city name should be None
     assert_that!(city_name).is_equal_to(None);
+}
+
+fn geo_lookup_available() -> bool {
+    if env::var("BIGDATA_CLOUD_API_KEY").is_err() {
+        eprintln!("Skipping geo lookup test: BIGDATA_CLOUD_API_KEY not set");
+        return false;
+    }
+    true
 }
