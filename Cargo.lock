@@ -2008,6 +2008,7 @@ name = "this-week-in-past"
 version = "0.0.0"
 dependencies = [
  "assertor",
+ "bytes",
  "chrono",
  "clokwerk",
  "env_logger",

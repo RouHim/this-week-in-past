@@ -1,4 +1,6 @@
 use std::convert::Infallible;
+
+use bytes::Bytes;
 use warp::http::{Response, StatusCode};
 use warp::hyper::Body;
 
@@ -34,7 +36,7 @@ pub async fn hide_png() -> Result<Response<Body>, Infallible> {
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("content-type", "image/png")
-        .body(Body::from(hide_icon.to_vec()))
+        .body(Body::from(Bytes::from_static(hide_icon)))
         .unwrap())
 }
 
@@ -43,7 +45,7 @@ pub async fn icon_png() -> Result<Response<Body>, Infallible> {
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("content-type", "image/png")
-        .body(Body::from(icon.to_vec()))
+        .body(Body::from(Bytes::from_static(icon)))
         .unwrap())
 }
 
@@ -52,6 +54,6 @@ pub async fn font() -> Result<Response<Body>, Infallible> {
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("content-type", "font/ttf")
-        .body(Body::from(font.to_vec()))
+        .body(Body::from(Bytes::from_static(font)))
         .unwrap())
 }

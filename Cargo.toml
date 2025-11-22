@@ -31,6 +31,7 @@ rusqlite = { version = "0.37", features = ["bundled"] }
 r2d2_sqlite = "0.31"
 warp = "0.3"
 tokio = { version = "1.39", features = ["macros", "rt-multi-thread", "signal"] }
+bytes = "1.6"
 
 [target.'cfg(target_env = "musl")'.dependencies]
 mimalloc = "0.1.43"
