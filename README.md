@@ -93,6 +93,13 @@ services:
       SLIDESHOW_INTERVAL: 10
 ```
 
+## Development
+
+- Server stack: Warp + Tokio; entrypoint in `src/main.rs` with routes in `src/routes.rs`.
+- Run locally with hot logging: `RUST_LOG=this_week_in_past=info cargo run` (set `RESOURCE_PATHS=/path/to/pictures DATA_FOLDER=./data`).
+- Tests use `#[tokio::test]` and `warp::test`; run `cargo test --tests`. External API lookups for weather/geo are skipped if keys are absent.
+- Graceful shutdown: Ctrl+C triggers cleanup and scheduler stop; the scheduler still populates the store on startup.
+
 ## Configuration
 
 All configuration is done via environment variables:

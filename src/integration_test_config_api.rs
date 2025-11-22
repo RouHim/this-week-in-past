@@ -1,38 +1,33 @@
 use std::path::PathBuf;
-
 use std::{env, fs};
 
-use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
-use actix_web::{test, web, App, Error};
 use assertor::{assert_that, EqualityAssertion};
 use rand::Rng;
+use warp::filters::BoxedFilter;
+use warp::reply::Response;
+use warp::test::request;
 
-use crate::{config_endpoint, resource_reader, resource_store, scheduler};
+use crate::{resource_reader, resource_store, routes, scheduler};
 
 const TEST_FOLDER_NAME: &str = "integration_test_config_api";
 
-#[actix_web::test]
+#[tokio::test]
 async fn test_get_random_slideshow() {
     // GIVEN is a running this-week-in-past instance
     let base_test_dir = create_temp_folder().await;
-    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+    let app_server = build_app(base_test_dir.to_str().unwrap());
 
     // AND random slideshow is set
     let random_slideshow: String = rand::rng().random::<bool>().to_string();
     env::set_var("RANDOM_SLIDESHOW", &random_slideshow);
 
     // WHEN requesting random slideshow
-    let response: String = String::from_utf8(
-        test::call_and_read_body(
-            &app_server,
-            test::TestRequest::get()
-                .uri("/api/config/random-slideshow")
-                .to_request(),
-        )
-        .await
-        .to_vec(),
-    )
-    .unwrap();
+    let response = request()
+        .method("GET")
+        .path("/api/config/random-slideshow")
+        .reply(&app_server)
+        .await;
+    let response = String::from_utf8(response.body().to_vec()).unwrap();
 
     // THEN the response should contain the correct interval
     assert_that!(response).is_equal_to(&random_slideshow);
@@ -41,26 +36,11 @@ async fn test_get_random_slideshow() {
     cleanup(&base_test_dir).await;
 }
 
-fn build_app(
-    base_test_dir: &str,
-) -> App<
-    impl ServiceFactory<
-        ServiceRequest,
-        Config = (),
-        Response = ServiceResponse,
-        Error = Error,
-        InitError = (),
-    >,
-> {
+fn build_app(base_test_dir: &str) -> BoxedFilter<(Response,)> {
     let resource_reader = resource_reader::new(base_test_dir);
     let resource_store = resource_store::initialize(base_test_dir);
-    scheduler::index_resources(resource_reader, resource_store.clone());
-    App::new().app_data(web::Data::new(resource_store)).service(
-        web::scope("/api/config")
-            .service(config_endpoint::get_slideshow_interval)
-            .service(config_endpoint::get_refresh_interval)
-            .service(config_endpoint::get_random_slideshow_enabled),
-    )
+    scheduler::index_resources(resource_reader.clone(), resource_store.clone());
+    routes::build_routes(resource_store, resource_reader)
 }
 
 /// Creates a temp folder with the given name and returns its full path

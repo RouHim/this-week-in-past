@@ -1,10 +1,11 @@
 extern crate core;
 
 use std::env;
+use std::net::SocketAddr;
 
-use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
 use env_logger::Builder;
 use log::{info, warn, LevelFilter};
+use warp::Filter;
 
 mod config;
 mod config_endpoint;
@@ -16,6 +17,7 @@ mod resource_endpoint;
 mod resource_processor;
 mod resource_reader;
 mod resource_store;
+mod routes;
 mod scheduler;
 mod utils;
 mod weather_endpoint;
@@ -45,12 +47,12 @@ pub struct ResourceReader {
     pub local_resource_paths: Vec<String>,
 }
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Configure logger
     let mut builder = Builder::from_default_env();
     builder
-        .filter(Some("actix_web::middleware::logger"), LevelFilter::Error)
+        .filter(Some("this_week_in_past"), LevelFilter::Error)
         .init();
 
     // Print cargo version to console
@@ -93,62 +95,14 @@ async fn main() -> std::io::Result<()> {
     );
     // Run the actual web server and hold the main thread here
     info!("🚀 Launching webserver on http://{} 🚀", bind_address);
-    let http_server_result = HttpServer::new(move || {
-        App::new()
-            .app_data(web::Data::new(resource_store.clone()))
-            .app_data(web::Data::new(resource_reader.clone()))
-            .wrap(middleware::Logger::default()) // enable logger
-            .service(web_app_endpoint::index)
-            .service(web_app_endpoint::style_css)
-            .service(web_app_endpoint::script_js)
-            .service(web_app_endpoint::hide_png)
-            .service(web_app_endpoint::icon_png)
-            .service(web_app_endpoint::font)
-            .service(
-                web::scope("/api/resources")
-                    .service(resource_endpoint::get_all_resources)
-                    .service(resource_endpoint::get_this_week_resources)
-                    .service(resource_endpoint::get_this_week_resources_count)
-                    .service(resource_endpoint::get_this_week_resources_metadata)
-                    .service(resource_endpoint::get_this_week_resource_image)
-                    .service(resource_endpoint::random_resources)
-                    .service(resource_endpoint::get_resource_by_id_and_resolution)
-                    .service(resource_endpoint::get_resource_metadata_by_id)
-                    .service(resource_endpoint::get_resource_metadata_description_by_id)
-                    .service(resource_endpoint::get_all_hidden_resources)
-                    .service(resource_endpoint::set_resource_hidden)
-                    .service(resource_endpoint::delete_resource_hidden),
-            )
-            .service(
-                web::scope("/api/weather")
-                    .service(weather_endpoint::get_is_weather_enabled)
-                    .service(weather_endpoint::get_current_weather)
-                    .service(weather_endpoint::get_is_home_assistant_enabled)
-                    .service(weather_endpoint::get_home_assistant_entity_data)
-                    .service(weather_endpoint::get_weather_unit),
-            )
-            .service(
-                web::scope("/api/config")
-                    .service(config_endpoint::get_slideshow_interval)
-                    .service(config_endpoint::get_refresh_interval)
-                    .service(config_endpoint::get_hide_button_enabled)
-                    .service(config_endpoint::get_random_slideshow_enabled)
-                    .service(config_endpoint::get_preload_images_enabled),
-            )
-            .service(web::resource("/api/version").route(web::get().to(
-                |_: HttpRequest, _: web::Payload| async move {
-                    Ok::<_, actix_web::Error>(
-                        HttpResponse::Ok()
-                            .content_type("plain/text")
-                            .body(env!("CARGO_PKG_VERSION")),
-                    )
-                },
-            )))
-            .service(web::resource("/api/health").route(web::get().to(HttpResponse::Ok)))
-    })
-    .bind(bind_address)?
-    .run()
-    .await;
+    let addr: SocketAddr = bind_address.parse().expect("invalid bind address");
+    let routes = routes::build_routes(resource_store.clone(), resource_reader.clone())
+        .with(warp::log("this_week_in_past"));
+
+    let (_bound_addr, server) = warp::serve(routes).bind_with_graceful_shutdown(addr, async {
+        let _ = tokio::signal::ctrl_c().await;
+    });
+    server.await;
 
     // If the http server is terminated...
 
@@ -162,5 +116,5 @@ async fn main() -> std::io::Result<()> {
 
     // Done, let's get out here
     info!("Stopping Application 😵️");
-    http_server_result
+    Ok(())
 }
