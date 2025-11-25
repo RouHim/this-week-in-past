@@ -1,4 +1,5 @@
 {
+  "minimumReleaseAge": "7 days",
   "packageRules": [
     {
       "matchUpdateTypes": [
