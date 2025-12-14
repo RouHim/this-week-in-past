@@ -34,6 +34,35 @@ displayed.
 
 ## Run the application
 
+### Docker
+
+Docker Example:
+
+```shell
+docker run -p 8080:8080 \
+        -v /path/to/pictures:/resources \
+        -e SLIDESHOW_INTERVAL=60 \
+        -e WEATHER_ENABLED=true \
+        -e OPEN_WEATHER_MAP_API_KEY=<YOUR_KEY> \
+        -e BIGDATA_CLOUD_API_KEY=<YOUR_KEY> \
+        rouhim/this-week-in-past
+```
+
+Docker compose example:
+
+```shell
+services:
+  this-week-in-past:
+    image: rouhim/this-week-in-past
+    volumes:
+      - /path/to/pictures:/resources:ro # mount read only
+    ports:
+      - "8080:8080"
+    environment:
+      SLIDESHOW_INTERVAL: 10
+```
+
+
 ### Native execution
 
 Download the latest release for your system from
@@ -64,34 +93,6 @@ SLIDESHOW_INTERVAL=60 \
 
 > Since the binary is compiled [completely statically](https://github.com/rust-cross/rust-musl-cross), there are no
 > dependencies on system libraries like glibc.
-
-### Docker
-
-Docker Example:
-
-```shell
-docker run -p 8080:8080 \
-        -v /path/to/pictures:/resources \
-        -e SLIDESHOW_INTERVAL=60 \
-        -e WEATHER_ENABLED=true \
-        -e OPEN_WEATHER_MAP_API_KEY=<YOUR_KEY> \
-        -e BIGDATA_CLOUD_API_KEY=<YOUR_KEY> \
-        rouhim/this-week-in-past
-```
-
-Docker compose example:
-
-```shell
-services:
-  this-week-in-past:
-    image: rouhim/this-week-in-past
-    volumes:
-      - /path/to/pictures:/resources:ro # mount read only
-    ports:
-      - "8080:8080"
-    environment:
-      SLIDESHOW_INTERVAL: 10
-```
 
 ## Configuration
 
