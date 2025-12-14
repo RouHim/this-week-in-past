@@ -1,7 +1,7 @@
 # # # # # # # # # # # # # # # # # # # #
 # Builder
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM docker.io/alpine as builder
+FROM docker.io/alpine AS builder
 
 # Create an empty directory that will be used in the final image
 RUN mkdir "/empty_dir"
@@ -23,10 +23,10 @@ RUN bash stage-arch-bin.sh this-week-in-past
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 FROM scratch
 
-ENV USER "1337"
-ENV RESOURCE_PATHS "/resources"
-ENV DATA_FOLDER "/data"
-ENV RUST_LOG "info"
+ENV USER="1337"
+ENV RESOURCE_PATHS="/resources"
+ENV DATA_FOLDER="/data"
+ENV RUST_LOG="info"
 
 # For performance reasons write data to docker volume instead of containers writeable fs layer
 VOLUME $DATA_FOLDER
