@@ -3,6 +3,7 @@ services:
   this-week-in-past:
     image: rouhim/this-week-in-past
     build:
+      dockerfile: Containerfile
       context: .
     volumes:
       - ~/Pictures/:/resources:ro # should be read only
