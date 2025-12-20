@@ -237,7 +237,7 @@ jobs:
           echo "TARGET_TRIPPLE=${TARGET_TRIPPLE}" >> $GITHUB_ENV
 
       - name: Upload static application binaries
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.target }}
           path: target/${{ env.TARGET_TRIPPLE }}/release/this-week-in-past
