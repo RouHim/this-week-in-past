@@ -9,7 +9,7 @@ use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::{test, web, App, Error};
 use assertor::{assert_that, EqualityAssertion, VecAssertion};
 use chrono::{Duration, Local, NaiveDateTime};
-use rand::Rng;
+use rand::RngExt;
 use rusqlite::fallible_iterator::FallibleIterator;
 use test::TestRequest;
 

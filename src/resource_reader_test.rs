@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use chrono::NaiveDateTime;
-use rand::Rng;
+use rand::RngExt;
 
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;

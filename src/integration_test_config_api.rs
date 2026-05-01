@@ -5,7 +5,7 @@ use std::{env, fs};
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::{test, web, App, Error};
 use assertor::{assert_that, EqualityAssertion};
-use rand::Rng;
+use rand::RngExt;
 
 use crate::{config_endpoint, resource_reader, resource_store, scheduler};
 
