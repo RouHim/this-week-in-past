@@ -436,7 +436,7 @@ fn execute_count_query(
     let mut stmt = connection.prepare(count_query).unwrap();
     let mut rows = stmt.query([]).unwrap();
     if let Ok(Some(row)) = rows.next() {
-        row.get(0).unwrap()
+        row.get::<_, i64>(0).unwrap() as usize
     } else {
         0
     }
