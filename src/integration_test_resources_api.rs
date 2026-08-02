@@ -425,6 +425,39 @@ async fn test_get_resource_description_by_id() {
 }
 
 #[actix_web::test]
+async fn test_get_unknown_resource_metadata_returns_not_found() {
+    // GIVEN is an empty library
+    let base_test_dir = create_temp_folder().await;
+
+    // AND a running this-week-in-past instance
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+
+    // WHEN requesting metadata for an unknown resource id
+    let metadata_response = test::call_service(
+        &app_server,
+        TestRequest::get()
+            .uri("/api/resources/unknown-id/metadata")
+            .to_request(),
+    )
+    .await;
+
+    let description_response = test::call_service(
+        &app_server,
+        TestRequest::get()
+            .uri("/api/resources/unknown-id/description")
+            .to_request(),
+    )
+    .await;
+
+    // THEN both endpoints respond with 404
+    assert_that!(metadata_response.status().as_u16()).is_equal_to(404);
+    assert_that!(description_response.status().as_u16()).is_equal_to(404);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
 async fn test_ignore_file_in_resources() {
     // GIVEN is a folder structure with two assets
     // AND a file with the name .ignore

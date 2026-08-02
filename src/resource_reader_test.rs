@@ -215,6 +215,29 @@ fn fill_exif_data_missing_file_does_not_panic() {
     cleanup(&base_test_dir);
 }
 
+#[cfg(unix)]
+#[test]
+fn read_dir_with_non_utf8_file_name_does_not_panic() {
+    use std::os::unix::ffi::OsStringExt;
+
+    // GIVEN is a folder with one readable image and one file with a non-UTF8 name
+    let base_test_dir = create_temp_folder();
+    create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_URL);
+    let non_utf8_name =
+        std::ffi::OsString::from_vec(vec![0x74, 0x65, 0x73, 0x74, 0xFF, 0x2E, 0x6A, 0x70, 0x67]); // "test\xFF.jpg"
+    fs::write(base_test_dir.join(&non_utf8_name), b"not an image").unwrap();
+
+    // WHEN reading resources from a folder
+    let resources_read = filesystem_client::read_files_recursive(&base_test_dir);
+
+    // THEN the readable image is found and the non-UTF8 file is skipped without panicking
+    assert_eq!(resources_read.len(), 1);
+    assert_eq!(resources_read[0].name, "test_image_1.jpg");
+
+    // cleanup
+    cleanup(&base_test_dir);
+}
+
 #[test]
 fn read_non_existent_folder() {
     // GIVEN is a folder path that does not exist

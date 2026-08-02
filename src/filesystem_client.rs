@@ -2,9 +2,10 @@ use core::option::Option::None;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use chrono::Local;
 use image::ImageFormat;
 use lazy_static::lazy_static;
-use log::{debug, error, info};
+use log::{error, info, warn};
 use regex::Regex;
 
 use crate::resource_reader::ImageResource;
@@ -92,7 +93,7 @@ fn should_skip_folder(path: &Path) -> bool {
     }
 
     let Some(folder_name) = path.file_name().and_then(|name| name.to_str()) else {
-        debug!("Skipping folder with non-UTF8 name or no name: {:?}", path);
+        warn!("Skipping folder with non-UTF8 name or no name: {:?}", path);
         return true;
     };
 
@@ -145,13 +146,21 @@ fn should_skip_folder(path: &Path) -> bool {
 /// Reads a single file and returns the found resource
 /// Checks if the file is a supported resource currently all image types
 fn read_resource(file_path: &PathBuf) -> Vec<ImageResource> {
-    let absolute_file_path = file_path.to_str().unwrap();
-    let file_name = file_path.as_path().file_name().unwrap().to_str().unwrap();
+    let (Some(absolute_file_path), Some(file_name)) = (
+        file_path.to_str(),
+        file_path
+            .as_path()
+            .file_name()
+            .and_then(|name| name.to_str()),
+    ) else {
+        warn!("Skipping file with non-UTF8 path or name: {:?}", file_path);
+        return vec![];
+    };
 
     let file = match fs::File::open(file_path) {
         Ok(file) => file,
         Err(error) => {
-            debug!("Could not read file {}: {}", absolute_file_path, error);
+            warn!("Could not read file {}: {}", absolute_file_path, error);
             return vec![];
         }
     };
@@ -159,7 +168,7 @@ fn read_resource(file_path: &PathBuf) -> Vec<ImageResource> {
     let metadata = match file.metadata() {
         Ok(metadata) => metadata,
         Err(error) => {
-            debug!("Could not read metadata {}: {}", absolute_file_path, error);
+            warn!("Could not read metadata {}: {}", absolute_file_path, error);
             return vec![];
         }
     };
@@ -176,7 +185,7 @@ fn read_resource(file_path: &PathBuf) -> Vec<ImageResource> {
     if image_format.is_none() {
         // If the mime type is image, but the format is not supported, log it
         if mime_type.starts_with("image") {
-            debug!(
+            warn!(
                 "{absolute_file_path} | has unsupported image format: {}",
                 mime_type
             );
@@ -191,7 +200,10 @@ fn read_resource(file_path: &PathBuf) -> Vec<ImageResource> {
         content_type: mime_type.to_string(),
         name: file_name.to_string(),
         content_length: metadata.len(),
-        last_modified: utils::to_date_time(metadata.modified().unwrap()),
+        last_modified: metadata
+            .modified()
+            .map(utils::to_date_time)
+            .unwrap_or_else(|_| Local::now().naive_local()),
         taken: None,
         location: None,
         orientation: None,
@@ -204,7 +216,7 @@ pub fn fill_exif_data(resource: &ImageResource) -> ImageResource {
     let file = match fs::File::open(file_path) {
         Ok(file) => file,
         Err(error) => {
-            debug!(
+            warn!(
                 "Could not read exif data from file {}: {}",
                 file_path, error
             );

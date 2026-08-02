@@ -24,11 +24,15 @@ pub fn adjust_image(
     display_height: u32,
     image_orientation: Option<ImageOrientation>,
 ) -> Option<Vec<u8>> {
-    let mut image = match ImageReader::new(Cursor::new(&resource_data))
-        .with_guessed_format()
-        .unwrap()
-        .decode()
-    {
+    let reader = match ImageReader::new(Cursor::new(&resource_data)).with_guessed_format() {
+        Ok(reader) => reader,
+        Err(error) => {
+            error!("{resource_path} | Error: {}", error);
+            return None;
+        }
+    };
+
+    let mut image = match reader.decode() {
         Ok(image) => image,
         Err(error) => {
             error!("{resource_path} | Error: {}", error);
