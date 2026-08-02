@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::env;
 use std::fmt::{Display, Formatter};
+use std::time::Duration;
+
+use actix_web::web;
 
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
@@ -143,18 +146,24 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
         env::var("BIGDATA_CLOUD_API_KEY").unwrap(),
     );
 
-    let response = ureq::get(request_url.as_str()).call();
-
-    if response.is_err() {
-        return None;
-    }
-
-    let response_json = response
-        .unwrap()
-        .body_mut()
-        .read_to_string()
-        .ok()
-        .and_then(|json_string| serde_json::from_str::<HashMap<String, Value>>(&json_string).ok());
+    // The blocking ureq call must not run on an async worker thread
+    let response_json: Option<HashMap<String, Value>> = web::block(move || {
+        ureq::get(&request_url)
+            .config()
+            .timeout_global(Some(Duration::from_secs(15)))
+            .build()
+            .call()
+            .ok()?
+            .body_mut()
+            .read_to_string()
+            .ok()
+            .and_then(|json_string| {
+                serde_json::from_str::<HashMap<String, Value>>(&json_string).ok()
+            })
+    })
+    .await
+    .ok()
+    .flatten();
 
     let mut city_name = response_json
         .as_ref()

@@ -1,5 +1,9 @@
-use crate::config;
 use std::env;
+use std::time::Duration;
+
+use actix_web::web;
+
+use crate::config;
 
 /// Returns the current weather data provided by OpenWeatherMap
 /// The data is selected by the configured location
@@ -13,15 +17,25 @@ pub async fn get_current_weather() -> Option<String> {
     let city: String = env::var("WEATHER_LOCATION").unwrap_or_else(|_| "Berlin".to_string());
     let units: String = config::get_weather_unit();
     let language: String = env::var("WEATHER_LANGUAGE").unwrap_or_else(|_| "en".to_string());
-    let response = ureq::get(format!(
+    let request_url = format!(
         "https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units={units}&lang={language}"
-    ).as_str()).call();
+    );
 
-    if let Ok(mut response) = response {
-        response.body_mut().read_to_string().ok()
-    } else {
-        None
-    }
+    // The blocking ureq call must not run on an async worker thread
+    web::block(move || {
+        ureq::get(&request_url)
+            .config()
+            .timeout_global(Some(Duration::from_secs(15)))
+            .build()
+            .call()
+            .ok()?
+            .body_mut()
+            .read_to_string()
+            .ok()
+    })
+    .await
+    .ok()
+    .flatten()
 }
 
 /// Returns the current weather data provided by Home Assistant
@@ -36,17 +50,22 @@ pub async fn get_home_assistant_data() -> Option<String> {
         return None;
     }
 
-    let response =
-        ureq::get(format!("{}/api/states/{}", base_url.unwrap(), entity_id.unwrap()).as_str())
-            .header(
-                "Authorization",
-                format!("Bearer {}", api_token.unwrap()).as_str(),
-            )
-            .call();
+    let request_url = format!("{}/api/states/{}", base_url.unwrap(), entity_id.unwrap());
 
-    if let Ok(mut response) = response {
-        response.body_mut().read_to_string().ok()
-    } else {
-        None
-    }
+    // The blocking ureq call must not run on an async worker thread
+    web::block(move || {
+        ureq::get(&request_url)
+            .config()
+            .timeout_global(Some(Duration::from_secs(15)))
+            .build()
+            .header("Authorization", format!("Bearer {}", api_token.unwrap()))
+            .call()
+            .ok()?
+            .body_mut()
+            .read_to_string()
+            .ok()
+    })
+    .await
+    .ok()
+    .flatten()
 }
