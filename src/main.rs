@@ -1,5 +1,3 @@
-extern crate core;
-
 use std::env;
 
 use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};

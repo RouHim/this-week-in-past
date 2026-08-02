@@ -36,14 +36,6 @@ pub struct ImageResource {
     pub orientation: Option<ImageOrientation>,
 }
 
-impl ImageResource {
-    pub fn with_taken_date(&self, taken_date: NaiveDateTime) -> ImageResource {
-        let mut resource = self.clone();
-        resource.taken = Some(taken_date);
-        resource
-    }
-}
-
 /// Impl Default for ImageResource
 impl Default for ImageResource {
     fn default() -> Self {

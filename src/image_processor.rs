@@ -24,18 +24,21 @@ pub fn adjust_image(
     display_height: u32,
     image_orientation: Option<ImageOrientation>,
 ) -> Option<Vec<u8>> {
-    let read_result = ImageReader::new(Cursor::new(&resource_data))
-        .with_guessed_format()
-        .unwrap()
-        .decode();
+    let reader = match ImageReader::new(Cursor::new(&resource_data)).with_guessed_format() {
+        Ok(reader) => reader,
+        Err(error) => {
+            error!("{resource_path} | Error: {}", error);
+            return None;
+        }
+    };
 
-    if read_result.is_err() {
-        error!("{resource_path} | Error: {}", read_result.unwrap_err());
-        return None;
-    }
-
-    // Resize the image to the needed display size
-    let mut image = read_result.unwrap();
+    let mut image = match reader.decode() {
+        Ok(image) => image,
+        Err(error) => {
+            error!("{resource_path} | Error: {}", error);
+            return None;
+        }
+    };
 
     // Rotate or flip the image if needed
     image = if let Some(orientation) = image_orientation {

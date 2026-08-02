@@ -10,7 +10,6 @@ use actix_web::{test, web, App, Error};
 use assertor::{assert_that, EqualityAssertion, VecAssertion};
 use chrono::{Duration, Local, NaiveDateTime};
 use rand::RngExt;
-use rusqlite::fallible_iterator::FallibleIterator;
 use test::TestRequest;
 
 use crate::geo_location::GeoLocation;
@@ -333,8 +332,17 @@ async fn test_get_resource_by_id_and_resolution() {
     )
     .await;
 
-    // THEN the response should contain the resized image
-    assert_that!(response.len()).is_equal_to(316);
+    // THEN the response should contain a PNG resized to fit within the requested display bounds
+    assert_that!(response.first()).is_equal_to(Some(&0x89)); // PNG magic byte
+    let (width, height) = image::ImageReader::new(std::io::Cursor::new(&response))
+        .with_guessed_format()
+        .unwrap()
+        .into_dimensions()
+        .unwrap();
+    assert_that!(width <= 10).is_equal_to(true);
+    assert_that!(height <= 10).is_equal_to(true);
+    assert_that!(width > 0).is_equal_to(true);
+    assert_that!(height > 0).is_equal_to(true);
 
     // cleanup
     cleanup(&base_test_dir).await;
@@ -411,6 +419,39 @@ async fn test_get_resource_description_by_id() {
 
     // THEN the response should contain the resized image
     assert_that!(response).is_equal_to("22.10.2008, Arezzo".to_string());
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
+async fn test_get_unknown_resource_metadata_returns_not_found() {
+    // GIVEN is an empty library
+    let base_test_dir = create_temp_folder().await;
+
+    // AND a running this-week-in-past instance
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+
+    // WHEN requesting metadata for an unknown resource id
+    let metadata_response = test::call_service(
+        &app_server,
+        TestRequest::get()
+            .uri("/api/resources/unknown-id/metadata")
+            .to_request(),
+    )
+    .await;
+
+    let description_response = test::call_service(
+        &app_server,
+        TestRequest::get()
+            .uri("/api/resources/unknown-id/description")
+            .to_request(),
+    )
+    .await;
+
+    // THEN both endpoints respond with 404
+    assert_that!(metadata_response.status().as_u16()).is_equal_to(404);
+    assert_that!(description_response.status().as_u16()).is_equal_to(404);
 
     // cleanup
     cleanup(&base_test_dir).await;
