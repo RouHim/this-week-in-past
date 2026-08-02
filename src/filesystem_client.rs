@@ -24,13 +24,13 @@ pub fn read_files_recursive(path: &Path) -> Vec<ImageResource> {
         return vec![];
     }
     let folder_path = folder_path.unwrap();
-    let metadata = folder_path.metadata().unwrap_or_else(|error| {
-        panic!(
-            "Failed to read metadata for: {} Error:\n{}",
-            path.to_str().unwrap(),
-            error
-        )
-    });
+    let metadata = match folder_path.metadata() {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            error!("Could not read metadata for: {:?}. Error:\n{}", path, error);
+            return vec![];
+        }
+    };
 
     if metadata.is_file() {
         return vec![];
@@ -41,24 +41,28 @@ pub fn read_files_recursive(path: &Path) -> Vec<ImageResource> {
         return vec![];
     }
 
-    let paths = fs::read_dir(path).unwrap_or_else(|error| {
-        panic!(
-            "Failed to read directory: {} Error:\n{}",
-            path.to_str().unwrap(),
-            error
-        )
-    });
+    let paths = match fs::read_dir(path) {
+        Ok(paths) => paths,
+        Err(error) => {
+            error!("Could not read directory: {:?}. Error:\n{}", path, error);
+            return vec![];
+        }
+    };
 
     paths
         .flatten()
         .flat_map(|dir_entry| {
-            let metadata = dir_entry.metadata().unwrap_or_else(|error| {
-                panic!(
-                    "Failed to read metadata for: {} Error:\n{}",
-                    dir_entry.path().to_str().unwrap(),
-                    error
-                )
-            });
+            let metadata = match dir_entry.metadata() {
+                Ok(metadata) => metadata,
+                Err(error) => {
+                    error!(
+                        "Could not read metadata for: {:?}. Error:\n{}",
+                        dir_entry.path(),
+                        error
+                    );
+                    return vec![];
+                }
+            };
 
             if metadata.is_file() {
                 read_resource(&dir_entry.path())
@@ -87,16 +91,10 @@ fn should_skip_folder(path: &Path) -> bool {
                 .collect();
     }
 
-    let folder_name = path
-        .file_name()
-        .unwrap_or_else(|| panic!("Failed to get folder name for path: {}", path.display()))
-        .to_str()
-        .unwrap_or_else(|| {
-            panic!(
-                "Failed to convert folder name to string for path: {}",
-                path.display()
-            )
-        });
+    let Some(folder_name) = path.file_name().and_then(|name| name.to_str()) else {
+        debug!("Skipping folder with non-UTF8 name or no name: {:?}", path);
+        return true;
+    };
 
     if IGNORE_FOLDER_REGEX.is_some() && IGNORE_FOLDER_REGEX.as_ref().unwrap().is_match(folder_name)
     {
@@ -108,27 +106,30 @@ fn should_skip_folder(path: &Path) -> bool {
         return true;
     }
 
-    let contains_ignore_file = fs::read_dir(path)
-        .unwrap_or_else(|error| {
-            panic!(
-                "Failed to read directory: {} Error:\n{}",
-                path.display(),
-                error
-            )
-        })
-        .flatten()
-        .any(|entry| {
-            let metadata = entry.metadata().unwrap_or_else(|error| {
-                panic!(
-                    "Failed to read metadata for: {} Error:\n{}",
-                    entry.path().display(),
+    let read_dir_result = match fs::read_dir(path) {
+        Ok(read_dir) => read_dir,
+        Err(error) => {
+            error!("Could not read directory: {:?}. Error:\n{}", path, error);
+            return false;
+        }
+    };
+
+    let contains_ignore_file = read_dir_result.flatten().any(|entry| {
+        let metadata = match entry.metadata() {
+            Ok(metadata) => metadata,
+            Err(error) => {
+                error!(
+                    "Could not read metadata for: {:?}. Error:\n{}",
+                    entry.path(),
                     error
-                )
-            });
-            metadata.is_file()
-                && IGNORE_FOLDER_MARKER_FILES
-                    .contains(&entry.file_name().to_str().unwrap().to_string())
-        });
+                );
+                return false;
+            }
+        };
+        metadata.is_file()
+            && IGNORE_FOLDER_MARKER_FILES
+                .contains(&entry.file_name().to_str().unwrap_or("").to_string())
+    });
     if contains_ignore_file {
         info!(
             "⏭️ Skipping folder: {:?} because it contains any of these files {:?}",
@@ -147,12 +148,21 @@ fn read_resource(file_path: &PathBuf) -> Vec<ImageResource> {
     let absolute_file_path = file_path.to_str().unwrap();
     let file_name = file_path.as_path().file_name().unwrap().to_str().unwrap();
 
-    let file = fs::File::open(file_path)
-        .unwrap_or_else(|error| panic!("Failed to read file {}: {}", absolute_file_path, error));
+    let file = match fs::File::open(file_path) {
+        Ok(file) => file,
+        Err(error) => {
+            debug!("Could not read file {}: {}", absolute_file_path, error);
+            return vec![];
+        }
+    };
 
-    let metadata = file.metadata().unwrap_or_else(|error| {
-        panic!("Failed to read metadata {}: {}", absolute_file_path, error)
-    });
+    let metadata = match file.metadata() {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            debug!("Could not read metadata {}: {}", absolute_file_path, error);
+            return vec![];
+        }
+    };
 
     // Cancel if folder
     if !metadata.is_file() {
@@ -191,12 +201,16 @@ fn read_resource(file_path: &PathBuf) -> Vec<ImageResource> {
 /// Reads the exif data from the file and augments the image resource with this information
 pub fn fill_exif_data(resource: &ImageResource) -> ImageResource {
     let file_path = resource.path.as_str();
-    let file = fs::File::open(file_path).unwrap_or_else(|error| {
-        panic!(
-            "Failed to read exif data from file {}: {}",
-            file_path, error
-        );
-    });
+    let file = match fs::File::open(file_path) {
+        Ok(file) => file,
+        Err(error) => {
+            debug!(
+                "Could not read exif data from file {}: {}",
+                file_path, error
+            );
+            return resource.clone();
+        }
+    };
 
     let mut bufreader = std::io::BufReader::new(&file);
     let exif_reader = exif::Reader::new();
