@@ -17,46 +17,70 @@ let slideshowId;
 let weatherUnit;
 
 /**
+ * Slideshow configuration loaded once on page load.
+ * URL parameters take precedence over the server-provided values.
+ */
+const CONFIG_DEFAULTS = {
+    slideshowInterval: 30,
+    refreshInterval: 360,
+    randomSlideshow: false,
+    preloadImages: false,
+};
+
+let appConfig = {...CONFIG_DEFAULTS};
+
+/**
+ * Fetches a configuration value from the backend.
+ * @returns {Promise<string>} the response text or the fallback value on error
+ */
+async function fetchConfigValue(url, fallback) {
+    try {
+        const response = await fetch(url);
+        if (response.ok) {
+            return await response.text();
+        }
+    } catch (error) {
+        console.error('Error loading config from ' + url + ':', error);
+    }
+    return fallback;
+}
+
+/**
+ * Loads the slideshow configuration once.
+ * URL parameters overwrite the values from the backend.
+ */
+async function loadAppConfig() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    appConfig.randomSlideshow = urlParams.has('RANDOM_SLIDESHOW')
+        ? urlParams.get('RANDOM_SLIDESHOW') === "true"
+        : (await fetchConfigValue('/api/config/random-slideshow', 'false')) === "true";
+
+    appConfig.preloadImages = (await fetchConfigValue('/api/config/preload-images', 'false')) === "true";
+
+    appConfig.slideshowInterval = urlParams.has('SLIDESHOW_INTERVAL')
+        ? parseInt(urlParams.get('SLIDESHOW_INTERVAL'))
+        : parseInt(await fetchConfigValue('/api/config/interval/slideshow', '30'));
+
+    appConfig.refreshInterval = parseInt(await fetchConfigValue('/api/config/interval/refresh', '360'));
+}
+
+/**
  * On page load, do the following things:
  *      - Load the available images and initialize the slideshow with it
  *      - Load and show the weather information
  *      - Set a page reload interval for each hour
  */
-window.addEventListener('load', () => {
-    forceRandomSlideshow = shouldOnlyPlayRandom();
+window.addEventListener('load', async () => {
+    await loadAppConfig();
+    forceRandomSlideshow = appConfig.randomSlideshow;
     initSlideshow();
     loadWeatherInformation();
     initHideButton();
 
     // Reload page every x minutes
-    let refreshIntervalInMinutes = getRefreshInterval();
-    intervalID = setInterval(() => location.reload(), refreshIntervalInMinutes * 60000);
+    intervalID = setInterval(() => location.reload(), appConfig.refreshInterval * 60000);
 });
-
-function shouldOnlyPlayRandom() {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('RANDOM_SLIDESHOW')) {
-        return urlParams.get('RANDOM_SLIDESHOW') === "true";
-    }
-
-    let request = new XMLHttpRequest();
-    request.open('GET', `/api/config/random-slideshow`, false);
-    request.send(null);
-
-    return request.status === 200 && request.responseText === "true";
-}
-
-/**
- * Checks if images should be preloaded.
- * @returns {boolean} true if images should be preloaded, false otherwise
- */
-function shouldPreloadImages() {
-    let request = new XMLHttpRequest();
-    request.open('GET', `/api/config/preload-images`, false);
-    request.send(null);
-
-    return request.status === 200 && request.responseText === "true";
-}
 
 /**
  * Initializes a new slideshow, if random is active fetch a random playlist.
@@ -106,7 +130,7 @@ function beginSlideshow(foundResourcesOfThisWeek) {
     slideshowTick();
 
     // Load slideshow interval
-    let intervalInSeconds = getSlideshowInterval();
+    let intervalInSeconds = appConfig.slideshowInterval;
 
     // Start image slideshow
     slideshowId = setInterval(() => slideshowTick(), intervalInSeconds * 1000);
@@ -210,23 +234,22 @@ function loadCurrentWeather() {
  * The weather icon is loaded from OpenWeatherMap.
  * @param data the weather data
  */
-function showCurrentWeather(data) {
+async function showCurrentWeather(data) {
     const weather = data.weather[0];
     const icon = weather.icon;
 
     document.getElementById("weather-label").textContent = weather.description + ",";
     document.getElementById("weather-icon").src = `https://openweathermap.org/img/w/${icon}.png`;
 
-    isHomeAssistantEnabled().then((isHomeAssistantEnabled) => {
-        let temperatureText;
-        if (isHomeAssistantEnabled) {
-            let homeAssistantData = JSON.parse(getCurrentTemperatureDataFromHomeAssistant());
-            temperatureText = Math.round(homeAssistantData.state) + homeAssistantData.attributes.unit_of_measurement;
-        } else {
-            temperatureText = Math.round(data.main.temp) + getWeatherUnit();
-        }
-        document.getElementById("weather-temperature").innerText = temperatureText;
-    });
+    const homeAssistantEnabled = await isHomeAssistantEnabled();
+    let temperatureText;
+    if (homeAssistantEnabled) {
+        let homeAssistantData = JSON.parse(await getCurrentTemperatureDataFromHomeAssistant());
+        temperatureText = Math.round(homeAssistantData.state) + homeAssistantData.attributes.unit_of_measurement;
+    } else {
+        temperatureText = Math.round(data.main.temp) + getWeatherUnit();
+    }
+    document.getElementById("weather-temperature").innerText = temperatureText;
 }
 
 /**
@@ -245,14 +268,16 @@ async function isHomeAssistantEnabled() {
 
 
 /**
- * @returns {string} the current temperature from Home Assistant
+ * @returns {Promise<string>} the current temperature from Home Assistant
  */
-function getCurrentTemperatureDataFromHomeAssistant() {
-    let request = new XMLHttpRequest();
-    request.open('GET', `/api/weather/homeassistant/temperature`, false);
-    request.send(null);
-    if (request.status === 200) {
-        return request.response;
+async function getCurrentTemperatureDataFromHomeAssistant() {
+    try {
+        const response = await fetch(`/api/weather/homeassistant/temperature`);
+        if (response.ok) {
+            return await response.text();
+        }
+    } catch (error) {
+        console.error("Error:", error);
     }
     return "{}";
 }
@@ -327,7 +352,7 @@ function slideshowTick() {
     }
 
     // Preload next image if active
-    if (shouldPreloadImages()) {
+    if (appConfig.preloadImages) {
         preloadNextImage(resourcesThisWeek[currentIndex]);
     }
 }
@@ -346,38 +371,7 @@ function preloadNextImage(resource_id) {
     request.send();
 }
 
-/**
- * @returns {number} the slideshow interval in seconds
- */
-function getSlideshowInterval() {
-    // First check if the user overwrites the SLIDESHOW_INTERVAL as url parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('SLIDESHOW_INTERVAL')) {
-        return parseInt(urlParams.get('SLIDESHOW_INTERVAL'))
-    }
 
-    // if no interval was found in the url, load the value from the config
-    let request = new XMLHttpRequest();
-    request.open('GET', `/api/config/interval/slideshow`, false);
-    request.send(null);
-    if (request.status === 200) {
-        return parseInt(request.responseText);
-    }
-    return 30;
-}
-
-/**
- * @returns {number} the refresh interval in minutes from the backend API
- */
-function getRefreshInterval() {
-    let request = new XMLHttpRequest();
-    request.open('GET', `/api/config/interval/refresh`, false);
-    request.send(null);
-    if (request.status === 200) {
-        return parseInt(request.responseText)
-    }
-    return 180;
-}
 
 /**
  * Sleeps for the given amount of milliseconds and returns a promise that is resolved when the sleep is finished
@@ -402,7 +396,7 @@ function showPrevImage() {
 
     // Reset the slideshow interval to avoid takeover effect
     clearInterval(slideshowId);
-    slideshowId = setInterval(slideshowTick, getSlideshowInterval() * 1000);
+    slideshowId = setInterval(slideshowTick, appConfig.slideshowInterval * 1000);
 }
 
 /**
@@ -420,7 +414,7 @@ function pauseResumeSlideshow() {
     if (isPaused) {
         clearInterval(slideshowId);
     } else {
-        slideshowId = setInterval(slideshowTick, getSlideshowInterval() * 1000);
+        slideshowId = setInterval(slideshowTick, appConfig.slideshowInterval * 1000);
     }
 }
 
@@ -434,5 +428,5 @@ function showNextImage() {
 
     // Reset the slideshow interval to avoid takeover effect
     clearInterval(slideshowId);
-    slideshowId = setInterval(slideshowTick, getSlideshowInterval() * 1000);
+    slideshowId = setInterval(slideshowTick, appConfig.slideshowInterval * 1000);
 }
