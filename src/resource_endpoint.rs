@@ -199,7 +199,7 @@ pub async fn get_resource_metadata_by_id(
             .content_type(CONTENT_TYPE_APPLICATION_JSON)
             .body(metadata)
     } else {
-        HttpResponse::InternalServerError().finish()
+        HttpResponse::NotFound().finish()
     }
 }
 
@@ -220,7 +220,7 @@ pub async fn get_resource_metadata_description_by_id(
             .content_type("plain/text")
             .body(display_value.await)
     } else {
-        HttpResponse::InternalServerError().finish()
+        HttpResponse::NotFound().finish()
     }
 }
 
