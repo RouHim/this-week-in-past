@@ -1,3 +1,13 @@
+## [1.32.42](https://github.com/RouHim/this-week-in-past/compare/1.32.41...1.32.42) (2026-08-02)
+
+
+### Bug Fixes
+
+* **deps:** bump rustls-webpki to 0.103.13 (GHSA-82j2-j2ch-gfr8) ([e5f0a07](https://github.com/RouHim/this-week-in-past/commit/e5f0a07439361294ae4354f6ee27612f091e6068))
+* return 404 for missing resource metadata ([160e494](https://github.com/RouHim/this-week-in-past/commit/160e49411e7e383f9ff9e683b49f855ea769c8e0))
+* skip non-UTF8/unreadable files during indexing, pin 404 contract ([d6f33dc](https://github.com/RouHim/this-week-in-past/commit/d6f33dc75e85bdfd57f1ea7eb0c8a9f853ffc21e))
+* skip unreadable files during indexing instead of panicking ([dfd2e79](https://github.com/RouHim/this-week-in-past/commit/dfd2e793b411bdee43aa8f2256cfe9bcfa3f9a4d))
+
 ## [1.32.41](https://github.com/RouHim/this-week-in-past/compare/1.32.40...1.32.41) (2026-05-01)
 
 ## [1.32.40](https://github.com/RouHim/this-week-in-past/compare/1.32.39...1.32.40) (2026-05-01)
