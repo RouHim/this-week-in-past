@@ -10,7 +10,6 @@ use actix_web::{test, web, App, Error};
 use assertor::{assert_that, EqualityAssertion, VecAssertion};
 use chrono::{Duration, Local, NaiveDateTime};
 use rand::RngExt;
-use rusqlite::fallible_iterator::FallibleIterator;
 use test::TestRequest;
 
 use crate::geo_location::GeoLocation;
@@ -333,8 +332,17 @@ async fn test_get_resource_by_id_and_resolution() {
     )
     .await;
 
-    // THEN the response should contain the resized image
-    assert_that!(response.len()).is_equal_to(316);
+    // THEN the response should contain a PNG resized to fit within the requested display bounds
+    assert_that!(response.first()).is_equal_to(Some(&0x89)); // PNG magic byte
+    let (width, height) = image::ImageReader::new(std::io::Cursor::new(&response))
+        .with_guessed_format()
+        .unwrap()
+        .into_dimensions()
+        .unwrap();
+    assert_that!(width <= 10).is_equal_to(true);
+    assert_that!(height <= 10).is_equal_to(true);
+    assert_that!(width > 0).is_equal_to(true);
+    assert_that!(height > 0).is_equal_to(true);
 
     // cleanup
     cleanup(&base_test_dir).await;

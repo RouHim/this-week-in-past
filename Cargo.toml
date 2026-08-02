@@ -36,7 +36,6 @@ mimalloc = "0.1.43"
 
 [dev-dependencies]
 assertor = "0.0.4"
-pretty_assertions = "1.4"
 actix-rt = "2.9"
 ureq = "3.0.0"
 
