@@ -1,3 +1,5 @@
+## [1.32.47](https://github.com/RouHim/this-week-in-past/compare/1.32.46...1.32.47) (2026-08-04)
+
 ## [1.32.46](https://github.com/RouHim/this-week-in-past/compare/1.32.45...1.32.46) (2026-08-03)
 
 ## [1.32.45](https://github.com/RouHim/this-week-in-past/compare/1.32.44...1.32.45) (2026-08-03)
