@@ -439,6 +439,7 @@ jobs:
           push: true
 
       - name: Delete old releases
+        if: github.ref == 'refs/heads/main'
         uses: dev-drprasad/delete-older-releases@v0.3.4
         with:
           keep_latest: 5
