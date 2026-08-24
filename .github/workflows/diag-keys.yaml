@@ -1,0 +1,23 @@
+name: Key Diagnostics
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    name: Probe API keys
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe BigDataCloud keyed endpoint
+        env:
+          BDC_KEY: ${{ secrets.BIGDATA_CLOUD_API_KEY }}
+        run: |
+          code=$(curl -sS -o /tmp/body.json -w "%{http_code}" --max-time 15 \
+            "https://api.bigdatacloud.net/data/reverse-geocode?latitude=50.35357&longitude=7.57883&localityLanguage=de&key=${BDC_KEY}")
+          echo "HTTP status: ${code}"
+          python3 - <<'EOF'
+          import json
+          d = json.load(open('/tmp/body.json'))
+          print('response fields:', sorted(d.keys()))
+          print('city:', d.get('city'))
+          print('locality:', d.get('locality'))
+          EOF
