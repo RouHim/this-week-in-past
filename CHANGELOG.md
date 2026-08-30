@@ -1,3 +1,38 @@
+# [2.0.0](https://github.com/RouHim/this-week-in-past/compare/1.32.58...2.0.0) (2026-08-30)
+
+
+* feat!: offline city resolution via cities500.zip ([#203](https://github.com/RouHim/this-week-in-past/issues/203)) ([71e5b13](https://github.com/RouHim/this-week-in-past/commit/71e5b13263862154b1067bd4bf106025fa7e33a8))
+
+
+### BREAKING CHANGES
+
+* City names now come from GeoNames native name (CC BY 4.0) instead of BigDataCloud localityLanguage=de; strings may differ and hamlets <500 pop return None.
+Migration: BIGDATA_CLOUD_API_KEY is deprecated and ignored; remove it from compose/env at your convenience.
+
+* fix: address review comments
+
+- README: restore Docker Example header and docker run line, restore WEATHER_ENABLED/LOCATION/LANGUAGE rows
+- workflow: remove offline comment per review
+- geo_location: remove FR-004 string
+
+* refactor(Containerfile): dedicated geodata stage for cities500
+
+Move GeoNames download from builder to standalone alpine:geodata stage.
+Builder keeps only bash/file; final scratch copies from geodata.
+
+* docs: simplify BIGDATA_CLOUD_API_KEY deprecation note
+
+Remove vNext wording per review
+
+* style(Containerfile): remove dedicated stage hint per review
+
+* fix: harden offline city resolution and container build
+
+- Cargo.toml: keep rusqlite 0.40 / r2d2_sqlite 0.35 from main + rstar 0.12 comment
+- geo_location: OnceLock+web::block non-blocking load, haversine clamp, finite checks, antimeridian + k-nearest haversine selection
+- Containerfile/build-image: pinned alpine, retry, size/line validation, single layer
+- docs: CITIES500_PATH / BIGDATA deprecation
+
 ## [1.32.58](https://github.com/RouHim/this-week-in-past/compare/1.32.57...1.32.58) (2026-08-30)
 
 ## [1.32.57](https://github.com/RouHim/this-week-in-past/compare/1.32.56...1.32.57) (2026-08-30)
