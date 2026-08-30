@@ -134,18 +134,31 @@ pub fn from_degrees_minutes_seconds(
 
 /// Returns the city name for the specified geo location
 /// The city name is resolved from the geo location using the bigdatacloud api
+/// Tries the authenticated endpoint if a key is available, otherwise falls back
+/// to the free reverse-geocode-client endpoint. The key is outdated (403) in CI,
+/// so the fallback ensures tests and description generation keep working.
 pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
-    if env::var("BIGDATA_CLOUD_API_KEY").is_err() {
-        return None;
+    // Try authenticated endpoint first if key is present (best quota), fallback to free client
+    if let Ok(key) = env::var("BIGDATA_CLOUD_API_KEY") {
+        if let Some(city) = fetch_city_for_url(format!(
+            "https://api.bigdatacloud.net/data/reverse-geocode?latitude={}&longitude={}&localityLanguage=de&key={}",
+            geo_location.latitude, geo_location.longitude, key
+        ))
+        .await
+        {
+            return Some(city);
+        }
     }
 
-    let request_url = format!(
-        "https://api.bigdatacloud.net/data/reverse-geocode?latitude={}&longitude={}&localityLanguage=de&key={}",
-        geo_location.latitude,
-        geo_location.longitude,
-        env::var("BIGDATA_CLOUD_API_KEY").unwrap(),
-    );
+    // Free endpoint without API key - works for tests and as fallback
+    fetch_city_for_url(format!(
+        "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={}&longitude={}&localityLanguage=de",
+        geo_location.latitude, geo_location.longitude
+    ))
+    .await
+}
 
+async fn fetch_city_for_url(request_url: String) -> Option<String> {
     // The blocking ureq call must not run on an async worker thread
     let response_json: Option<HashMap<String, Value>> = web::block(move || {
         ureq::get(&request_url)
