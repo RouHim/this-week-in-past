@@ -58,13 +58,11 @@ impl ResourceStore {
 
         // Otherwise, we can query normally
         let regular_week_query = r#"
-                   SELECT DISTINCT resources.id
-                   FROM resources,
-                        json_each(resources.value) json
-                   WHERE json.key = 'taken'
-                     AND json.value NOT NULL
-                     AND resources.id NOT IN (SELECT id FROM hidden)
-                     AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND strftime('%m-%d', 'now', 'localtime', '+3 days')
+                   SELECT DISTINCT id FROM resources
+                   WHERE taken IS NOT NULL
+                     AND id NOT IN (SELECT id FROM hidden)
+                     AND strftime('%m-%d', taken) BETWEEN strftime('%m-%d','now','localtime','-3 days')
+                                                   AND strftime('%m-%d','now','localtime','+3 days')
                    ORDER BY RANDOM()
                    ;"#;
         execute_query(&connection, regular_week_query)
@@ -89,13 +87,11 @@ impl ResourceStore {
 
         // Otherwise, we can query normally
         let regular_week_query = r#"
-               SELECT COUNT(DISTINCT resources.id)
-               FROM resources,
-                    json_each(resources.value) json
-               WHERE json.key = 'taken'
-                 AND json.value NOT NULL
-                 AND resources.id NOT IN (SELECT id FROM hidden)
-                 AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND strftime('%m-%d', 'now', 'localtime', '+3 days')
+               SELECT COUNT(DISTINCT id) FROM resources
+               WHERE taken IS NOT NULL
+                 AND id NOT IN (SELECT id FROM hidden)
+                 AND strftime('%m-%d', taken) BETWEEN strftime('%m-%d','now','localtime','-3 days')
+                                                  AND strftime('%m-%d','now','localtime','+3 days')
                ;"#;
         execute_count_query(&connection, regular_week_query)
     }
@@ -412,28 +408,12 @@ fn range_hits_new_year() -> bool {
 
 /// Returns the week query for the next year
 fn get_next_year_query() -> &'static str {
-    r#"
-       SELECT DISTINCT resources.id
-       FROM resources,
-            json_each(resources.value) json
-       WHERE json.key = 'taken'
-         AND json.value NOT NULL
-         AND resources.id NOT IN (SELECT id FROM hidden)
-         AND strftime('%m-%d', json.value) BETWEEN '01-01' AND strftime('%m-%d', 'now', 'localtime', '+3 days')
-   ;"#
+    "SELECT DISTINCT id FROM resources WHERE taken IS NOT NULL AND id NOT IN (SELECT id FROM hidden) AND strftime('%m-%d', taken) BETWEEN '01-01' AND strftime('%m-%d','now','localtime','+3 days')"
 }
 
 /// Returns the week query for the last year
 fn get_last_year_query() -> &'static str {
-    r#"
-       SELECT DISTINCT resources.id
-       FROM resources,
-            json_each(resources.value) json
-       WHERE json.key = 'taken'
-         AND json.value NOT NULL
-         AND resources.id NOT IN (SELECT id FROM hidden)
-         AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND '12-31'
-   ;"#
+    "SELECT DISTINCT id FROM resources WHERE taken IS NOT NULL AND id NOT IN (SELECT id FROM hidden) AND strftime('%m-%d', taken) BETWEEN '12-29' AND '12-31'"
 }
 
 /// Executes the specified query and returns a list of resource ids
@@ -467,32 +447,68 @@ fn execute_count_query(
 
 /// Returns the count query for the next year
 fn get_next_year_count_query() -> &'static str {
-    r#"
-       SELECT COUNT(DISTINCT resources.id)
-       FROM resources,
-            json_each(resources.value) json
-       WHERE json.key = 'taken'
-         AND json.value NOT NULL
-         AND resources.id NOT IN (SELECT id FROM hidden)
-         AND strftime('%m-%d', json.value) BETWEEN '01-01' AND strftime('%m-%d', 'now', 'localtime', '+3 days')
-   ;"#
+    "SELECT COUNT(DISTINCT id) FROM resources WHERE taken IS NOT NULL AND id NOT IN (SELECT id FROM hidden) AND strftime('%m-%d', taken) BETWEEN '01-01' AND strftime('%m-%d','now','localtime','+3 days')"
 }
 
 /// Returns the count query for the last year
 fn get_last_year_count_query() -> &'static str {
-    r#"
-       SELECT COUNT(DISTINCT resources.id)
-       FROM resources,
-            json_each(resources.value) json
-       WHERE json.key = 'taken'
-         AND json.value NOT NULL
-         AND resources.id NOT IN (SELECT id FROM hidden)
-         AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND '12-31'
-   ;"#
+    "SELECT COUNT(DISTINCT id) FROM resources WHERE taken IS NOT NULL AND id NOT IN (SELECT id FROM hidden) AND strftime('%m-%d', taken) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND '12-31'"
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn week_query_returns_this_week_via_taken() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let today_str = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+        let mut map = std::collections::HashMap::new();
+        map.insert(
+            "this_week_id".into(),
+            format!(r#"{{"id":"this_week_id","taken":"{}"}}"#, today_str),
+        );
+        map.insert(
+            "old_id".into(),
+            r#"{"id":"old_id","taken":"2000-01-15T12:00:00"}"#.into(),
+        );
+        store.add_resources(map);
+        let ids = store.get_resources_this_week_visible_random();
+        assert!(ids.contains(&"this_week_id".to_string()));
+    }
+
+    #[test]
+    fn week_query_uses_taken_index() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let conn = store.persistent_file_store_pool.get().unwrap();
+        let plan: String = conn.query_row(
+            "EXPLAIN QUERY PLAN SELECT DISTINCT id FROM resources WHERE taken IS NOT NULL AND strftime('%m-%d', taken) BETWEEN '01-01' AND '12-31'",
+            [], |r| r.get(3)
+        ).unwrap();
+        assert!(
+            plan.contains("idx_resources_taken") || plan.contains("USING INDEX"),
+            "plan: {}",
+            plan
+        );
+        // Weak check: week query helpers must not use json_each
+        assert!(
+            !crate::resource_store::get_next_year_query().contains("json_each"),
+            "get_next_year_query still uses json_each"
+        );
+        assert!(
+            !crate::resource_store::get_last_year_query().contains("json_each"),
+            "get_last_year_query still uses json_each"
+        );
+        assert!(
+            !crate::resource_store::get_next_year_count_query().contains("json_each"),
+            "get_next_year_count_query still uses json_each"
+        );
+        assert!(
+            !crate::resource_store::get_last_year_count_query().contains("json_each"),
+            "get_last_year_count_query still uses json_each"
+        );
+    }
+
     #[test]
     fn initialize_creates_taken_column_and_index_and_backfills() {
         let dir = tempfile::tempdir().unwrap();
