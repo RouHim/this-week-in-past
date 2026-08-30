@@ -324,16 +324,22 @@ async fn test_get_resource_by_id_and_resolution() {
     let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // WHEN requesting a random resource
-    let response = test::call_and_read_body(
-        &app_server,
-        TestRequest::get()
-            .uri(format!("/api/resources/{test_image_1_id}/10/10").as_str())
-            .to_request(),
-    )
-    .await;
+    let req = TestRequest::get()
+        .uri(format!("/api/resources/{test_image_1_id}/10/10").as_str())
+        .to_request();
+    let resp = test::call_service(&app_server, req).await;
+    assert_that!(resp
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap())
+    .is_equal_to("image/jpeg");
+    let response = test::read_body(resp).await;
 
-    // THEN the response should contain a PNG resized to fit within the requested display bounds
-    assert_that!(response.first()).is_equal_to(Some(&0x89)); // PNG magic byte
+    // THEN the response should contain a JPEG resized to fit within the requested display bounds
+    assert_that!(response.first()).is_equal_to(Some(&0xFF));
+    assert_that!(response.get(1)).is_equal_to(Some(&0xD8)); // JPEG magic FF D8
     let (width, height) = image::ImageReader::new(std::io::Cursor::new(&response))
         .with_guessed_format()
         .unwrap()

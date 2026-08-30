@@ -12,7 +12,7 @@ use crate::{image_processor, resource_processor};
 
 const CONTENT_TYPE_APPLICATION_JSON: &str = "application/json";
 const CONTENT_TYPE_TEXT_PLAIN: &str = "text/plain";
-const CONTENT_TYPE_IMAGE_PNG: &str = "image/png";
+const CONTENT_TYPE_IMAGE_JPEG: &str = "image/jpeg";
 
 #[get("")]
 pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
@@ -100,7 +100,7 @@ pub async fn get_this_week_resource_image(
 
     if let Some(resource_data) = resource_data {
         HttpResponse::Ok()
-            .content_type(CONTENT_TYPE_IMAGE_PNG)
+            .content_type(CONTENT_TYPE_IMAGE_JPEG)
             .body(resource_data)
     } else {
         HttpResponse::InternalServerError().finish()
@@ -145,7 +145,7 @@ pub async fn get_resource_by_id_and_resolution(
         .get_data_cache_entry(format!("{resource_id}_{display_width}_{display_height}"));
     if let Some(cached_data) = cached_data {
         return HttpResponse::Ok()
-            .content_type(CONTENT_TYPE_IMAGE_PNG)
+            .content_type(CONTENT_TYPE_IMAGE_JPEG)
             .body(cached_data);
     }
 
@@ -180,7 +180,7 @@ pub async fn get_resource_by_id_and_resolution(
         );
 
         HttpResponse::Ok()
-            .content_type(CONTENT_TYPE_IMAGE_PNG)
+            .content_type(CONTENT_TYPE_IMAGE_JPEG)
             .body(resource_data)
     } else {
         HttpResponse::InternalServerError().finish()
