@@ -277,7 +277,7 @@ fn get_city_index() -> Option<&'static CityIndex> {
 pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     maybe_warn_deprecated();
 
-    // Validation (FR-004)
+    // Validation
     if geo_location.latitude.is_nan()
         || geo_location.longitude.is_nan()
         || geo_location.latitude < -90.0

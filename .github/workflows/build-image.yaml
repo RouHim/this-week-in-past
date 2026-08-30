@@ -126,7 +126,6 @@ jobs:
     name: Run application tests
     runs-on: ubuntu-latest
     env:
-      # Offline city resolution needs no API key
       OPEN_WEATHER_MAP_API_KEY: ${{ secrets.OPEN_WEATHER_MAP_API_KEY }}
     steps:
       - name: Checkout code
