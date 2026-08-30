@@ -58,13 +58,11 @@ impl ResourceStore {
 
         // Otherwise, we can query normally
         let regular_week_query = r#"
-                   SELECT DISTINCT resources.id
-                   FROM resources,
-                        json_each(resources.value) json
-                   WHERE json.key = 'taken'
-                     AND json.value NOT NULL
-                     AND resources.id NOT IN (SELECT id FROM hidden)
-                     AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND strftime('%m-%d', 'now', 'localtime', '+3 days')
+                   SELECT DISTINCT id FROM resources
+                   WHERE taken IS NOT NULL
+                     AND id NOT IN (SELECT id FROM hidden)
+                     AND strftime('%m-%d', taken) BETWEEN strftime('%m-%d','now','localtime','-3 days')
+                                                   AND strftime('%m-%d','now','localtime','+3 days')
                    ORDER BY RANDOM()
                    ;"#;
         execute_query(&connection, regular_week_query)
@@ -89,13 +87,11 @@ impl ResourceStore {
 
         // Otherwise, we can query normally
         let regular_week_query = r#"
-               SELECT COUNT(DISTINCT resources.id)
-               FROM resources,
-                    json_each(resources.value) json
-               WHERE json.key = 'taken'
-                 AND json.value NOT NULL
-                 AND resources.id NOT IN (SELECT id FROM hidden)
-                 AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND strftime('%m-%d', 'now', 'localtime', '+3 days')
+               SELECT COUNT(DISTINCT id) FROM resources
+               WHERE taken IS NOT NULL
+                 AND id NOT IN (SELECT id FROM hidden)
+                 AND strftime('%m-%d', taken) BETWEEN strftime('%m-%d','now','localtime','-3 days')
+                                                  AND strftime('%m-%d','now','localtime','+3 days')
                ;"#;
         execute_count_query(&connection, regular_week_query)
     }
@@ -116,43 +112,6 @@ impl ResourceStore {
             .prepare("DELETE FROM hidden WHERE ID = ?")
             .unwrap();
         stmt.execute([resource_id]).unwrap();
-    }
-
-    /// Adds an image cache entry, if an entry already exists it gets updated
-    pub fn add_data_cache_entry(&self, id: String, data: &Vec<u8>) {
-        let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection
-            .prepare("INSERT OR REPLACE INTO data_cache(id, data) VALUES(?, ?)")
-            .unwrap();
-        stmt.execute((&id, data))
-            .unwrap_or_else(|error| panic!("Insertion of {id} failed:n{}", error));
-    }
-
-    /// Get an image cache entry
-    pub fn get_data_cache_entry(&self, id: String) -> Option<Vec<u8>> {
-        let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection
-            .prepare("SELECT data FROM data_cache WHERE id = ?")
-            .unwrap();
-        let mut rows = stmt.query([id]).unwrap();
-
-        let first_entry = rows.next();
-
-        if let Ok(first_entry) = first_entry {
-            first_entry
-                .map(|entry| entry.get(0))
-                .and_then(|entry| entry.ok())
-        } else {
-            None
-        }
-    }
-
-    /// Clears the complete image cache
-    pub fn clear_data_cache(&self) {
-        let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection.prepare("DELETE FROM data_cache").unwrap();
-        stmt.execute(())
-            .unwrap_or_else(|error| panic!("Deletion of table 'data_cache' failed.\n{}", error));
     }
 
     /// Returns an id list of all resources, including hidden resources
@@ -228,9 +187,16 @@ impl ResourceStore {
             .expect("Failed to create transaction");
 
         resources.iter().for_each(|(id, value)| {
+            let taken: Option<String> = serde_json::from_str::<serde_json::Value>(value.as_str())
+                .ok()
+                .and_then(|v| {
+                    v.get("taken")
+                        .and_then(|t| t.as_str())
+                        .map(|s| s.to_string())
+                });
             tx.execute(
-                "INSERT OR REPLACE INTO resources(id, value) VALUES(?, ?)",
-                (id.as_str(), value.as_str()),
+                "INSERT OR REPLACE INTO resources(id, value, taken) VALUES(?1, ?2, ?3)",
+                rusqlite::params![id.as_str(), value.as_str(), taken],
             )
             .unwrap_or_else(|error| panic!("Insertion of {id} failed.\n{}", error));
         });
@@ -308,6 +274,7 @@ impl ResourceStore {
 pub fn initialize(data_folder: &str) -> ResourceStore {
     fs::create_dir_all(data_folder)
         .unwrap_or_else(|error| panic!("Could not create data folder: {}", error));
+    let _ = std::fs::create_dir_all(PathBuf::from(data_folder).join("cache"));
     let database_path = PathBuf::from(data_folder).join("resources.db");
 
     // Create persistent file store and enable WAL mode
@@ -329,6 +296,7 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
     create_table_data_cache(&persistent_file_store_pool);
     create_table_geo_location_cache(&persistent_file_store_pool);
     create_table_resources(&persistent_file_store_pool);
+    migrate_taken_column_and_index(&persistent_file_store_pool);
 
     ResourceStore {
         persistent_file_store_pool,
@@ -375,10 +343,25 @@ fn create_table_resources(pool: &Pool<SqliteConnectionManager>) {
     pool.get()
         .unwrap()
         .execute(
-            "CREATE TABLE IF NOT EXISTS resources (id TEXT PRIMARY KEY, value TEXT);",
+            "CREATE TABLE IF NOT EXISTS resources (id TEXT PRIMARY KEY, value TEXT, taken TEXT);",
             (),
         )
         .unwrap_or_else(|error| panic!("table creation of 'resources' failed.\n{}", error));
+}
+
+fn migrate_taken_column_and_index(pool: &Pool<SqliteConnectionManager>) {
+    let conn = pool.get().unwrap();
+    let _ = conn.execute("ALTER TABLE resources ADD COLUMN taken TEXT", []);
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_resources_taken ON resources(taken)",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "UPDATE resources SET taken = json_extract(value, '$.taken') WHERE taken IS NULL AND json_extract(value, '$.taken') IS NOT NULL",
+        [],
+    )
+    .unwrap();
 }
 
 /// Checks if today +-3 hits new year
@@ -390,26 +373,22 @@ fn range_hits_new_year() -> bool {
 /// Returns the week query for the next year
 fn get_next_year_query() -> &'static str {
     r#"
-       SELECT DISTINCT resources.id
-       FROM resources,
-            json_each(resources.value) json
-       WHERE json.key = 'taken'
-         AND json.value NOT NULL
-         AND resources.id NOT IN (SELECT id FROM hidden)
-         AND strftime('%m-%d', json.value) BETWEEN '01-01' AND strftime('%m-%d', 'now', 'localtime', '+3 days')
+       SELECT DISTINCT id
+       FROM resources
+       WHERE taken IS NOT NULL
+         AND id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', taken) BETWEEN '01-01' AND strftime('%m-%d','now','localtime','+3 days')
    ;"#
 }
 
 /// Returns the week query for the last year
 fn get_last_year_query() -> &'static str {
     r#"
-       SELECT DISTINCT resources.id
-       FROM resources,
-            json_each(resources.value) json
-       WHERE json.key = 'taken'
-         AND json.value NOT NULL
-         AND resources.id NOT IN (SELECT id FROM hidden)
-         AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND '12-31'
+       SELECT DISTINCT id
+       FROM resources
+       WHERE taken IS NOT NULL
+         AND id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', taken) BETWEEN strftime('%m-%d','now','localtime','-3 days') AND '12-31'
    ;"#
 }
 
@@ -445,25 +424,130 @@ fn execute_count_query(
 /// Returns the count query for the next year
 fn get_next_year_count_query() -> &'static str {
     r#"
-       SELECT COUNT(DISTINCT resources.id)
-       FROM resources,
-            json_each(resources.value) json
-       WHERE json.key = 'taken'
-         AND json.value NOT NULL
-         AND resources.id NOT IN (SELECT id FROM hidden)
-         AND strftime('%m-%d', json.value) BETWEEN '01-01' AND strftime('%m-%d', 'now', 'localtime', '+3 days')
+       SELECT COUNT(DISTINCT id)
+       FROM resources
+       WHERE taken IS NOT NULL
+         AND id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', taken) BETWEEN '01-01' AND strftime('%m-%d','now','localtime','+3 days')
    ;"#
 }
 
 /// Returns the count query for the last year
 fn get_last_year_count_query() -> &'static str {
     r#"
-       SELECT COUNT(DISTINCT resources.id)
-       FROM resources,
-            json_each(resources.value) json
-       WHERE json.key = 'taken'
-         AND json.value NOT NULL
-         AND resources.id NOT IN (SELECT id FROM hidden)
-         AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND '12-31'
+       SELECT COUNT(DISTINCT id)
+       FROM resources
+       WHERE taken IS NOT NULL
+         AND id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', taken) BETWEEN strftime('%m-%d','now','localtime','-3 days') AND '12-31'
    ;"#
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn week_query_returns_this_week_via_taken() {
+        // GIVEN a store with one resource taken today and one old resource
+        let dir = tempfile::tempdir().unwrap();
+        let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let today_str = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+        let mut map = std::collections::HashMap::new();
+        map.insert(
+            "this_week_id".into(),
+            format!(r#"{{"id":"this_week_id","taken":"{}"}}"#, today_str),
+        );
+        map.insert(
+            "old_id".into(),
+            r#"{"id":"old_id","taken":"2000-01-15T12:00:00"}"#.into(),
+        );
+        store.add_resources(map);
+
+        // WHEN querying visible resources for the current week
+        let ids = store.get_resources_this_week_visible_random();
+
+        // THEN the resource taken today is returned
+        assert!(ids.contains(&"this_week_id".to_string()));
+    }
+
+    #[test]
+    fn week_query_uses_taken_index() {
+        // GIVEN an initialized store with a taken index
+        let dir = tempfile::tempdir().unwrap();
+        let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let conn = store.persistent_file_store_pool.get().unwrap();
+
+        // WHEN explaining the query plan for the taken-based week query
+        let plan: String = conn.query_row(
+            "EXPLAIN QUERY PLAN SELECT DISTINCT id FROM resources WHERE taken IS NOT NULL AND strftime('%m-%d', taken) BETWEEN '01-01' AND '12-31'",
+            [], |r| r.get(3)
+        ).unwrap();
+
+        // THEN the index idx_resources_taken is used and no helper uses json_each
+        assert!(
+            plan.contains("idx_resources_taken") || plan.contains("USING INDEX"),
+            "plan: {}",
+            plan
+        );
+        assert!(
+            !crate::resource_store::get_next_year_query().contains("json_each"),
+            "get_next_year_query still uses json_each"
+        );
+        assert!(
+            !crate::resource_store::get_last_year_query().contains("json_each"),
+            "get_last_year_query still uses json_each"
+        );
+        assert!(
+            !crate::resource_store::get_next_year_count_query().contains("json_each"),
+            "get_next_year_count_query still uses json_each"
+        );
+        assert!(
+            !crate::resource_store::get_last_year_count_query().contains("json_each"),
+            "get_last_year_count_query still uses json_each"
+        );
+    }
+
+    #[test]
+    fn initialize_creates_taken_column_and_index_and_backfills() {
+        // GIVEN a store with a legacy row inserted without the taken column
+        let dir = tempfile::tempdir().unwrap();
+        let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let conn = store.persistent_file_store_pool.get().unwrap();
+        conn.execute(
+            "INSERT INTO resources(id,value) VALUES(?1,?2)",
+            rusqlite::params![
+                "legacy1",
+                r#"{"id":"legacy1","taken":"2021-03-15T12:00:00"}"#
+            ],
+        )
+        .unwrap();
+        drop(conn);
+
+        // WHEN re-initializing the store (triggering migration/backfill)
+        let store2 = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let conn = store2.persistent_file_store_pool.get().unwrap();
+
+        // THEN the taken column, index, and backfilled value exist
+        let col: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('resources') WHERE name='taken'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(col, 1);
+        let idx: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_resources_taken'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(idx, 1);
+        let taken: Option<String> = conn
+            .query_row("SELECT taken FROM resources WHERE id='legacy1'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(taken, Some("2021-03-15T12:00:00".to_string()));
+    }
 }

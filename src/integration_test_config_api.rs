@@ -13,6 +13,7 @@ const TEST_FOLDER_NAME: &str = "integration_test_config_api";
 
 #[actix_web::test]
 async fn test_get_random_slideshow() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is a running this-week-in-past instance
     let base_test_dir = create_temp_folder().await;
     let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;

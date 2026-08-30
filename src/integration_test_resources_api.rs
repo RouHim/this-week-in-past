@@ -23,6 +23,7 @@ const TEST_FOLDER_NAME: &str = "integration_test_rest_api";
 
 #[actix_web::test]
 async fn test_get_all_resources() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is a folder structure with two assets
     let base_test_dir = create_temp_folder().await;
     let test_image_1 = create_test_image(
@@ -62,6 +63,7 @@ async fn test_get_all_resources() {
 
 #[actix_web::test]
 async fn test_this_week_in_past_resources_end_range() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is one in week range
     let base_test_dir = create_temp_folder().await;
     let upper_bound = Local::now().add(Duration::days(3));
@@ -105,6 +107,7 @@ async fn test_this_week_in_past_resources_end_range() {
 
 #[actix_web::test]
 async fn test_this_week_in_past_resources_begin_range() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is one image in week rnage
     let base_test_dir = create_temp_folder().await;
     let lower_bound = Local::now().sub(Duration::days(3));
@@ -148,6 +151,7 @@ async fn test_this_week_in_past_resources_begin_range() {
 
 #[actix_web::test]
 async fn test_this_week_in_past_resources_out_of_end_range() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is one image that is out of range
     let base_test_dir = create_temp_folder().await;
     let upper_bound = Local::now().add(Duration::days(4));
@@ -191,6 +195,7 @@ async fn test_this_week_in_past_resources_out_of_end_range() {
 
 #[actix_web::test]
 async fn test_this_week_in_past_resources_out_of_begin_range() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is a image that is out of range
     let base_test_dir = create_temp_folder().await;
     let lower_bound = Local::now().sub(Duration::days(4));
@@ -234,6 +239,7 @@ async fn test_this_week_in_past_resources_out_of_begin_range() {
 
 #[actix_web::test]
 async fn test_get_random_resources() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is one exif image
     let base_test_dir = create_temp_folder().await;
     let test_image_1 =
@@ -258,6 +264,7 @@ async fn test_get_random_resources() {
 
 #[actix_web::test]
 async fn test_get_resources_week_count() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is a folder structure with two assets in the week range, and one out of range
     let base_test_dir = create_temp_folder().await;
     let upper_bound = Local::now().add(Duration::days(3));
@@ -314,6 +321,7 @@ async fn test_get_resources_week_count() {
 
 #[actix_web::test]
 async fn test_get_resource_by_id_and_resolution() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is an exif image
     let base_test_dir = create_temp_folder().await;
     let test_image_1 =
@@ -324,16 +332,22 @@ async fn test_get_resource_by_id_and_resolution() {
     let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
 
     // WHEN requesting a random resource
-    let response = test::call_and_read_body(
-        &app_server,
-        TestRequest::get()
-            .uri(format!("/api/resources/{test_image_1_id}/10/10").as_str())
-            .to_request(),
-    )
-    .await;
+    let req = TestRequest::get()
+        .uri(format!("/api/resources/{test_image_1_id}/10/10").as_str())
+        .to_request();
+    let resp = test::call_service(&app_server, req).await;
+    assert_that!(resp
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap())
+    .is_equal_to("image/jpeg");
+    let response = test::read_body(resp).await;
 
-    // THEN the response should contain a PNG resized to fit within the requested display bounds
-    assert_that!(response.first()).is_equal_to(Some(&0x89)); // PNG magic byte
+    // THEN the response should contain a JPEG resized to fit within the requested display bounds
+    assert_that!(response.first()).is_equal_to(Some(&0xFF));
+    assert_that!(response.get(1)).is_equal_to(Some(&0xD8)); // JPEG magic FF D8
     let (width, height) = image::ImageReader::new(std::io::Cursor::new(&response))
         .with_guessed_format()
         .unwrap()
@@ -350,6 +364,7 @@ async fn test_get_resource_by_id_and_resolution() {
 
 #[actix_web::test]
 async fn test_get_resource_metadata_by_id() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is an exif image
     let base_test_dir = create_temp_folder().await;
     let test_image_1 =
@@ -395,6 +410,7 @@ async fn test_get_resource_metadata_by_id() {
 
 #[actix_web::test]
 async fn test_get_resource_description_by_id() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is an exif image
     let base_test_dir = create_temp_folder().await;
     let test_image_1 =
@@ -426,6 +442,7 @@ async fn test_get_resource_description_by_id() {
 
 #[actix_web::test]
 async fn test_get_unknown_resource_metadata_returns_not_found() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is an empty library
     let base_test_dir = create_temp_folder().await;
 
@@ -459,6 +476,7 @@ async fn test_get_unknown_resource_metadata_returns_not_found() {
 
 #[actix_web::test]
 async fn test_ignore_file_in_resources() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is a folder structure with two assets
     // AND a file with the name .ignore
     let base_test_dir = create_temp_folder().await;
@@ -608,6 +626,8 @@ fn build_app(
                 .service(resource_endpoint::get_all_resources)
                 .service(resource_endpoint::get_this_week_resources_count)
                 .service(resource_endpoint::get_this_week_resources)
+                .service(resource_endpoint::get_this_week_resources_metadata)
+                .service(resource_endpoint::get_this_week_resource_image)
                 .service(resource_endpoint::random_resources)
                 .service(resource_endpoint::get_resource_by_id_and_resolution)
                 .service(resource_endpoint::get_resource_metadata_by_id)
@@ -677,4 +697,206 @@ async fn create_temp_folder() -> PathBuf {
     fs::create_dir_all(&data_dir).unwrap();
 
     test_dir
+}
+
+fn create_local_image_file(base_dir: &Path, file_name: &str) {
+    let hash = {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h = DefaultHasher::new();
+        file_name.hash(&mut h);
+        h.finish()
+    };
+    let r = ((hash >> 16) & 0xFF) as u8;
+    let g = ((hash >> 8) & 0xFF) as u8;
+    let b = (hash & 0xFF) as u8;
+    let img = image::RgbImage::from_pixel(20, 20, image::Rgb([r, g, b]));
+    let path = base_dir.join(file_name);
+    let mut buf = Vec::new();
+    image::DynamicImage::ImageRgb8(img)
+        .write_to(
+            &mut std::io::Cursor::new(&mut buf),
+            image::ImageFormat::Jpeg,
+        )
+        .unwrap();
+    fs::write(&path, buf).unwrap();
+}
+
+#[actix_web::test]
+async fn test_image_endpoint_serves_jpeg_and_caches_on_filesystem() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN a temp folder with a local JPEG image indexed and filesystem cache enabled
+    let base = create_temp_folder().await;
+    env::set_var("DATA_FOLDER", base.to_str().unwrap());
+    create_local_image_file(&base, "test_image_fs.jpg");
+    let id = utils::md5("test_image_fs.jpg");
+    let app = test::init_service(build_app(base.to_str().unwrap())).await;
+
+    // WHEN requesting the image at 100x100 for the first time
+    let req = TestRequest::get()
+        .uri(&format!("/api/resources/{}/100/100", id))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    // THEN the response is JPEG and a filesystem cache file is created
+    assert_eq!(resp.status(), 200);
+    assert_eq!(
+        resp.headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "image/jpeg"
+    );
+    let body = test::read_body(resp).await;
+    assert_eq!(&body[0..2], &[0xFF, 0xD8]);
+    let cache_file = base.join("cache").join(format!("{}_100_100.jpg", id));
+    assert!(
+        cache_file.exists(),
+        "cache file not found: {:?}",
+        cache_file
+    );
+    let mtime1 = fs::metadata(&cache_file).unwrap().modified().unwrap();
+
+    // WHEN requesting the same image again after a short delay
+    actix_rt::time::sleep(std::time::Duration::from_millis(50)).await;
+    let req2 = TestRequest::get()
+        .uri(&format!("/api/resources/{}/100/100", id))
+        .to_request();
+    let resp2 = test::call_service(&app, req2).await;
+
+    // THEN the second response is also JPEG and the cache mtime is updated (LRU touch)
+    assert_eq!(resp2.status(), 200);
+    let body2 = test::read_body(resp2).await;
+    assert_eq!(&body2[0..2], &[0xFF, 0xD8]);
+    let mtime2 = fs::metadata(&cache_file).unwrap().modified().unwrap();
+    assert!(mtime2 >= mtime1, "mtime not updated on cache hit");
+    cleanup(&base).await;
+}
+
+#[actix_web::test]
+#[allow(clippy::arc_with_non_send_sync)]
+async fn test_three_concurrent_clients_no_pool_timeout() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN a temp folder with 20 distinct images and filesystem cache enabled
+    let base = create_temp_folder().await;
+    env::set_var("DATA_FOLDER", base.to_str().unwrap());
+    for i in 0..20 {
+        create_local_image_file(&base, &format!("concurrent_{}.jpg", i));
+    }
+    let app = test::init_service(build_app(base.to_str().unwrap())).await;
+    let app = std::sync::Arc::new(app);
+
+    // WHEN 60 concurrent clients request images (3x the image set)
+    let mut handles = Vec::new();
+    for n in 0..60 {
+        let app = app.clone();
+        let idx = n % 20;
+        let file_name = format!("concurrent_{}.jpg", idx);
+        let id = utils::md5(&file_name);
+        let handle = actix_rt::spawn(async move {
+            let req = TestRequest::get()
+                .uri(&format!("/api/resources/{}/10/10", id))
+                .to_request();
+            let resp = test::call_service(&*app, req).await;
+            assert_eq!(resp.status(), 200);
+            assert_eq!(
+                resp.headers()
+                    .get("content-type")
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+                "image/jpeg"
+            );
+            let body = test::read_body(resp).await;
+            assert_eq!(&body[0..2], &[0xFF, 0xD8]);
+        });
+        handles.push(handle);
+    }
+
+    // THEN all concurrent requests succeed without pool timeout and return JPEG
+    for h in handles {
+        h.await.unwrap();
+    }
+    cleanup(&base).await;
+}
+
+#[actix_web::test]
+async fn test_cache_eviction_caps_500() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN a fresh filesystem cache directory
+    let base = create_temp_folder().await;
+    env::set_var("DATA_FOLDER", base.to_str().unwrap());
+    let cache_dir = crate::image_cache::cache_dir(base.to_str().unwrap());
+
+    // WHEN putting 600 distinct entries (exceeding the 500-file cap)
+    for i in 0..600 {
+        let key = format!("evict_{}.jpg", i);
+        let data = vec![0xFF, 0xD8, 0xFF, 0x00, i as u8];
+        crate::image_cache::put(&cache_dir, &key, &data).unwrap();
+        if i % 100 == 0 {
+            actix_rt::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+    }
+
+    // THEN the cache is bounded to 500 files / 1 GiB and oldest is evicted
+    let (count, bytes) = crate::image_cache::cache_stats(&cache_dir);
+    assert!(count <= 500, "count {} exceeds 500", count);
+    assert!(bytes <= 1_073_741_824, "bytes {} exceeds 1GB", bytes);
+    let early_exists = cache_dir.join("evict_0.jpg").exists();
+    assert!(!early_exists, "LRU should have evicted earliest entry");
+    cleanup(&base).await;
+}
+
+#[actix_web::test]
+async fn test_week_image_endpoint_filesystem_cache() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN a temp folder with a week-range image (taken = now) and filesystem cache enabled
+    let base = create_temp_folder().await;
+    env::set_var("DATA_FOLDER", base.to_str().unwrap());
+    create_local_image_file(&base, "week_image_test.jpg");
+    let app = test::init_service(build_app(base.to_str().unwrap())).await;
+    {
+        let store = resource_store::initialize(base.to_str().unwrap());
+        let id = utils::md5("week_image_test.jpg");
+        if let Some(val) = store.get_resource(&id) {
+            let mut v: serde_json::Value = serde_json::from_str(&val).unwrap();
+            let now_str = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+            v["taken"] = serde_json::Value::String(now_str.clone());
+            let new_val = serde_json::to_string(&v).unwrap();
+            let mut map = std::collections::HashMap::new();
+            map.insert(id.clone(), new_val);
+            store.add_resources(map);
+        }
+    }
+
+    // WHEN requesting the week image endpoint
+    let req = TestRequest::get()
+        .uri("/api/resources/week/image")
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+
+    // THEN the response is JPEG and a filesystem cache file for the week id is created
+    assert_eq!(resp.status(), 200);
+    assert_eq!(
+        resp.headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "image/jpeg"
+    );
+    let body = test::read_body(resp).await;
+    assert_eq!(&body[0..2], &[0xFF, 0xD8]);
+    let store2 = resource_store::initialize(base.to_str().unwrap());
+    let ids = store2.get_resources_this_week_visible_random();
+    assert!(!ids.is_empty(), "week query should return at least one id");
+    let week_id = &ids[0];
+    let cache_file = base.join("cache").join(format!("{}_0_0.jpg", week_id));
+    assert!(
+        cache_file.exists(),
+        "week image cache file not found: {:?}",
+        cache_file
+    );
+    cleanup(&base).await;
 }

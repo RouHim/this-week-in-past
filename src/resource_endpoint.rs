@@ -12,7 +12,23 @@ use crate::{image_processor, resource_processor};
 
 const CONTENT_TYPE_APPLICATION_JSON: &str = "application/json";
 const CONTENT_TYPE_TEXT_PLAIN: &str = "text/plain";
-const CONTENT_TYPE_IMAGE_PNG: &str = "image/png";
+const CONTENT_TYPE_IMAGE_JPEG: &str = "image/jpeg";
+
+/// Sanitizes a resource id for use as filesystem cache key component.
+/// Replaces any char not in [a-zA-Z0-9_-] with '_' to prevent path traversal
+/// via '/', '.', '\', '..', etc. Resource ids are hex md5 but user-supplied
+/// path param may contain arbitrary chars; prior BLOB cache had no FS exposure.
+fn sanitize_cache_key(id: &str) -> String {
+    id.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect()
+}
 
 #[get("")]
 pub async fn get_all_resources(resource_store: web::Data<ResourceStore>) -> HttpResponse {
@@ -84,8 +100,23 @@ pub async fn get_this_week_resource_image(
         return HttpResponse::NotFound().finish();
     }
 
-    // Read the image data from the file system and adjust the image to the display
     let image_resource = resource_image.unwrap();
+
+    // Filesystem cache: key based on resource id with 0x0 dims (sanitized to prevent traversal)
+    let cache_dir = crate::image_cache::cache_dir(
+        &std::env::var("DATA_FOLDER")
+            .or_else(|_| std::env::var("CACHE_DIR"))
+            .unwrap_or_else(|_| "./data".into()),
+    );
+    let safe_id = sanitize_cache_key(&image_resource.id);
+    let cache_key = format!("{}_0_0.jpg", safe_id);
+    if let Some(cached) = crate::image_cache::get(&cache_dir, &cache_key) {
+        return HttpResponse::Ok()
+            .content_type(CONTENT_TYPE_IMAGE_JPEG)
+            .body(cached);
+    }
+
+    // Read the image data from the file system and adjust the image to the display
     let resource_data = fs::read(&image_resource.path)
         .ok()
         .and_then(|resource_data| {
@@ -99,8 +130,9 @@ pub async fn get_this_week_resource_image(
         });
 
     if let Some(resource_data) = resource_data {
+        let _ = crate::image_cache::put(&cache_dir, &cache_key, &resource_data);
         HttpResponse::Ok()
-            .content_type(CONTENT_TYPE_IMAGE_PNG)
+            .content_type(CONTENT_TYPE_IMAGE_JPEG)
             .body(resource_data)
     } else {
         HttpResponse::InternalServerError().finish()
@@ -139,14 +171,18 @@ pub async fn get_resource_by_id_and_resolution(
         }
     }
 
-    // Check cache, if successful return it
-    let cached_data = resource_store
-        .get_ref()
-        .get_data_cache_entry(format!("{resource_id}_{display_width}_{display_height}"));
-    if let Some(cached_data) = cached_data {
+    // Filesystem cache check (FR-001, FR-011, FR-012) — sanitize id to prevent path traversal
+    let cache_dir = crate::image_cache::cache_dir(
+        &std::env::var("DATA_FOLDER")
+            .or_else(|_| std::env::var("CACHE_DIR"))
+            .unwrap_or_else(|_| "./data".into()),
+    );
+    let safe_id = sanitize_cache_key(resource_id);
+    let cache_key = format!("{safe_id}_{display_width}_{display_height}.jpg");
+    if let Some(cached) = crate::image_cache::get(&cache_dir, &cache_key) {
         return HttpResponse::Ok()
-            .content_type(CONTENT_TYPE_IMAGE_PNG)
-            .body(cached_data);
+            .content_type(CONTENT_TYPE_IMAGE_JPEG)
+            .body(cached);
     }
 
     // if not in cache, load resource metadata from database
@@ -172,15 +208,11 @@ pub async fn get_resource_by_id_and_resolution(
             )
         });
 
-    // If image adjustments were successful, return the data, otherwise return with error
+    // If image adjustments were successful, cache via filesystem then return
     if let Some(resource_data) = resource_data {
-        resource_store.get_ref().add_data_cache_entry(
-            format!("{resource_id}_{display_width}_{display_height}"),
-            &resource_data,
-        );
-
+        let _ = crate::image_cache::put(&cache_dir, &cache_key, &resource_data);
         HttpResponse::Ok()
-            .content_type(CONTENT_TYPE_IMAGE_PNG)
+            .content_type(CONTENT_TYPE_IMAGE_JPEG)
             .body(resource_data)
     } else {
         HttpResponse::InternalServerError().finish()

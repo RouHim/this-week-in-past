@@ -57,7 +57,12 @@ pub fn index_resources(resource_reader: ResourceReader, resource_store: Resource
     resource_store.clear_resources();
 
     info!("Cleanup cache");
-    resource_store.clear_data_cache();
+    let cache_dir = crate::image_cache::cache_dir(
+        &std::env::var("DATA_FOLDER")
+            .or_else(|_| std::env::var("CACHE_DIR"))
+            .unwrap_or_else(|_| "./data".into()),
+    );
+    let _ = crate::image_cache::clear(&cache_dir);
 
     info!("Inserting new resources");
     resource_store.add_resources(map);

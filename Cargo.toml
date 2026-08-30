@@ -30,9 +30,8 @@ mime_guess = "2.0.5"
 r2d2 = "0.8.10"
 rusqlite = { version = "0.40", features = ["bundled"] }
 r2d2_sqlite = "0.35"
-# rstar is Euclidean-only (no geodesic feature); geo_location.rs compensates
-# by scanning k nearest Euclidean candidates and picking minimal haversine
-# distance within 50 km — see PointDistance impl and resolve_city_name.
+parking_lot = "0.12"
+# rstar Euclidean-only; geo_location.rs compensates via k-nearest haversine scan within 50km
 rstar = "0.12"
 
 [target.'cfg(target_env = "musl")'.dependencies]
@@ -42,6 +41,8 @@ mimalloc = "0.1.43"
 assertor = "0.0.4"
 actix-rt = "2.9"
 ureq = "3.0.0"
+tempfile = "3.10"
+tokio = { version = "1.53", features = ["sync"] }
 
 [profile.release]
 panic = "abort" # Strip expensive panic clean-up logic
