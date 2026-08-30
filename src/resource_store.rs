@@ -114,46 +114,6 @@ impl ResourceStore {
         stmt.execute([resource_id]).unwrap();
     }
 
-    /// Adds an image cache entry, if an entry already exists it gets updated
-    #[allow(dead_code)]
-    pub fn add_data_cache_entry(&self, id: String, data: &Vec<u8>) {
-        let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection
-            .prepare("INSERT OR REPLACE INTO data_cache(id, data) VALUES(?, ?)")
-            .unwrap();
-        stmt.execute((&id, data))
-            .unwrap_or_else(|error| panic!("Insertion of {id} failed:n{}", error));
-    }
-
-    /// Get an image cache entry
-    #[allow(dead_code)]
-    pub fn get_data_cache_entry(&self, id: String) -> Option<Vec<u8>> {
-        let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection
-            .prepare("SELECT data FROM data_cache WHERE id = ?")
-            .unwrap();
-        let mut rows = stmt.query([id]).unwrap();
-
-        let first_entry = rows.next();
-
-        if let Ok(first_entry) = first_entry {
-            first_entry
-                .map(|entry| entry.get(0))
-                .and_then(|entry| entry.ok())
-        } else {
-            None
-        }
-    }
-
-    /// Clears the complete image cache
-    #[allow(dead_code)]
-    pub fn clear_data_cache(&self) {
-        let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection.prepare("DELETE FROM data_cache").unwrap();
-        stmt.execute(())
-            .unwrap_or_else(|error| panic!("Deletion of table 'data_cache' failed.\n{}", error));
-    }
-
     /// Returns an id list of all resources, including hidden resources
     pub fn get_all_resource_ids(&self) -> Vec<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
@@ -412,12 +372,24 @@ fn range_hits_new_year() -> bool {
 
 /// Returns the week query for the next year
 fn get_next_year_query() -> &'static str {
-    "SELECT DISTINCT id FROM resources WHERE taken IS NOT NULL AND id NOT IN (SELECT id FROM hidden) AND strftime('%m-%d', taken) BETWEEN '01-01' AND strftime('%m-%d','now','localtime','+3 days')"
+    r#"
+       SELECT DISTINCT id
+       FROM resources
+       WHERE taken IS NOT NULL
+         AND id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', taken) BETWEEN '01-01' AND strftime('%m-%d','now','localtime','+3 days')
+   ;"#
 }
 
 /// Returns the week query for the last year
 fn get_last_year_query() -> &'static str {
-    "SELECT DISTINCT id FROM resources WHERE taken IS NOT NULL AND id NOT IN (SELECT id FROM hidden) AND strftime('%m-%d', taken) BETWEEN '12-29' AND '12-31'"
+    r#"
+       SELECT DISTINCT id
+       FROM resources
+       WHERE taken IS NOT NULL
+         AND id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', taken) BETWEEN strftime('%m-%d','now','localtime','-3 days') AND '12-31'
+   ;"#
 }
 
 /// Executes the specified query and returns a list of resource ids
@@ -451,18 +423,31 @@ fn execute_count_query(
 
 /// Returns the count query for the next year
 fn get_next_year_count_query() -> &'static str {
-    "SELECT COUNT(DISTINCT id) FROM resources WHERE taken IS NOT NULL AND id NOT IN (SELECT id FROM hidden) AND strftime('%m-%d', taken) BETWEEN '01-01' AND strftime('%m-%d','now','localtime','+3 days')"
+    r#"
+       SELECT COUNT(DISTINCT id)
+       FROM resources
+       WHERE taken IS NOT NULL
+         AND id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', taken) BETWEEN '01-01' AND strftime('%m-%d','now','localtime','+3 days')
+   ;"#
 }
 
 /// Returns the count query for the last year
 fn get_last_year_count_query() -> &'static str {
-    "SELECT COUNT(DISTINCT id) FROM resources WHERE taken IS NOT NULL AND id NOT IN (SELECT id FROM hidden) AND strftime('%m-%d', taken) BETWEEN '12-29' AND '12-31'"
+    r#"
+       SELECT COUNT(DISTINCT id)
+       FROM resources
+       WHERE taken IS NOT NULL
+         AND id NOT IN (SELECT id FROM hidden)
+         AND strftime('%m-%d', taken) BETWEEN strftime('%m-%d','now','localtime','-3 days') AND '12-31'
+   ;"#
 }
 
 #[cfg(test)]
 mod tests {
     #[test]
     fn week_query_returns_this_week_via_taken() {
+        // GIVEN a store with one resource taken today and one old resource
         let dir = tempfile::tempdir().unwrap();
         let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
         let today_str = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
@@ -476,25 +461,33 @@ mod tests {
             r#"{"id":"old_id","taken":"2000-01-15T12:00:00"}"#.into(),
         );
         store.add_resources(map);
+
+        // WHEN querying visible resources for the current week
         let ids = store.get_resources_this_week_visible_random();
+
+        // THEN the resource taken today is returned
         assert!(ids.contains(&"this_week_id".to_string()));
     }
 
     #[test]
     fn week_query_uses_taken_index() {
+        // GIVEN an initialized store with a taken index
         let dir = tempfile::tempdir().unwrap();
         let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
         let conn = store.persistent_file_store_pool.get().unwrap();
+
+        // WHEN explaining the query plan for the taken-based week query
         let plan: String = conn.query_row(
             "EXPLAIN QUERY PLAN SELECT DISTINCT id FROM resources WHERE taken IS NOT NULL AND strftime('%m-%d', taken) BETWEEN '01-01' AND '12-31'",
             [], |r| r.get(3)
         ).unwrap();
+
+        // THEN the index idx_resources_taken is used and no helper uses json_each
         assert!(
             plan.contains("idx_resources_taken") || plan.contains("USING INDEX"),
             "plan: {}",
             plan
         );
-        // Weak check: week query helpers must not use json_each
         assert!(
             !crate::resource_store::get_next_year_query().contains("json_each"),
             "get_next_year_query still uses json_each"
@@ -515,6 +508,7 @@ mod tests {
 
     #[test]
     fn initialize_creates_taken_column_and_index_and_backfills() {
+        // GIVEN a store with a legacy row inserted without the taken column
         let dir = tempfile::tempdir().unwrap();
         let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
         let conn = store.persistent_file_store_pool.get().unwrap();
@@ -527,8 +521,12 @@ mod tests {
         )
         .unwrap();
         drop(conn);
+
+        // WHEN re-initializing the store (triggering migration/backfill)
         let store2 = crate::resource_store::initialize(dir.path().to_str().unwrap());
         let conn = store2.persistent_file_store_pool.get().unwrap();
+
+        // THEN the taken column, index, and backfilled value exist
         let col: i32 = conn
             .query_row(
                 "SELECT COUNT(*) FROM pragma_table_info('resources') WHERE name='taken'",

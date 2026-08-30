@@ -1,24 +1,41 @@
+use parking_lot::Mutex;
 use std::{
     fs, io,
     path::{Path, PathBuf},
+    time::SystemTime,
 };
 
 pub const MAX_CACHE_FILES: usize = 500;
 pub const MAX_CACHE_BYTES: u64 = 1_073_741_824;
+static CACHE_MUTEX: Mutex<()> = Mutex::new(());
+
+fn is_valid_key(key: &str) -> bool {
+    !key.is_empty() && !key.contains('/') && !key.contains('\\') && !key.contains("..")
+}
 
 pub fn cache_dir(data_folder: &str) -> PathBuf {
     PathBuf::from(data_folder).join("cache")
 }
 
 pub fn get(cache_dir: &Path, key: &str) -> Option<Vec<u8>> {
+    if !is_valid_key(key) {
+        return None;
+    }
     let path = cache_dir.join(key);
     let data = fs::read(&path).ok()?;
-    let now = filetime::FileTime::now();
-    let _ = filetime::set_file_mtime(&path, now);
+    let now = SystemTime::now();
+    let _ = fs::File::open(&path).and_then(|f| f.set_modified(now));
     Some(data)
 }
 
 pub fn put(cache_dir: &Path, key: &str, data: &[u8]) -> io::Result<()> {
+    if !is_valid_key(key) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "invalid cache key",
+        ));
+    }
+    let _guard = CACHE_MUTEX.lock();
     if let Err(e) = fs::create_dir_all(cache_dir) {
         log::warn!("cache dir create failed {}: {}", cache_dir.display(), e);
         return Ok(());
@@ -29,8 +46,8 @@ pub fn put(cache_dir: &Path, key: &str, data: &[u8]) -> io::Result<()> {
         key,
         std::process::id(),
         std::thread::current().id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_nanos()
     ));
@@ -42,13 +59,14 @@ pub fn put(cache_dir: &Path, key: &str, data: &[u8]) -> io::Result<()> {
         let _ = fs::remove_file(&tmp);
         return Err(e);
     }
-    let now = filetime::FileTime::now();
-    let _ = filetime::set_file_mtime(&dest, now);
+    let now = SystemTime::now();
+    let _ = fs::File::open(&dest).and_then(|f| f.set_modified(now));
     evict_if_needed(cache_dir);
     Ok(())
 }
 
 pub fn clear(cache_dir: &Path) -> io::Result<()> {
+    let _guard = CACHE_MUTEX.lock();
     if !cache_dir.exists() {
         return Ok(());
     }
@@ -80,7 +98,7 @@ pub fn cache_stats(cache_dir: &Path) -> (usize, u64) {
 }
 
 fn evict_if_needed(cache_dir: &Path) {
-    let mut entries: Vec<(PathBuf, filetime::FileTime, u64)> = vec![];
+    let mut entries: Vec<(PathBuf, SystemTime, u64)> = vec![];
     let Ok(rd) = fs::read_dir(cache_dir) else {
         return;
     };
@@ -94,7 +112,7 @@ fn evict_if_needed(cache_dir: &Path) {
         if e.file_name().to_string_lossy().starts_with(".tmp-") {
             continue;
         }
-        let mtime = filetime::FileTime::from_last_modification_time(&md);
+        let mtime = md.modified().unwrap_or(SystemTime::UNIX_EPOCH);
         entries.push((e.path(), mtime, md.len()));
     }
     entries.sort_by_key(|(_, t, _)| *t);
@@ -117,14 +135,21 @@ mod tests {
     use std::fs;
     #[test]
     fn put_and_get_roundtrip() {
+        // GIVEN a fresh filesystem cache directory
         let dir = tempfile::tempdir().unwrap();
         let cache = dir.path().join("cache");
         fs::create_dir_all(&cache).unwrap();
+
+        // WHEN putting and then getting the same key
         put(&cache, "abc_100_100.jpg", b"hello").unwrap();
-        assert_eq!(get(&cache, "abc_100_100.jpg"), Some(b"hello".to_vec()));
+        let result = get(&cache, "abc_100_100.jpg");
+
+        // THEN the roundtrip returns the original bytes
+        assert_eq!(result, Some(b"hello".to_vec()));
     }
     #[test]
     fn lru_evicts_oldest_when_over_count() {
+        // GIVEN a cache exceeding the 500-file limit
         let dir = tempfile::tempdir().unwrap();
         let cache = dir.path().join("cache");
         fs::create_dir_all(&cache).unwrap();
@@ -132,20 +157,31 @@ mod tests {
             put(&cache, &format!("k{i}_10_10.jpg"), b"x").unwrap();
             std::thread::sleep(std::time::Duration::from_millis(2));
         }
+
+        // WHEN checking cache stats after eviction
         let (count, _) = cache_stats(&cache);
+
+        // THEN the oldest entry is evicted and newest remains
         assert!(count <= 500, "count {}", count);
         assert_eq!(get(&cache, "k0_10_10.jpg"), None);
         assert!(get(&cache, "k500_10_10.jpg").is_some());
     }
     #[test]
     fn missing_entry_is_cache_miss() {
+        // GIVEN an empty cache directory
         let dir = tempfile::tempdir().unwrap();
         let cache = dir.path().join("cache");
         fs::create_dir_all(&cache).unwrap();
-        assert_eq!(get(&cache, "nope.jpg"), None);
+
+        // WHEN requesting a non-existent key
+        let result = get(&cache, "nope.jpg");
+
+        // THEN the result is a cache miss (None)
+        assert_eq!(result, None);
     }
     #[test]
     fn concurrent_put_no_corruption() {
+        // GIVEN a shared cache directory with concurrent writers
         let dir = tempfile::tempdir().unwrap();
         let cache = dir.path().join("cache");
         fs::create_dir_all(&cache).unwrap();
@@ -160,7 +196,11 @@ mod tests {
         for h in hs {
             h.join().unwrap();
         }
+
+        // WHEN all writers have finished
         let (count, bytes) = cache_stats(&cache);
+
+        // THEN no corruption occurred and all entries are present
         assert_eq!(count, 20);
         assert_eq!(bytes, 20 * 100);
     }
