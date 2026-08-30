@@ -1,3 +1,10 @@
+## [1.32.50](https://github.com/RouHim/this-week-in-past/compare/1.32.49...1.32.50) (2026-08-30)
+
+
+### Bug Fixes
+
+* fallback to free reverse-geocode-client when BigDataCloud key is outdated (403) ([78597b7](https://github.com/RouHim/this-week-in-past/commit/78597b724d1da08845e82da3b01df4adadd16c0b))
+
 ## [1.32.49](https://github.com/RouHim/this-week-in-past/compare/1.32.48...1.32.49) (2026-08-05)
 
 ## [1.32.48](https://github.com/RouHim/this-week-in-past/compare/1.32.47...1.32.48) (2026-08-04)
