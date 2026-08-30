@@ -614,6 +614,8 @@ fn build_app(
                 .service(resource_endpoint::get_all_resources)
                 .service(resource_endpoint::get_this_week_resources_count)
                 .service(resource_endpoint::get_this_week_resources)
+                .service(resource_endpoint::get_this_week_resources_metadata)
+                .service(resource_endpoint::get_this_week_resource_image)
                 .service(resource_endpoint::random_resources)
                 .service(resource_endpoint::get_resource_by_id_and_resolution)
                 .service(resource_endpoint::get_resource_metadata_by_id)
@@ -817,6 +819,8 @@ async fn test_week_image_endpoint_filesystem_cache() {
     let base = create_temp_folder().await;
     env::set_var("DATA_FOLDER", base.to_str().unwrap());
     create_local_image_file(&base, "week_image_test.jpg");
+    // First index via build_app, then backfill taken to ensure week query finds it
+    let app = test::init_service(build_app(base.to_str().unwrap())).await;
     {
         let store = resource_store::initialize(base.to_str().unwrap());
         let id = utils::md5("week_image_test.jpg");
@@ -830,22 +834,31 @@ async fn test_week_image_endpoint_filesystem_cache() {
             store.add_resources(map);
         }
     }
-    let app2 = test::init_service(build_app(base.to_str().unwrap())).await;
     let req = TestRequest::get()
         .uri("/api/resources/week/image")
         .to_request();
-    let resp = test::call_service(&app2, req).await;
-    if resp.status() == 200 {
-        assert_eq!(
-            resp.headers()
-                .get("content-type")
-                .unwrap()
-                .to_str()
-                .unwrap(),
-            "image/jpeg"
-        );
-        let body = test::read_body(resp).await;
-        assert_eq!(&body[0..2], &[0xFF, 0xD8]);
-    }
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), 200);
+    assert_eq!(
+        resp.headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "image/jpeg"
+    );
+    let body = test::read_body(resp).await;
+    assert_eq!(&body[0..2], &[0xFF, 0xD8]);
+    // Verify filesystem cache file was created for week image (sanitized id)
+    let store2 = resource_store::initialize(base.to_str().unwrap());
+    let ids = store2.get_resources_this_week_visible_random();
+    assert!(!ids.is_empty(), "week query should return at least one id");
+    let week_id = &ids[0];
+    let cache_file = base.join("cache").join(format!("{}_0_0.jpg", week_id));
+    assert!(
+        cache_file.exists(),
+        "week image cache file not found: {:?}",
+        cache_file
+    );
     cleanup(&base).await;
 }
