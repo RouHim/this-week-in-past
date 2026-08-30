@@ -13,10 +13,15 @@ fn is_valid_key(key: &str) -> bool {
     !key.is_empty() && !key.contains('/') && !key.contains('\\') && !key.contains("..")
 }
 
+/// Returns the filesystem cache directory for the given data folder.
+/// Joins `cache` onto `data_folder` (e.g. `/data/cache`).
 pub fn cache_dir(data_folder: &str) -> PathBuf {
     PathBuf::from(data_folder).join("cache")
 }
 
+/// Retrieves a cached entry by `key`.
+/// Returns `None` if the key is invalid or the file does not exist.
+/// Touches the file's mtime on hit to maintain LRU order.
 pub fn get(cache_dir: &Path, key: &str) -> Option<Vec<u8>> {
     if !is_valid_key(key) {
         return None;
@@ -28,6 +33,10 @@ pub fn get(cache_dir: &Path, key: &str) -> Option<Vec<u8>> {
     Some(data)
 }
 
+/// Stores `data` under `key` atomically (tmp file + rename).
+/// Validates the key, creates the cache directory if needed, updates mtime,
+/// and evicts oldest entries when `MAX_CACHE_FILES` or `MAX_CACHE_BYTES` is exceeded.
+/// Thread-safe via a global mutex; concurrent writers use unique tmp names.
 pub fn put(cache_dir: &Path, key: &str, data: &[u8]) -> io::Result<()> {
     if !is_valid_key(key) {
         return Err(io::Error::new(
@@ -65,6 +74,8 @@ pub fn put(cache_dir: &Path, key: &str, data: &[u8]) -> io::Result<()> {
     Ok(())
 }
 
+/// Clears all files in the cache directory.
+/// Thread-safe; returns `Ok(())` if the directory does not exist.
 pub fn clear(cache_dir: &Path) -> io::Result<()> {
     let _guard = CACHE_MUTEX.lock();
     if !cache_dir.exists() {
@@ -77,7 +88,9 @@ pub fn clear(cache_dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
-#[allow(dead_code)]
+/// Returns cache statistics as `(file_count, total_bytes)`, skipping `.tmp-` files.
+/// Test-only helper for verifying LRU eviction bounds.
+#[cfg(test)]
 pub fn cache_stats(cache_dir: &Path) -> (usize, u64) {
     let mut count = 0;
     let mut bytes = 0u64;

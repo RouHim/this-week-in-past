@@ -5,7 +5,7 @@ use image::imageops::FilterType;
 use image::ImageReader;
 use serde::{Deserialize, Serialize};
 
-const MAX_DIM: u32 = 8000;
+const MAX_DIM: u32 = 10_000;
 const MAX_PIXELS: u64 = 50_000_000;
 
 /// Represents the orientation of an image in two dimensions
@@ -120,8 +120,8 @@ mod tests {
 
     #[test]
     fn adjust_image_rejects_huge_image() {
-        // GIVEN a huge 9000x9000 image exceeding 8000 limit
-        let huge = image::RgbImage::new(9000, 9000);
+        // GIVEN a huge 11_000x11_000 image exceeding 10_000 limit
+        let huge = image::RgbImage::new(11_000, 11_000);
         let mut buf = Vec::new();
         image::DynamicImage::ImageRgb8(huge)
             .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
@@ -131,7 +131,7 @@ mod tests {
         let out = adjust_image("huge.png".into(), buf, 100, 100, None);
 
         // THEN the image is rejected (None) to prevent OOM
-        assert!(out.is_none(), "should reject >8000");
+        assert!(out.is_none(), "should reject >10000");
     }
 
     #[test]
