@@ -105,7 +105,7 @@ All configuration is done via environment variables:
 | SLIDESHOW_INTERVAL         | Interval of the slideshow in seconds                                                                       | `30`                          | x                         |
 | REFRESH_INTERVAL           | Interval how often the page should be reloaded in minutes (triggers a new slideshow playlist)              | `360` (6h)                    |                           |
 | DATE_FORMAT                | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html)      | `%d.%m.%Y`                    |                           |
-| BIGDATA_CLOUD_API_KEY      | Deprecated — ignored since vNext; offline GeoNames cities500 is used. Remove from env/compose. |                               |                           |
+| BIGDATA_CLOUD_API_KEY      | Deprecated |                               |                           |
 | OPEN_WEATHER_MAP_API_KEY   | To receive weather live data. Obtain here: https://openweathermap.org/api                                  |                               |                           |
 | WEATHER_ENABLED            | Indicates if weather should be shown in the slideshow                                                      | `false`                       | x                         |
 | WEATHER_LOCATION           | Name of a city                                                                                             | `Berlin`                      |                           |
