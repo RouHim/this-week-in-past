@@ -452,7 +452,7 @@ fn get_next_year_count_query() -> &'static str {
 
 /// Returns the count query for the last year
 fn get_last_year_count_query() -> &'static str {
-    "SELECT COUNT(DISTINCT id) FROM resources WHERE taken IS NOT NULL AND id NOT IN (SELECT id FROM hidden) AND strftime('%m-%d', taken) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND '12-31'"
+    "SELECT COUNT(DISTINCT id) FROM resources WHERE taken IS NOT NULL AND id NOT IN (SELECT id FROM hidden) AND strftime('%m-%d', taken) BETWEEN '12-29' AND '12-31'"
 }
 
 #[cfg(test)]
