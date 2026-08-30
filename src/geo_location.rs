@@ -1,7 +1,8 @@
 use std::env;
 use std::fmt::{Display, Formatter};
-use std::sync::{LazyLock, OnceLock};
+use std::sync::OnceLock;
 
+use actix_web::web;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use rstar::{PointDistance, RTree, RTreeObject, AABB};
@@ -143,7 +144,7 @@ const MAX_DISTANCE_KM: f64 = 50.0;
 const CITIES500_PATH: &str = "/cities500.txt";
 
 static DEPRECATION_ONCE: OnceLock<()> = OnceLock::new();
-static CITY_INDEX: LazyLock<Option<CityIndex>> = LazyLock::new(load_city_index);
+static CITY_INDEX: OnceLock<Option<CityIndex>> = OnceLock::new();
 
 struct CityEntry {
     name: String,
@@ -161,6 +162,9 @@ impl RTreeObject for CityEntry {
 
 impl PointDistance for CityEntry {
     fn distance_2(&self, point: &[f64; 2]) -> f64 {
+        // Plain Euclidean — must match AABB::distance_2 used for R-tree
+        // internal nodes (rstar contract). Antimeridian wrap is handled
+        // at query time by probing lon±360.
         let dx = self.lon - point[0];
         let dy = self.lat - point[1];
         dx * dx + dy * dy
@@ -187,7 +191,7 @@ fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     let dlon = (lon2 - lon1).to_radians();
     let a = (dlat / 2.0).sin().powi(2)
         + lat1.to_radians().cos() * lat2.to_radians().cos() * (dlon / 2.0).sin().powi(2);
-    let c = 2.0 * a.sqrt().asin();
+    let c = 2.0 * a.clamp(0.0, 1.0).sqrt().asin();
     R * c
 }
 
@@ -268,7 +272,22 @@ fn load_city_index() -> Option<CityIndex> {
 }
 
 fn get_city_index() -> Option<&'static CityIndex> {
-    CITY_INDEX.as_ref()
+    CITY_INDEX.get().and_then(|opt| opt.as_ref())
+}
+
+async fn ensure_city_index() -> Option<&'static CityIndex> {
+    if let Some(opt) = CITY_INDEX.get() {
+        return opt.as_ref();
+    }
+    let loaded: Option<CityIndex> = match web::block(load_city_index).await {
+        Ok(opt) => opt,
+        Err(e) => {
+            log::warn!("cities500 load blocked task failed: {}", e);
+            return None;
+        }
+    };
+    let _ = CITY_INDEX.set(loaded);
+    get_city_index()
 }
 
 /// Returns the city name for the specified geo location
@@ -277,9 +296,9 @@ fn get_city_index() -> Option<&'static CityIndex> {
 pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     maybe_warn_deprecated();
 
-    // Validation
-    if geo_location.latitude.is_nan()
-        || geo_location.longitude.is_nan()
+    // Validation: finite and in-range (is_finite covers NaN and ±inf)
+    if !geo_location.latitude.is_finite()
+        || !geo_location.longitude.is_finite()
         || geo_location.latitude < -90.0
         || geo_location.latitude > 90.0
         || geo_location.longitude < -180.0
@@ -288,20 +307,33 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
         return None;
     }
 
-    let index = get_city_index()?;
-    let point = [geo_location.longitude as f64, geo_location.latitude as f64];
-    let nearest = index.tree.nearest_neighbor(&point)?;
+    let index = ensure_city_index().await?;
+    let lon = geo_location.longitude as f64;
+    let lat = geo_location.latitude as f64;
+    let point = [lon, lat];
+    // Plain Euclidean cannot wrap at the antimeridian. Probe the
+    // wrapped equivalent (lon±360) so a city just across the date
+    // line is found via the second R-tree query; the true nearest
+    // is selected below by haversine (which naturally wraps).
+    let alt_lon = if lon >= 0.0 { lon - 360.0 } else { lon + 360.0 };
+    let alt_point = [alt_lon, lat];
 
-    let dist = haversine_km(
-        geo_location.latitude as f64,
-        geo_location.longitude as f64,
-        nearest.lat,
-        nearest.lon,
-    );
-
-    if dist <= MAX_DISTANCE_KM {
-        Some(nearest.name.clone())
-    } else {
-        None
+    // Euclidean ordering diverges from haversine (lon shrinks by cos(lat)),
+    // so the Euclidean-nearest may be outside 50 km while a slightly farther
+    // Euclidean candidate is inside. Scan k nearest and pick the closest
+    // haversine within threshold from both query points.
+    let mut best: Option<(&CityEntry, f64)> = None;
+    for query_point in [point, alt_point] {
+        for candidate in index.tree.nearest_neighbor_iter(&query_point).take(20) {
+            let dist = haversine_km(lat, lon, candidate.lat, candidate.lon);
+            if dist <= MAX_DISTANCE_KM {
+                match &best {
+                    Some((_, best_dist)) if dist >= *best_dist => {}
+                    _ => best = Some((candidate, dist)),
+                }
+            }
+        }
     }
+
+    best.map(|(entry, _)| entry.name.clone())
 }

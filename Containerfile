@@ -1,12 +1,15 @@
 # # # # # # # # # # # # # # # # # # # #
-# GeoNames data
+# GeoNames data — ~10 MB uncompressed (~185k cities), baked to /cities500.txt
+# Final image +~10 MB; pinned alpine for reproducibility, single layer to minimize cache invalidation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM docker.io/alpine AS geodata
-RUN apk add --no-cache curl unzip
-RUN curl -fL https://download.geonames.org/export/dump/cities500.zip -o /tmp/cities500.zip && \
+FROM docker.io/alpine:3.21 AS geodata
+RUN apk add --no-cache curl unzip && \
+    curl -fL --retry 3 --retry-delay 2 --connect-timeout 15 https://download.geonames.org/export/dump/cities500.zip -o /tmp/cities500.zip && \
     unzip -p /tmp/cities500.zip > /cities500.txt && \
-    test -s /cities500.txt && wc -l /cities500.txt && rm /tmp/cities500.zip
-
+    test -s /cities500.txt || { echo "cities500.txt is empty after unzip"; exit 1; } && \
+    lines=$(wc -l < /cities500.txt) && test "$lines" -gt 100000 || { echo "cities500 too small: $lines lines"; exit 1; } && \
+    test "$(stat -c%s /cities500.txt)" -gt 5000000 || { echo "cities500 too small by size"; exit 1; } && \
+    wc -l /cities500.txt && rm /tmp/cities500.zip
 # # # # # # # # # # # # # # # # # # # #
 # Builder
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
