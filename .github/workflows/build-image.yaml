@@ -126,7 +126,7 @@ jobs:
     name: Run application tests
     runs-on: ubuntu-latest
     env:
-      BIGDATA_CLOUD_API_KEY: ${{ secrets.BIGDATA_CLOUD_API_KEY }}
+      # Offline city resolution needs no API key
       OPEN_WEATHER_MAP_API_KEY: ${{ secrets.OPEN_WEATHER_MAP_API_KEY }}
     steps:
       - name: Checkout code
@@ -142,7 +142,15 @@ jobs:
         with:
           cache-on-failure: "true"
 
+      - name: Download cities500 data for offline tests
+        run: |
+          curl -fL https://download.geonames.org/export/dump/cities500.zip -o /tmp/cities500.zip
+          unzip -p /tmp/cities500.zip > /tmp/cities500.txt
+          test -s /tmp/cities500.txt && wc -l /tmp/cities500.txt
+
       - name: Test code
+        env:
+          CITIES500_PATH: /tmp/cities500.txt
         run: cargo test
 
   create-release:

@@ -7,7 +7,7 @@ FROM docker.io/alpine AS builder
 RUN mkdir "/empty_dir"
 
 # Install required packages for the staging script
-RUN apk update && apk add --no-cache bash file
+RUN apk update && apk add --no-cache bash file curl unzip
 
 # Copy all archs into this container
 RUN mkdir /work
@@ -18,6 +18,10 @@ COPY .container/stage-arch-bin.sh /work
 # This will copy the cpu arch corresponding binary to /target/this-week-in-past
 RUN bash stage-arch-bin.sh this-week-in-past
 
+# Download GeoNames cities500 data (FR-006)
+RUN curl -fL https://download.geonames.org/export/dump/cities500.zip -o /tmp/cities500.zip && \
+    unzip -p /tmp/cities500.zip > /cities500.txt && \
+    test -s /cities500.txt && wc -l /cities500.txt && rm /tmp/cities500.zip
 # # # # # # # # # # # # # # # # # # # #
 # Run image
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -38,6 +42,8 @@ COPY --chown=$USER:$USER --from=builder /empty_dir /tmp
 # Copy the built application from the build image to the run-image
 COPY --chown=$USER:$USER --from=builder /work/this-week-in-past /this-week-in-past
 
+# Copy offline city database
+COPY --from=builder /cities500.txt /cities500.txt
 EXPOSE 8080
 USER $USER
 

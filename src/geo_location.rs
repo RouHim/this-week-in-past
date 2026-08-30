@@ -1,14 +1,11 @@
-use std::collections::HashMap;
 use std::env;
 use std::fmt::{Display, Formatter};
-use std::time::Duration;
-
-use actix_web::web;
+use std::sync::{LazyLock, OnceLock};
 
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
+use rstar::{PointDistance, RTree, RTreeObject, AABB};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 /// Struct representing a geo location
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
@@ -31,11 +28,13 @@ fn dms_to_dd(dms_string: &str, dms_ref: &str) -> Option<f32> {
         static ref DMS_PARSE_PATTERN_1: Regex = Regex::new(
             // e.g.: 7 deg 33 min 55.5155 sec or 7 deg 33 min 55 sec
             r"(?P<deg>\d+) deg (?P<min>\d+) min (?P<sec>\d+.?\d*) sec"
-        ).unwrap();
+        )
+        .unwrap();
         static ref DMS_PARSE_PATTERN_2: Regex = Regex::new(
             // e.g.: 50/1, 25/1, 2519/100
             r"(?P<deg>\d+)/(?P<deg_fraction>\d+),\s*(?P<min>\d+)/(?P<min_fraction>\d+),\s*(?P<sec>\d+)/(?P<sec_fraction>\d+)"
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     let dms_pattern_1_match: Option<Captures> = DMS_PARSE_PATTERN_1.captures(dms_string);
@@ -132,71 +131,177 @@ pub fn from_degrees_minutes_seconds(
     }
 }
 
-/// Returns the city name for the specified geo location
-/// The city name is resolved from the geo location using the bigdatacloud api
-/// Tries the authenticated endpoint if a key is available, otherwise falls back
-/// to the free reverse-geocode-client endpoint. The key is outdated (403) in CI,
-/// so the fallback ensures tests and description generation keep working.
-pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
-    // Try authenticated endpoint first if key is present (best quota), fallback to free client
-    if let Ok(key) = env::var("BIGDATA_CLOUD_API_KEY") {
-        if let Some(city) = fetch_city_for_url(format!(
-            "https://api.bigdatacloud.net/data/reverse-geocode?latitude={}&longitude={}&localityLanguage=de&key={}",
-            geo_location.latitude, geo_location.longitude, key
-        ))
-        .await
-        {
-            return Some(city);
+// ---------------------------------------------------------------------------
+// Offline city resolution via cities500
+// ---------------------------------------------------------------------------
+
+/// Maximum distance from query point to nearest city for a valid match.
+/// Beyond this threshold the result is `None` (ocean / desert case).
+const MAX_DISTANCE_KM: f64 = 50.0;
+
+/// Default path of the cities500 data file inside the container.
+const CITIES500_PATH: &str = "/cities500.txt";
+
+static DEPRECATION_ONCE: OnceLock<()> = OnceLock::new();
+static CITY_INDEX: LazyLock<Option<CityIndex>> = LazyLock::new(load_city_index);
+
+struct CityEntry {
+    name: String,
+    lat: f64,
+    lon: f64,
+}
+
+impl RTreeObject for CityEntry {
+    type Envelope = AABB<[f64; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        AABB::from_point([self.lon, self.lat])
+    }
+}
+
+impl PointDistance for CityEntry {
+    fn distance_2(&self, point: &[f64; 2]) -> f64 {
+        let dx = self.lon - point[0];
+        let dy = self.lat - point[1];
+        dx * dx + dy * dy
+    }
+}
+
+struct CityIndex {
+    tree: RTree<CityEntry>,
+}
+
+fn maybe_warn_deprecated() {
+    if env::var("BIGDATA_CLOUD_API_KEY").is_ok() {
+        DEPRECATION_ONCE.get_or_init(|| {
+            log::warn!(
+                "BIGDATA_CLOUD_API_KEY is deprecated and ignored; offline city resolution via cities500 is used. Remove it from compose/env."
+            );
+        });
+    }
+}
+
+fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
+    const R: f64 = 6371.0088;
+    let dlat = (lat2 - lat1).to_radians();
+    let dlon = (lon2 - lon1).to_radians();
+    let a = (dlat / 2.0).sin().powi(2)
+        + lat1.to_radians().cos() * lat2.to_radians().cos() * (dlon / 2.0).sin().powi(2);
+    let c = 2.0 * a.sqrt().asin();
+    R * c
+}
+
+fn get_cities500_path() -> String {
+    env::var("CITIES500_PATH").unwrap_or_else(|_| CITIES500_PATH.to_string())
+}
+
+fn load_city_index() -> Option<CityIndex> {
+    let path = get_cities500_path();
+    let content = match std::fs::read_to_string(&path) {
+        Ok(c) => c,
+        Err(e) => {
+            log::warn!(
+                "cities500 data not found at {}; city resolution disabled: {}",
+                path,
+                e
+            );
+            return None;
         }
+    };
+
+    let mut entries: Vec<CityEntry> = Vec::new();
+    for (line_no, line) in content.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let cols: Vec<&str> = line.split('\t').collect();
+        if cols.len() < 6 {
+            log::warn!(
+                "skipping malformed cities500 line {}: expected >=6 cols, got {}",
+                line_no + 1,
+                cols.len()
+            );
+            continue;
+        }
+        let name = cols[1].to_string();
+        if name.trim().is_empty() {
+            log::warn!("skipping cities500 line {}: empty name", line_no + 1);
+            continue;
+        }
+        let lat: f64 = match cols[4].parse() {
+            Ok(v) => v,
+            Err(_) => {
+                log::warn!(
+                    "skipping cities500 line {}: invalid latitude '{}'",
+                    line_no + 1,
+                    cols[4]
+                );
+                continue;
+            }
+        };
+        let lon: f64 = match cols[5].parse() {
+            Ok(v) => v,
+            Err(_) => {
+                log::warn!(
+                    "skipping cities500 line {}: invalid longitude '{}'",
+                    line_no + 1,
+                    cols[5]
+                );
+                continue;
+            }
+        };
+        entries.push(CityEntry { name, lat, lon });
     }
 
-    // Free endpoint without API key - works for tests and as fallback
-    fetch_city_for_url(format!(
-        "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={}&longitude={}&localityLanguage=de",
-        geo_location.latitude, geo_location.longitude
-    ))
-    .await
-}
-
-async fn fetch_city_for_url(request_url: String) -> Option<String> {
-    // The blocking ureq call must not run on an async worker thread
-    let response_json: Option<HashMap<String, Value>> = web::block(move || {
-        ureq::get(&request_url)
-            .config()
-            .timeout_global(Some(Duration::from_secs(15)))
-            .build()
-            .call()
-            .ok()?
-            .body_mut()
-            .read_to_string()
-            .ok()
-            .and_then(|json_string| {
-                serde_json::from_str::<HashMap<String, Value>>(&json_string).ok()
-            })
-    })
-    .await
-    .ok()
-    .flatten();
-
-    let mut city_name = response_json
-        .as_ref()
-        .and_then(|json_data| get_string_value("city", json_data))
-        .filter(|city_name| !city_name.trim().is_empty());
-
-    if city_name.is_none() {
-        city_name = response_json
-            .as_ref()
-            .and_then(|json_data| get_string_value("locality", json_data))
-            .filter(|city_name| !city_name.trim().is_empty());
+    if entries.is_empty() {
+        log::warn!(
+            "cities500 data at {} contained no valid entries; city resolution disabled",
+            path
+        );
+        return None;
     }
 
-    city_name
+    let len = entries.len();
+    let tree = RTree::bulk_load(entries);
+    log::info!("loaded {} cities from {}", len, path);
+    Some(CityIndex { tree })
 }
 
-/// Returns the string value for the specified key of an hash map
-fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Option<String> {
-    json_data
-        .get(field_name)
-        .and_then(|field_value| field_value.as_str())
-        .map(|field_string_value| field_string_value.to_string())
+fn get_city_index() -> Option<&'static CityIndex> {
+    CITY_INDEX.as_ref()
+}
+
+/// Returns the city name for the specified geo location
+/// Resolved offline from the embedded GeoNames cities500 dataset.
+/// Returns `None` for invalid coordinates or when no city is within `MAX_DISTANCE_KM`.
+pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
+    maybe_warn_deprecated();
+
+    // Validation (FR-004)
+    if geo_location.latitude.is_nan()
+        || geo_location.longitude.is_nan()
+        || geo_location.latitude < -90.0
+        || geo_location.latitude > 90.0
+        || geo_location.longitude < -180.0
+        || geo_location.longitude > 180.0
+    {
+        return None;
+    }
+
+    let index = get_city_index()?;
+    let point = [geo_location.longitude as f64, geo_location.latitude as f64];
+    let nearest = index.tree.nearest_neighbor(&point)?;
+
+    let dist = haversine_km(
+        geo_location.latitude as f64,
+        geo_location.longitude as f64,
+        nearest.lat,
+        nearest.lon,
+    );
+
+    if dist <= MAX_DISTANCE_KM {
+        Some(nearest.name.clone())
+    } else {
+        None
+    }
 }

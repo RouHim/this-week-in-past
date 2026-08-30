@@ -36,15 +36,12 @@ displayed.
 
 ### Docker
 
-Docker Example:
-
 ```shell
 docker run -p 8080:8080 \
         -v /path/to/pictures:/resources \
         -e SLIDESHOW_INTERVAL=60 \
         -e WEATHER_ENABLED=true \
         -e OPEN_WEATHER_MAP_API_KEY=<YOUR_KEY> \
-        -e BIGDATA_CLOUD_API_KEY=<YOUR_KEY> \
         rouhim/this-week-in-past
 ```
 
@@ -106,11 +103,8 @@ All configuration is done via environment variables:
 | SLIDESHOW_INTERVAL         | Interval of the slideshow in seconds                                                                       | `30`                          | x                         |
 | REFRESH_INTERVAL           | Interval how often the page should be reloaded in minutes (triggers a new slideshow playlist)              | `360` (6h)                    |                           |
 | DATE_FORMAT                | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html)      | `%d.%m.%Y`                    |                           |
-| BIGDATA_CLOUD_API_KEY      | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com                         |                               |                           |
+| BIGDATA_CLOUD_API_KEY      | Deprecated — ignored since vNext; offline GeoNames cities500 is used. Remove from env/compose. |                               |                           |
 | OPEN_WEATHER_MAP_API_KEY   | To receive weather live data. Obtain here: https://openweathermap.org/api                                  |                               |                           |
-| WEATHER_ENABLED            | Indicates if weather should be shown in the slideshow                                                      | `false`                       | x                         |
-| WEATHER_LOCATION           | Name of a city                                                                                             | `Berlin`                      |                           |
-| WEATHER_LANGUAGE           | Weather language ([ISO_639-1 two digit code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes))       | `en`                          |                           |
 | WEATHER_UNIT               | Weather units (`metric` or `imperial`)                                                                     | `metric`                      |                           |
 | HOME_ASSISTANT_BASE_URL    | Home assistant base url (e.g.: `http://192.168.0.123:8123`)                                                |                               |                           |
 | HOME_ASSISTANT_ENTITY_ID   | Home assistant entity id to load the weather from (e.g.: `sensor.outside_temperature`)                     |                               |                           |
@@ -181,7 +175,7 @@ The slideshow can be controlled by clicking on invisible zones on the screen. Th
 
 * Compiling static Rust binaries - https://github.com/rust-cross/rust-musl-cross
 * Weather API - https://openweathermap.org/api
-* Resolve Geo coordinates - https://www.bigdatacloud.com
+* City data: GeoNames `cities500.zip` (CC BY 4.0, https://www.geonames.org).
 * IntelliJ IDEA - https://www.jetbrains.com/idea
 * Serving ML at the speed of Rust - https://shvbsle.in/serving-ml-at-the-speed-of-rust
 * The Rust Performance Book - https://nnethercote.github.io/perf-book/#the-rust-performance-book
