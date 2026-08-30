@@ -162,7 +162,7 @@ jobs:
 
       - name: Cache cities500 data
         id: cache-cities500
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /tmp/cities500.txt
           key: cities500-v1-${{ hashFiles('Containerfile') }}
