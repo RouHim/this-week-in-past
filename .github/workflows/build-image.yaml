@@ -121,6 +121,25 @@ jobs:
       - name: Verify code
         run: cargo clippy
 
+  check-doc:
+    name: Check documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
+
+      - name: Check documentation
+        run: cargo +nightly rustdoc -- -Z unstable-options --check
 
   test:
     name: Run application tests
@@ -173,7 +192,7 @@ jobs:
 
   create-release:
     name: Create release
-    needs: [ check-oci-config, check-repo, check-code-style, check-code, test ]
+    needs: [ check-oci-config, check-repo, check-code-style, check-code, check-doc, test ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
