@@ -2,7 +2,7 @@
 # GeoNames data — ~10 MB uncompressed (~185k cities), baked to /cities500.txt
 # Final image +~10 MB; pinned alpine for reproducibility, single layer to minimize cache invalidation
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-FROM docker.io/alpine:3.21 AS geodata
+FROM docker.io/alpine:3.24 AS geodata
 RUN apk add --no-cache curl unzip && \
     curl -fL --retry 3 --retry-delay 2 --connect-timeout 15 https://download.geonames.org/export/dump/cities500.zip -o /tmp/cities500.zip && \
     unzip -p /tmp/cities500.zip > /cities500.txt && \
