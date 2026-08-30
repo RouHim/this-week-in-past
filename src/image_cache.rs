@@ -24,9 +24,24 @@ pub fn put(cache_dir: &Path, key: &str, data: &[u8]) -> io::Result<()> {
         return Ok(());
     }
     let dest = cache_dir.join(key);
-    let tmp = cache_dir.join(format!(".tmp-{}-{}", key, std::process::id()));
-    fs::write(&tmp, data)?;
-    fs::rename(&tmp, &dest)?;
+    let tmp = cache_dir.join(format!(
+        ".tmp-{}-{}-{:?}-{}",
+        key,
+        std::process::id(),
+        std::thread::current().id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    if let Err(e) = fs::write(&tmp, data) {
+        let _ = fs::remove_file(&tmp);
+        return Err(e);
+    }
+    if let Err(e) = fs::rename(&tmp, &dest) {
+        let _ = fs::remove_file(&tmp);
+        return Err(e);
+    }
     let now = filetime::FileTime::now();
     let _ = filetime::set_file_mtime(&dest, now);
     evict_if_needed(cache_dir);
@@ -51,6 +66,9 @@ pub fn cache_stats(cache_dir: &Path) -> (usize, u64) {
         for e in rd.flatten() {
             if let Ok(md) = e.metadata() {
                 if md.is_file() {
+                    if e.file_name().to_string_lossy().starts_with(".tmp-") {
+                        continue;
+                    }
                     count += 1;
                     bytes += md.len();
                 }
@@ -72,6 +90,9 @@ fn evict_if_needed(cache_dir: &Path) {
         if !md.is_file() {
             continue;
         }
+        if e.file_name().to_string_lossy().starts_with(".tmp-") {
+            continue;
+        }
         let mtime = filetime::FileTime::from_last_modification_time(&md);
         entries.push((e.path(), mtime, md.len()));
     }
@@ -81,14 +102,6 @@ fn evict_if_needed(cache_dir: &Path) {
     let mut idx = 0;
     while (total_files > MAX_CACHE_FILES || total_bytes > MAX_CACHE_BYTES) && idx < entries.len() {
         let (path, _, size) = &entries[idx];
-        if path
-            .file_name()
-            .map(|n| n.to_string_lossy().starts_with(".tmp-"))
-            .unwrap_or(false)
-        {
-            idx += 1;
-            continue;
-        }
         if fs::remove_file(path).is_ok() {
             total_files -= 1;
             total_bytes -= *size;
