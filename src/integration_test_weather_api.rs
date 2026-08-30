@@ -13,6 +13,7 @@ const TEST_FOLDER_NAME: &str = "integration_test_weather_api";
 
 #[actix_web::test]
 async fn test_get_weather_current() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is a running this-week-in-past instance
     let base_test_dir = create_temp_folder().await;
     let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
@@ -39,6 +40,7 @@ async fn test_get_weather_current() {
 
 #[actix_web::test]
 async fn test_get_is_weather_enabled() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is a running this-week-in-past instance
     let base_test_dir = create_temp_folder().await;
     let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;

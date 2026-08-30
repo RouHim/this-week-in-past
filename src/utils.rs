@@ -1,5 +1,13 @@
 use chrono::{DateTime, NaiveDateTime};
+#[cfg(test)]
+use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Global mutex to serialize integration tests that touch global env vars (DATA_FOLDER).
+/// Prevents races when tests run in parallel via `cargo test` (see `create_temp_folder`).
+#[cfg(test)]
+pub static SERIAL_TEST_MUTEX: LazyLock<tokio::sync::Mutex<()>> =
+    LazyLock::new(|| tokio::sync::Mutex::new(()));
 
 /// Converts the type `SystemTime` to `NaiveDateTime`
 pub fn to_date_time(system_time: SystemTime) -> NaiveDateTime {

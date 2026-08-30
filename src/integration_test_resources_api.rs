@@ -23,6 +23,7 @@ const TEST_FOLDER_NAME: &str = "integration_test_rest_api";
 
 #[actix_web::test]
 async fn test_get_all_resources() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is a folder structure with two assets
     let base_test_dir = create_temp_folder().await;
     let test_image_1 = create_test_image(
@@ -62,6 +63,7 @@ async fn test_get_all_resources() {
 
 #[actix_web::test]
 async fn test_this_week_in_past_resources_end_range() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is one in week range
     let base_test_dir = create_temp_folder().await;
     let upper_bound = Local::now().add(Duration::days(3));
@@ -105,6 +107,7 @@ async fn test_this_week_in_past_resources_end_range() {
 
 #[actix_web::test]
 async fn test_this_week_in_past_resources_begin_range() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is one image in week rnage
     let base_test_dir = create_temp_folder().await;
     let lower_bound = Local::now().sub(Duration::days(3));
@@ -148,6 +151,7 @@ async fn test_this_week_in_past_resources_begin_range() {
 
 #[actix_web::test]
 async fn test_this_week_in_past_resources_out_of_end_range() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is one image that is out of range
     let base_test_dir = create_temp_folder().await;
     let upper_bound = Local::now().add(Duration::days(4));
@@ -191,6 +195,7 @@ async fn test_this_week_in_past_resources_out_of_end_range() {
 
 #[actix_web::test]
 async fn test_this_week_in_past_resources_out_of_begin_range() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is a image that is out of range
     let base_test_dir = create_temp_folder().await;
     let lower_bound = Local::now().sub(Duration::days(4));
@@ -234,6 +239,7 @@ async fn test_this_week_in_past_resources_out_of_begin_range() {
 
 #[actix_web::test]
 async fn test_get_random_resources() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is one exif image
     let base_test_dir = create_temp_folder().await;
     let test_image_1 =
@@ -258,6 +264,7 @@ async fn test_get_random_resources() {
 
 #[actix_web::test]
 async fn test_get_resources_week_count() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is a folder structure with two assets in the week range, and one out of range
     let base_test_dir = create_temp_folder().await;
     let upper_bound = Local::now().add(Duration::days(3));
@@ -314,6 +321,7 @@ async fn test_get_resources_week_count() {
 
 #[actix_web::test]
 async fn test_get_resource_by_id_and_resolution() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is an exif image
     let base_test_dir = create_temp_folder().await;
     let test_image_1 =
@@ -356,6 +364,7 @@ async fn test_get_resource_by_id_and_resolution() {
 
 #[actix_web::test]
 async fn test_get_resource_metadata_by_id() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is an exif image
     let base_test_dir = create_temp_folder().await;
     let test_image_1 =
@@ -401,6 +410,7 @@ async fn test_get_resource_metadata_by_id() {
 
 #[actix_web::test]
 async fn test_get_resource_description_by_id() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is an exif image
     let base_test_dir = create_temp_folder().await;
     let test_image_1 =
@@ -432,6 +442,7 @@ async fn test_get_resource_description_by_id() {
 
 #[actix_web::test]
 async fn test_get_unknown_resource_metadata_returns_not_found() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is an empty library
     let base_test_dir = create_temp_folder().await;
 
@@ -465,6 +476,7 @@ async fn test_get_unknown_resource_metadata_returns_not_found() {
 
 #[actix_web::test]
 async fn test_ignore_file_in_resources() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is a folder structure with two assets
     // AND a file with the name .ignore
     let base_test_dir = create_temp_folder().await;
@@ -712,6 +724,7 @@ fn create_local_image_file(base_dir: &Path, file_name: &str) {
 
 #[actix_web::test]
 async fn test_image_endpoint_serves_jpeg_and_caches_on_filesystem() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN a temp folder with a local JPEG image indexed and filesystem cache enabled
     let base = create_temp_folder().await;
     env::set_var("DATA_FOLDER", base.to_str().unwrap());
@@ -764,6 +777,7 @@ async fn test_image_endpoint_serves_jpeg_and_caches_on_filesystem() {
 #[actix_web::test]
 #[allow(clippy::arc_with_non_send_sync)]
 async fn test_three_concurrent_clients_no_pool_timeout() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN a temp folder with 20 distinct images and filesystem cache enabled
     let base = create_temp_folder().await;
     env::set_var("DATA_FOLDER", base.to_str().unwrap());
@@ -809,6 +823,7 @@ async fn test_three_concurrent_clients_no_pool_timeout() {
 
 #[actix_web::test]
 async fn test_cache_eviction_caps_500() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN a fresh filesystem cache directory
     let base = create_temp_folder().await;
     env::set_var("DATA_FOLDER", base.to_str().unwrap());
@@ -835,6 +850,7 @@ async fn test_cache_eviction_caps_500() {
 
 #[actix_web::test]
 async fn test_week_image_endpoint_filesystem_cache() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN a temp folder with a week-range image (taken = now) and filesystem cache enabled
     let base = create_temp_folder().await;
     env::set_var("DATA_FOLDER", base.to_str().unwrap());
