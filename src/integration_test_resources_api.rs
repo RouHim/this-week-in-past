@@ -712,15 +712,20 @@ fn create_local_image_file(base_dir: &Path, file_name: &str) {
 
 #[actix_web::test]
 async fn test_image_endpoint_serves_jpeg_and_caches_on_filesystem() {
+    // GIVEN a temp folder with a local JPEG image indexed and filesystem cache enabled
     let base = create_temp_folder().await;
     env::set_var("DATA_FOLDER", base.to_str().unwrap());
     create_local_image_file(&base, "test_image_fs.jpg");
     let id = utils::md5("test_image_fs.jpg");
     let app = test::init_service(build_app(base.to_str().unwrap())).await;
+
+    // WHEN requesting the image at 100x100 for the first time
     let req = TestRequest::get()
         .uri(&format!("/api/resources/{}/100/100", id))
         .to_request();
     let resp = test::call_service(&app, req).await;
+
+    // THEN the response is JPEG and a filesystem cache file is created
     assert_eq!(resp.status(), 200);
     assert_eq!(
         resp.headers()
@@ -739,11 +744,15 @@ async fn test_image_endpoint_serves_jpeg_and_caches_on_filesystem() {
         cache_file
     );
     let mtime1 = fs::metadata(&cache_file).unwrap().modified().unwrap();
+
+    // WHEN requesting the same image again after a short delay
     actix_rt::time::sleep(std::time::Duration::from_millis(50)).await;
     let req2 = TestRequest::get()
         .uri(&format!("/api/resources/{}/100/100", id))
         .to_request();
     let resp2 = test::call_service(&app, req2).await;
+
+    // THEN the second response is also JPEG and the cache mtime is updated (LRU touch)
     assert_eq!(resp2.status(), 200);
     let body2 = test::read_body(resp2).await;
     assert_eq!(&body2[0..2], &[0xFF, 0xD8]);
@@ -755,6 +764,7 @@ async fn test_image_endpoint_serves_jpeg_and_caches_on_filesystem() {
 #[actix_web::test]
 #[allow(clippy::arc_with_non_send_sync)]
 async fn test_three_concurrent_clients_no_pool_timeout() {
+    // GIVEN a temp folder with 20 distinct images and filesystem cache enabled
     let base = create_temp_folder().await;
     env::set_var("DATA_FOLDER", base.to_str().unwrap());
     for i in 0..20 {
@@ -762,6 +772,8 @@ async fn test_three_concurrent_clients_no_pool_timeout() {
     }
     let app = test::init_service(build_app(base.to_str().unwrap())).await;
     let app = std::sync::Arc::new(app);
+
+    // WHEN 60 concurrent clients request images (3x the image set)
     let mut handles = Vec::new();
     for n in 0..60 {
         let app = app.clone();
@@ -787,6 +799,8 @@ async fn test_three_concurrent_clients_no_pool_timeout() {
         });
         handles.push(handle);
     }
+
+    // THEN all concurrent requests succeed without pool timeout and return JPEG
     for h in handles {
         h.await.unwrap();
     }
@@ -795,9 +809,12 @@ async fn test_three_concurrent_clients_no_pool_timeout() {
 
 #[actix_web::test]
 async fn test_cache_eviction_caps_500() {
+    // GIVEN a fresh filesystem cache directory
     let base = create_temp_folder().await;
     env::set_var("DATA_FOLDER", base.to_str().unwrap());
     let cache_dir = crate::image_cache::cache_dir(base.to_str().unwrap());
+
+    // WHEN putting 600 distinct entries (exceeding the 500-file cap)
     for i in 0..600 {
         let key = format!("evict_{}.jpg", i);
         let data = vec![0xFF, 0xD8, 0xFF, 0x00, i as u8];
@@ -806,6 +823,8 @@ async fn test_cache_eviction_caps_500() {
             actix_rt::time::sleep(std::time::Duration::from_millis(5)).await;
         }
     }
+
+    // THEN the cache is bounded to 500 files / 1 GiB and oldest is evicted
     let (count, bytes) = crate::image_cache::cache_stats(&cache_dir);
     assert!(count <= 500, "count {} exceeds 500", count);
     assert!(bytes <= 1_073_741_824, "bytes {} exceeds 1GB", bytes);
@@ -816,10 +835,10 @@ async fn test_cache_eviction_caps_500() {
 
 #[actix_web::test]
 async fn test_week_image_endpoint_filesystem_cache() {
+    // GIVEN a temp folder with a week-range image (taken = now) and filesystem cache enabled
     let base = create_temp_folder().await;
     env::set_var("DATA_FOLDER", base.to_str().unwrap());
     create_local_image_file(&base, "week_image_test.jpg");
-    // First index via build_app, then backfill taken to ensure week query finds it
     let app = test::init_service(build_app(base.to_str().unwrap())).await;
     {
         let store = resource_store::initialize(base.to_str().unwrap());
@@ -834,10 +853,14 @@ async fn test_week_image_endpoint_filesystem_cache() {
             store.add_resources(map);
         }
     }
+
+    // WHEN requesting the week image endpoint
     let req = TestRequest::get()
         .uri("/api/resources/week/image")
         .to_request();
     let resp = test::call_service(&app, req).await;
+
+    // THEN the response is JPEG and a filesystem cache file for the week id is created
     assert_eq!(resp.status(), 200);
     assert_eq!(
         resp.headers()
@@ -849,7 +872,6 @@ async fn test_week_image_endpoint_filesystem_cache() {
     );
     let body = test::read_body(resp).await;
     assert_eq!(&body[0..2], &[0xFF, 0xD8]);
-    // Verify filesystem cache file was created for week image (sanitized id)
     let store2 = resource_store::initialize(base.to_str().unwrap());
     let ids = store2.get_resources_this_week_visible_random();
     assert!(!ids.is_empty(), "week query should return at least one id");
