@@ -59,6 +59,7 @@ pub fn clear(cache_dir: &Path) -> io::Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn cache_stats(cache_dir: &Path) -> (usize, u64) {
     let mut count = 0;
     let mut bytes = 0u64;

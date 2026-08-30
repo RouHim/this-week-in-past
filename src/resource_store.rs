@@ -115,6 +115,7 @@ impl ResourceStore {
     }
 
     /// Adds an image cache entry, if an entry already exists it gets updated
+    #[allow(dead_code)]
     pub fn add_data_cache_entry(&self, id: String, data: &Vec<u8>) {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
@@ -125,6 +126,7 @@ impl ResourceStore {
     }
 
     /// Get an image cache entry
+    #[allow(dead_code)]
     pub fn get_data_cache_entry(&self, id: String) -> Option<Vec<u8>> {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection
@@ -144,6 +146,7 @@ impl ResourceStore {
     }
 
     /// Clears the complete image cache
+    #[allow(dead_code)]
     pub fn clear_data_cache(&self) {
         let connection = self.persistent_file_store_pool.get().unwrap();
         let mut stmt = connection.prepare("DELETE FROM data_cache").unwrap();

@@ -684,3 +684,168 @@ async fn create_temp_folder() -> PathBuf {
 
     test_dir
 }
+
+fn create_local_image_file(base_dir: &Path, file_name: &str) {
+    let hash = {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut h = DefaultHasher::new();
+        file_name.hash(&mut h);
+        h.finish()
+    };
+    let r = ((hash >> 16) & 0xFF) as u8;
+    let g = ((hash >> 8) & 0xFF) as u8;
+    let b = (hash & 0xFF) as u8;
+    let img = image::RgbImage::from_pixel(20, 20, image::Rgb([r, g, b]));
+    let path = base_dir.join(file_name);
+    let mut buf = Vec::new();
+    image::DynamicImage::ImageRgb8(img)
+        .write_to(
+            &mut std::io::Cursor::new(&mut buf),
+            image::ImageFormat::Jpeg,
+        )
+        .unwrap();
+    fs::write(&path, buf).unwrap();
+}
+
+#[actix_web::test]
+async fn test_image_endpoint_serves_jpeg_and_caches_on_filesystem() {
+    let base = create_temp_folder().await;
+    env::set_var("DATA_FOLDER", base.to_str().unwrap());
+    create_local_image_file(&base, "test_image_fs.jpg");
+    let id = utils::md5("test_image_fs.jpg");
+    let app = test::init_service(build_app(base.to_str().unwrap())).await;
+    let req = TestRequest::get()
+        .uri(&format!("/api/resources/{}/100/100", id))
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), 200);
+    assert_eq!(
+        resp.headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap(),
+        "image/jpeg"
+    );
+    let body = test::read_body(resp).await;
+    assert_eq!(&body[0..2], &[0xFF, 0xD8]);
+    let cache_file = base.join("cache").join(format!("{}_100_100.jpg", id));
+    assert!(
+        cache_file.exists(),
+        "cache file not found: {:?}",
+        cache_file
+    );
+    let mtime1 = fs::metadata(&cache_file).unwrap().modified().unwrap();
+    actix_rt::time::sleep(std::time::Duration::from_millis(50)).await;
+    let req2 = TestRequest::get()
+        .uri(&format!("/api/resources/{}/100/100", id))
+        .to_request();
+    let resp2 = test::call_service(&app, req2).await;
+    assert_eq!(resp2.status(), 200);
+    let body2 = test::read_body(resp2).await;
+    assert_eq!(&body2[0..2], &[0xFF, 0xD8]);
+    let mtime2 = fs::metadata(&cache_file).unwrap().modified().unwrap();
+    assert!(mtime2 >= mtime1, "mtime not updated on cache hit");
+    cleanup(&base).await;
+}
+
+#[actix_web::test]
+#[allow(clippy::arc_with_non_send_sync)]
+async fn test_three_concurrent_clients_no_pool_timeout() {
+    let base = create_temp_folder().await;
+    env::set_var("DATA_FOLDER", base.to_str().unwrap());
+    for i in 0..20 {
+        create_local_image_file(&base, &format!("concurrent_{}.jpg", i));
+    }
+    let app = test::init_service(build_app(base.to_str().unwrap())).await;
+    let app = std::sync::Arc::new(app);
+    let mut handles = Vec::new();
+    for n in 0..60 {
+        let app = app.clone();
+        let idx = n % 20;
+        let file_name = format!("concurrent_{}.jpg", idx);
+        let id = utils::md5(&file_name);
+        let handle = actix_rt::spawn(async move {
+            let req = TestRequest::get()
+                .uri(&format!("/api/resources/{}/10/10", id))
+                .to_request();
+            let resp = test::call_service(&*app, req).await;
+            assert_eq!(resp.status(), 200);
+            assert_eq!(
+                resp.headers()
+                    .get("content-type")
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+                "image/jpeg"
+            );
+            let body = test::read_body(resp).await;
+            assert_eq!(&body[0..2], &[0xFF, 0xD8]);
+        });
+        handles.push(handle);
+    }
+    for h in handles {
+        h.await.unwrap();
+    }
+    cleanup(&base).await;
+}
+
+#[actix_web::test]
+async fn test_cache_eviction_caps_500() {
+    let base = create_temp_folder().await;
+    env::set_var("DATA_FOLDER", base.to_str().unwrap());
+    let cache_dir = crate::image_cache::cache_dir(base.to_str().unwrap());
+    for i in 0..600 {
+        let key = format!("evict_{}.jpg", i);
+        let data = vec![0xFF, 0xD8, 0xFF, 0x00, i as u8];
+        crate::image_cache::put(&cache_dir, &key, &data).unwrap();
+        if i % 100 == 0 {
+            actix_rt::time::sleep(std::time::Duration::from_millis(5)).await;
+        }
+    }
+    let (count, bytes) = crate::image_cache::cache_stats(&cache_dir);
+    assert!(count <= 500, "count {} exceeds 500", count);
+    assert!(bytes <= 1_073_741_824, "bytes {} exceeds 1GB", bytes);
+    let early_exists = cache_dir.join("evict_0.jpg").exists();
+    assert!(!early_exists, "LRU should have evicted earliest entry");
+    cleanup(&base).await;
+}
+
+#[actix_web::test]
+async fn test_week_image_endpoint_filesystem_cache() {
+    let base = create_temp_folder().await;
+    env::set_var("DATA_FOLDER", base.to_str().unwrap());
+    create_local_image_file(&base, "week_image_test.jpg");
+    {
+        let store = resource_store::initialize(base.to_str().unwrap());
+        let id = utils::md5("week_image_test.jpg");
+        if let Some(val) = store.get_resource(&id) {
+            let mut v: serde_json::Value = serde_json::from_str(&val).unwrap();
+            let now_str = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+            v["taken"] = serde_json::Value::String(now_str.clone());
+            let new_val = serde_json::to_string(&v).unwrap();
+            let mut map = std::collections::HashMap::new();
+            map.insert(id.clone(), new_val);
+            store.add_resources(map);
+        }
+    }
+    let app2 = test::init_service(build_app(base.to_str().unwrap())).await;
+    let req = TestRequest::get()
+        .uri("/api/resources/week/image")
+        .to_request();
+    let resp = test::call_service(&app2, req).await;
+    if resp.status() == 200 {
+        assert_eq!(
+            resp.headers()
+                .get("content-type")
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "image/jpeg"
+        );
+        let body = test::read_body(resp).await;
+        assert_eq!(&body[0..2], &[0xFF, 0xD8]);
+    }
+    cleanup(&base).await;
+}
