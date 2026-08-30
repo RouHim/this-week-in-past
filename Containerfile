@@ -1,5 +1,5 @@
 # # # # # # # # # # # # # # # # # # # #
-# GeoNames data (dedicated stage)
+# GeoNames data
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 FROM docker.io/alpine AS geodata
 RUN apk add --no-cache curl unzip
@@ -47,7 +47,7 @@ COPY --chown=$USER:$USER --from=builder /empty_dir /tmp
 # Copy the built application from the build image to the run-image
 COPY --chown=$USER:$USER --from=builder /work/this-week-in-past /this-week-in-past
 
-# Copy offline city database (from dedicated geodata stage)
+# Copy offline city database
 COPY --from=geodata /cities500.txt /cities500.txt
 EXPOSE 8080
 USER $USER
