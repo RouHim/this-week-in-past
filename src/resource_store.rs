@@ -311,6 +311,7 @@ impl ResourceStore {
 pub fn initialize(data_folder: &str) -> ResourceStore {
     fs::create_dir_all(data_folder)
         .unwrap_or_else(|error| panic!("Could not create data folder: {}", error));
+    let _ = std::fs::create_dir_all(PathBuf::from(data_folder).join("cache"));
     let database_path = PathBuf::from(data_folder).join("resources.db");
 
     // Create persistent file store and enable WAL mode

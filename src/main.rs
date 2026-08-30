@@ -9,6 +9,7 @@ mod config_endpoint;
 mod exif_reader;
 mod filesystem_client;
 mod geo_location;
+mod image_cache;
 mod image_processor;
 mod resource_endpoint;
 mod resource_processor;
