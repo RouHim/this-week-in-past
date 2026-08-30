@@ -44,7 +44,6 @@ docker run -p 8080:8080 \
         -e SLIDESHOW_INTERVAL=60 \
         -e WEATHER_ENABLED=true \
         -e OPEN_WEATHER_MAP_API_KEY=<YOUR_KEY> \
-        -e BIGDATA_CLOUD_API_KEY=<YOUR_KEY> \
         rouhim/this-week-in-past
 ```
 
@@ -91,6 +90,14 @@ SLIDESHOW_INTERVAL=60 \
 ./this-week-in-past
 ```
 
+> **Offline city lookup (since offline cities500):** For native execution download the GeoNames data once:
+> ```shell
+> curl -fL https://download.geonames.org/export/dump/cities500.zip -o cities500.zip && unzip -p cities500.zip > cities500.txt
+> ```
+> and run with `CITIES500_PATH=$(pwd)/cities500.txt` (defaults to `/cities500.txt` in the container). Without the file city resolution is disabled with a `warn!` log.
+
+> **BREAKING CHANGE:** `BIGDATA_CLOUD_API_KEY` is deprecated and ignored since the offline `cities500` migration. Remove it from `docker run -e` / `compose.yaml` / `.env` at your convenience — offline lookup needs no API key or network. Native execution now requires the one-time download above; container image already bakes `/cities500.txt` (+~10 MB).
+
 > Since the binary is compiled [completely statically](https://github.com/rust-cross/rust-musl-cross), there are no
 > dependencies on system libraries like glibc.
 
@@ -106,8 +113,8 @@ All configuration is done via environment variables:
 | SLIDESHOW_INTERVAL         | Interval of the slideshow in seconds                                                                       | `30`                          | x                         |
 | REFRESH_INTERVAL           | Interval how often the page should be reloaded in minutes (triggers a new slideshow playlist)              | `360` (6h)                    |                           |
 | DATE_FORMAT                | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html)      | `%d.%m.%Y`                    |                           |
-| BIGDATA_CLOUD_API_KEY      | To resolve geo coordinates to city name. Obtain here: https://www.bigdatacloud.com                         |                               |                           |
-| OPEN_WEATHER_MAP_API_KEY   | To receive weather live data. Obtain here: https://openweathermap.org/api                                  |                               |                           |
+| BIGDATA_CLOUD_API_KEY      | Deprecated — ignored; offline GeoNames `cities500.zip` (CC BY 4.0, https://www.geonames.org) is used. Remove from env/compose at your convenience. |                               |                           |
+| CITIES500_PATH             | Path to GeoNames `cities500.txt` for offline city lookup (container bakes to `/cities500.txt`). For native execution, download `https://download.geonames.org/export/dump/cities500.zip`, unzip to `cities500.txt` and set this var. | `/cities500.txt`              |                           |
 | WEATHER_ENABLED            | Indicates if weather should be shown in the slideshow                                                      | `false`                       | x                         |
 | WEATHER_LOCATION           | Name of a city                                                                                             | `Berlin`                      |                           |
 | WEATHER_LANGUAGE           | Weather language ([ISO_639-1 two digit code](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes))       | `en`                          |                           |
@@ -181,7 +188,7 @@ The slideshow can be controlled by clicking on invisible zones on the screen. Th
 
 * Compiling static Rust binaries - https://github.com/rust-cross/rust-musl-cross
 * Weather API - https://openweathermap.org/api
-* Resolve Geo coordinates - https://www.bigdatacloud.com
+* City data: GeoNames `cities500.zip` — © GeoNames (CC BY 4.0 https://creativecommons.org/licenses/by/4.0/, https://www.geonames.org).
 * IntelliJ IDEA - https://www.jetbrains.com/idea
 * Serving ML at the speed of Rust - https://shvbsle.in/serving-ml-at-the-speed-of-rust
 * The Rust Performance Book - https://nnethercote.github.io/perf-book/#the-rust-performance-book

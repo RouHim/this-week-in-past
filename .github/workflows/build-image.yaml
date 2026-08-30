@@ -126,7 +126,6 @@ jobs:
     name: Run application tests
     runs-on: ubuntu-latest
     env:
-      BIGDATA_CLOUD_API_KEY: ${{ secrets.BIGDATA_CLOUD_API_KEY }}
       OPEN_WEATHER_MAP_API_KEY: ${{ secrets.OPEN_WEATHER_MAP_API_KEY }}
     steps:
       - name: Checkout code
@@ -142,7 +141,34 @@ jobs:
         with:
           cache-on-failure: "true"
 
+      - name: Cache cities500 data
+        id: cache-cities500
+        uses: actions/cache@v4
+        with:
+          path: /tmp/cities500.txt
+          key: cities500-v1-${{ hashFiles('Containerfile') }}
+          restore-keys: |
+            cities500-v1-
+
+      - name: Download cities500 data for offline tests
+        if: steps.cache-cities500.outputs.cache-hit != 'true'
+        run: |
+          curl -fL --retry 3 --retry-delay 2 --connect-timeout 15 https://download.geonames.org/export/dump/cities500.zip -o /tmp/cities500.zip
+          unzip -p /tmp/cities500.zip > /tmp/cities500.txt
+          test -s /tmp/cities500.txt || { echo "cities500.txt is empty after unzip"; exit 1; }
+          lines=$(wc -l < /tmp/cities500.txt); test "$lines" -gt 100000 || { echo "cities500 too small: $lines lines"; exit 1; }
+          test "$(stat -c%s /tmp/cities500.txt)" -gt 5000000 || { echo "cities500 too small by size"; exit 1; }
+          wc -l /tmp/cities500.txt
+          rm /tmp/cities500.zip
+      - name: Verify cities500 cache
+        run: |
+          test -s /tmp/cities500.txt || { echo "cities500.txt missing"; exit 1; }
+          lines=$(wc -l < /tmp/cities500.txt); test "$lines" -gt 100000 || { echo "cities500 too small: $lines lines"; exit 1; }
+          test "$(stat -c%s /tmp/cities500.txt)" -gt 5000000 || { echo "cities500 too small by size"; exit 1; }
+          wc -l /tmp/cities500.txt
       - name: Test code
+        env:
+          CITIES500_PATH: /tmp/cities500.txt
         run: cargo test
 
   create-release:

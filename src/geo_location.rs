@@ -1,14 +1,12 @@
-use std::collections::HashMap;
 use std::env;
 use std::fmt::{Display, Formatter};
-use std::time::Duration;
+use std::sync::OnceLock;
 
 use actix_web::web;
-
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
+use rstar::{PointDistance, RTree, RTreeObject, AABB};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 /// Struct representing a geo location
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
@@ -31,11 +29,13 @@ fn dms_to_dd(dms_string: &str, dms_ref: &str) -> Option<f32> {
         static ref DMS_PARSE_PATTERN_1: Regex = Regex::new(
             // e.g.: 7 deg 33 min 55.5155 sec or 7 deg 33 min 55 sec
             r"(?P<deg>\d+) deg (?P<min>\d+) min (?P<sec>\d+.?\d*) sec"
-        ).unwrap();
+        )
+        .unwrap();
         static ref DMS_PARSE_PATTERN_2: Regex = Regex::new(
             // e.g.: 50/1, 25/1, 2519/100
             r"(?P<deg>\d+)/(?P<deg_fraction>\d+),\s*(?P<min>\d+)/(?P<min_fraction>\d+),\s*(?P<sec>\d+)/(?P<sec_fraction>\d+)"
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     let dms_pattern_1_match: Option<Captures> = DMS_PARSE_PATTERN_1.captures(dms_string);
@@ -132,71 +132,208 @@ pub fn from_degrees_minutes_seconds(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Offline city resolution via cities500
+// ---------------------------------------------------------------------------
+
+/// Maximum distance from query point to nearest city for a valid match.
+/// Beyond this threshold the result is `None` (ocean / desert case).
+const MAX_DISTANCE_KM: f64 = 50.0;
+
+/// Default path of the cities500 data file inside the container.
+const CITIES500_PATH: &str = "/cities500.txt";
+
+static DEPRECATION_ONCE: OnceLock<()> = OnceLock::new();
+static CITY_INDEX: OnceLock<Option<CityIndex>> = OnceLock::new();
+
+struct CityEntry {
+    name: String,
+    lat: f64,
+    lon: f64,
+}
+
+impl RTreeObject for CityEntry {
+    type Envelope = AABB<[f64; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        AABB::from_point([self.lon, self.lat])
+    }
+}
+
+impl PointDistance for CityEntry {
+    fn distance_2(&self, point: &[f64; 2]) -> f64 {
+        // Plain Euclidean — must match AABB::distance_2 used for R-tree
+        // internal nodes (rstar contract). Antimeridian wrap is handled
+        // at query time by probing lon±360.
+        let dx = self.lon - point[0];
+        let dy = self.lat - point[1];
+        dx * dx + dy * dy
+    }
+}
+
+struct CityIndex {
+    tree: RTree<CityEntry>,
+}
+
+fn maybe_warn_deprecated() {
+    if env::var("BIGDATA_CLOUD_API_KEY").is_ok() {
+        DEPRECATION_ONCE.get_or_init(|| {
+            log::warn!(
+                "BIGDATA_CLOUD_API_KEY is deprecated and ignored; offline city resolution via cities500 is used. Remove it from compose/env."
+            );
+        });
+    }
+}
+
+fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
+    const R: f64 = 6371.0088;
+    let dlat = (lat2 - lat1).to_radians();
+    let dlon = (lon2 - lon1).to_radians();
+    let a = (dlat / 2.0).sin().powi(2)
+        + lat1.to_radians().cos() * lat2.to_radians().cos() * (dlon / 2.0).sin().powi(2);
+    let c = 2.0 * a.clamp(0.0, 1.0).sqrt().asin();
+    R * c
+}
+
+fn get_cities500_path() -> String {
+    env::var("CITIES500_PATH").unwrap_or_else(|_| CITIES500_PATH.to_string())
+}
+
+fn load_city_index() -> Option<CityIndex> {
+    let path = get_cities500_path();
+    let content = match std::fs::read_to_string(&path) {
+        Ok(c) => c,
+        Err(e) => {
+            log::warn!(
+                "cities500 data not found at {}; city resolution disabled: {}",
+                path,
+                e
+            );
+            return None;
+        }
+    };
+
+    let mut entries: Vec<CityEntry> = Vec::new();
+    for (line_no, line) in content.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let cols: Vec<&str> = line.split('\t').collect();
+        if cols.len() < 6 {
+            log::warn!(
+                "skipping malformed cities500 line {}: expected >=6 cols, got {}",
+                line_no + 1,
+                cols.len()
+            );
+            continue;
+        }
+        let name = cols[1].to_string();
+        if name.trim().is_empty() {
+            log::warn!("skipping cities500 line {}: empty name", line_no + 1);
+            continue;
+        }
+        let lat: f64 = match cols[4].parse() {
+            Ok(v) => v,
+            Err(_) => {
+                log::warn!(
+                    "skipping cities500 line {}: invalid latitude '{}'",
+                    line_no + 1,
+                    cols[4]
+                );
+                continue;
+            }
+        };
+        let lon: f64 = match cols[5].parse() {
+            Ok(v) => v,
+            Err(_) => {
+                log::warn!(
+                    "skipping cities500 line {}: invalid longitude '{}'",
+                    line_no + 1,
+                    cols[5]
+                );
+                continue;
+            }
+        };
+        entries.push(CityEntry { name, lat, lon });
+    }
+
+    if entries.is_empty() {
+        log::warn!(
+            "cities500 data at {} contained no valid entries; city resolution disabled",
+            path
+        );
+        return None;
+    }
+
+    let len = entries.len();
+    let tree = RTree::bulk_load(entries);
+    log::info!("loaded {} cities from {}", len, path);
+    Some(CityIndex { tree })
+}
+
+fn get_city_index() -> Option<&'static CityIndex> {
+    CITY_INDEX.get().and_then(|opt| opt.as_ref())
+}
+
+async fn ensure_city_index() -> Option<&'static CityIndex> {
+    if let Some(opt) = CITY_INDEX.get() {
+        return opt.as_ref();
+    }
+    let loaded: Option<CityIndex> = match web::block(load_city_index).await {
+        Ok(opt) => opt,
+        Err(e) => {
+            log::warn!("cities500 load blocked task failed: {}", e);
+            return None;
+        }
+    };
+    let _ = CITY_INDEX.set(loaded);
+    get_city_index()
+}
+
 /// Returns the city name for the specified geo location
-/// The city name is resolved from the geo location using the bigdatacloud api
-/// Tries the authenticated endpoint if a key is available, otherwise falls back
-/// to the free reverse-geocode-client endpoint. The key is outdated (403) in CI,
-/// so the fallback ensures tests and description generation keep working.
+/// Resolved offline from the embedded GeoNames cities500 dataset.
+/// Returns `None` for invalid coordinates or when no city is within `MAX_DISTANCE_KM`.
 pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
-    // Try authenticated endpoint first if key is present (best quota), fallback to free client
-    if let Ok(key) = env::var("BIGDATA_CLOUD_API_KEY") {
-        if let Some(city) = fetch_city_for_url(format!(
-            "https://api.bigdatacloud.net/data/reverse-geocode?latitude={}&longitude={}&localityLanguage=de&key={}",
-            geo_location.latitude, geo_location.longitude, key
-        ))
-        .await
-        {
-            return Some(city);
+    maybe_warn_deprecated();
+
+    // Validation: finite and in-range (is_finite covers NaN and ±inf)
+    if !geo_location.latitude.is_finite()
+        || !geo_location.longitude.is_finite()
+        || geo_location.latitude < -90.0
+        || geo_location.latitude > 90.0
+        || geo_location.longitude < -180.0
+        || geo_location.longitude > 180.0
+    {
+        return None;
+    }
+
+    let index = ensure_city_index().await?;
+    let lon = geo_location.longitude as f64;
+    let lat = geo_location.latitude as f64;
+    let point = [lon, lat];
+    // Plain Euclidean cannot wrap at the antimeridian. Probe the
+    // wrapped equivalent (lon±360) so a city just across the date
+    // line is found via the second R-tree query; the true nearest
+    // is selected below by haversine (which naturally wraps).
+    let alt_lon = if lon >= 0.0 { lon - 360.0 } else { lon + 360.0 };
+    let alt_point = [alt_lon, lat];
+
+    // Euclidean ordering diverges from haversine (lon shrinks by cos(lat)),
+    // so the Euclidean-nearest may be outside 50 km while a slightly farther
+    // Euclidean candidate is inside. Scan k nearest and pick the closest
+    // haversine within threshold from both query points.
+    let mut best: Option<(&CityEntry, f64)> = None;
+    for query_point in [point, alt_point] {
+        for candidate in index.tree.nearest_neighbor_iter(&query_point).take(20) {
+            let dist = haversine_km(lat, lon, candidate.lat, candidate.lon);
+            if dist <= MAX_DISTANCE_KM {
+                match &best {
+                    Some((_, best_dist)) if dist >= *best_dist => {}
+                    _ => best = Some((candidate, dist)),
+                }
+            }
         }
     }
 
-    // Free endpoint without API key - works for tests and as fallback
-    fetch_city_for_url(format!(
-        "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude={}&longitude={}&localityLanguage=de",
-        geo_location.latitude, geo_location.longitude
-    ))
-    .await
-}
-
-async fn fetch_city_for_url(request_url: String) -> Option<String> {
-    // The blocking ureq call must not run on an async worker thread
-    let response_json: Option<HashMap<String, Value>> = web::block(move || {
-        ureq::get(&request_url)
-            .config()
-            .timeout_global(Some(Duration::from_secs(15)))
-            .build()
-            .call()
-            .ok()?
-            .body_mut()
-            .read_to_string()
-            .ok()
-            .and_then(|json_string| {
-                serde_json::from_str::<HashMap<String, Value>>(&json_string).ok()
-            })
-    })
-    .await
-    .ok()
-    .flatten();
-
-    let mut city_name = response_json
-        .as_ref()
-        .and_then(|json_data| get_string_value("city", json_data))
-        .filter(|city_name| !city_name.trim().is_empty());
-
-    if city_name.is_none() {
-        city_name = response_json
-            .as_ref()
-            .and_then(|json_data| get_string_value("locality", json_data))
-            .filter(|city_name| !city_name.trim().is_empty());
-    }
-
-    city_name
-}
-
-/// Returns the string value for the specified key of an hash map
-fn get_string_value(field_name: &str, json_data: &HashMap<String, Value>) -> Option<String> {
-    json_data
-        .get(field_name)
-        .and_then(|field_value| field_value.as_str())
-        .map(|field_string_value| field_string_value.to_string())
+    best.map(|(entry, _)| entry.name.clone())
 }
