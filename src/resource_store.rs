@@ -228,9 +228,16 @@ impl ResourceStore {
             .expect("Failed to create transaction");
 
         resources.iter().for_each(|(id, value)| {
+            let taken: Option<String> = serde_json::from_str::<serde_json::Value>(value.as_str())
+                .ok()
+                .and_then(|v| {
+                    v.get("taken")
+                        .and_then(|t| t.as_str())
+                        .map(|s| s.to_string())
+                });
             tx.execute(
-                "INSERT OR REPLACE INTO resources(id, value) VALUES(?, ?)",
-                (id.as_str(), value.as_str()),
+                "INSERT OR REPLACE INTO resources(id, value, taken) VALUES(?1, ?2, ?3)",
+                rusqlite::params![id.as_str(), value.as_str(), taken],
             )
             .unwrap_or_else(|error| panic!("Insertion of {id} failed.\n{}", error));
         });
@@ -329,6 +336,7 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
     create_table_data_cache(&persistent_file_store_pool);
     create_table_geo_location_cache(&persistent_file_store_pool);
     create_table_resources(&persistent_file_store_pool);
+    migrate_taken_column_and_index(&persistent_file_store_pool);
 
     ResourceStore {
         persistent_file_store_pool,
@@ -375,10 +383,25 @@ fn create_table_resources(pool: &Pool<SqliteConnectionManager>) {
     pool.get()
         .unwrap()
         .execute(
-            "CREATE TABLE IF NOT EXISTS resources (id TEXT PRIMARY KEY, value TEXT);",
+            "CREATE TABLE IF NOT EXISTS resources (id TEXT PRIMARY KEY, value TEXT, taken TEXT);",
             (),
         )
         .unwrap_or_else(|error| panic!("table creation of 'resources' failed.\n{}", error));
+}
+
+fn migrate_taken_column_and_index(pool: &Pool<SqliteConnectionManager>) {
+    let conn = pool.get().unwrap();
+    let _ = conn.execute("ALTER TABLE resources ADD COLUMN taken TEXT", []);
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_resources_taken ON resources(taken)",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "UPDATE resources SET taken = json_extract(value, '$.taken') WHERE taken IS NULL AND json_extract(value, '$.taken') IS NOT NULL",
+        [],
+    )
+    .unwrap();
 }
 
 /// Checks if today +-3 hits new year
@@ -466,4 +489,47 @@ fn get_last_year_count_query() -> &'static str {
          AND resources.id NOT IN (SELECT id FROM hidden)
          AND strftime('%m-%d', json.value) BETWEEN strftime('%m-%d', 'now', 'localtime', '-3 days') AND '12-31'
    ;"#
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn initialize_creates_taken_column_and_index_and_backfills() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let conn = store.persistent_file_store_pool.get().unwrap();
+        conn.execute(
+            "INSERT INTO resources(id,value) VALUES(?1,?2)",
+            rusqlite::params![
+                "legacy1",
+                r#"{"id":"legacy1","taken":"2021-03-15T12:00:00"}"#
+            ],
+        )
+        .unwrap();
+        drop(conn);
+        let store2 = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let conn = store2.persistent_file_store_pool.get().unwrap();
+        let col: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('resources') WHERE name='taken'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(col, 1);
+        let idx: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_resources_taken'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(idx, 1);
+        let taken: Option<String> = conn
+            .query_row("SELECT taken FROM resources WHERE id='legacy1'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(taken, Some("2021-03-15T12:00:00".to_string()));
+    }
 }

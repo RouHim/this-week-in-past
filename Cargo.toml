@@ -42,6 +42,7 @@ mimalloc = "0.1.43"
 assertor = "0.0.4"
 actix-rt = "2.9"
 ureq = "3.0.0"
+tempfile = "3.10"
 
 [profile.release]
 panic = "abort" # Strip expensive panic clean-up logic
