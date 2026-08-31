@@ -488,6 +488,7 @@ This old test inserts a row without taken handling, then re-initializes; after r
 
 Manual check: run `cargo test -- --test-threads=1` with multiple threads initializing same DB path sequentially; ensure no panic due to `SQLITE_BUSY`. Document that `r2d2` pool holds exclusive writer during `to_latest` because no other threads have acquired connections yet (initialize is called before `scheduler::schedule_indexer` and `HttpServer::new`).
 
+> Note: `Pool::get()` does not provide a cross-process exclusive lock. With WAL single-writer, two simultaneous processes booting the same `resources.db` may contend; the loser gets `SQLITE_BUSY` and the current code panics per FR-008 fail-fast. Operator must ensure single initializer or rely on systemd `Restart=on-failure` retry; pool quiescence before `to_latest` is required (no queries until migration completes).
 - [ ] **Step 6: Commit**
 
 ```bash

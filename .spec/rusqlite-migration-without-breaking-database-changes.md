@@ -24,12 +24,11 @@ A fresh installation with empty `DATA_FOLDER` (no `resources.db`) starts the app
 2. Given a fresh DB created via migrations, When week queries and hidden/resource APIs are used, Then behavior matches a migrated existing DB.
 
 ### Scenario 3 - Developer adds a new schema change (P2)
-A developer needs to add a new table, column, or index. They add a new `V(N+1)__*.sql` file and CI validates it before merge.
+A developer needs to add a new table, column, or index. They add a new `NN-name/up.sql` directory (e.g. `04-new_feature/up.sql`) and CI validates it before merge.
 
 **Acceptance**
-1. Given a new migration file with a valid `V__` prefix and ordered version, When `Migrations::validate()` or equivalent CI check runs, Then validation succeeds and `to_latest()` on both fresh and existing test DBs succeeds.
-2. Given a migration file with misordered version, duplicate version, or invalid SQL, When validation runs, Then it fails with a descriptive error before merge.
-
+1. Given a new migration file with a valid `NN-name/up.sql` directory and consecutive version, When `MIGRATIONS.validate()` runs, Then validation succeeds.
+2. Given a migration file with non-consecutive version, duplicate version after sorting, or invalid SQL, When validation runs, Then it fails with a descriptive error before merge. Note: validate sorts directory entries lexicographically and parses version via `split_once('-')`; misordered filesystem names that sort to consecutive versions (e.g. `02-foo` vs `01-bar`) are not flagged — version order is defined by sorted names.
 ### Scenario 4 - Migration failure blocks startup (P1)
 A migration fails due to disk full, permission error, or invalid SQL on a Pi. The app does not serve stale or partially migrated data.
 
@@ -59,10 +58,9 @@ A migration fails due to disk full, permission error, or invalid SQL on a Pi. Th
 - Existing DB where `taken` is `NULL` for old rows — `V2` backfill must populate it from `value` JSON where present.
 - Fresh install with no DB file — `V1-V3` must create a complete schema from scratch.
 - `data_cache` absent, empty, or large (legacy BLOB) — `V3 DROP TABLE IF EXISTS` must succeed in all cases.
-- Concurrent startup with WAL single-writer — migration must hold exclusive access; `r2d2` pool must not allow queries until migrations finish.
+- Concurrent startup with WAL single-writer — migration runs on a single `Pool::get()` connection before any other pool users exist (initialize before scheduler/HttpServer). Two simultaneous processes booting the same DB file may contend; loser gets `SQLITE_BUSY` and current code panics per FR-008 fail-fast. Operator must ensure single initializer (systemd `Restart=on-failure` will retry after panic) or external locking. Pool quiescence before migration is required — no queries until `to_latest` completes.
 - Disk full, permission denied, or power loss mid-migration — atomicity must ensure DB remains at previous version and startup fails visibly.
 - Future `ALTER TABLE DROP COLUMN` or similar SQLite limitation — migrations must use SQLite-supported statements only.
-
 ## Research Notes
 - https://docs.rs/rusqlite_migration/latest/rusqlite_migration/ — `rusqlite_migration` uses `PRAGMA user_version` at a fixed file offset, not a history table, for fast open and lightweight tracking.
 - https://github.com/cljoly/rusqlite_migration/tree/master/examples/from-directory — `from-directory` feature loads `migrations/**/*.sql` via `build.rs` and provides `MIGRATIONS.validate()` for CI and snapshot testing.
@@ -76,9 +74,8 @@ A migration fails due to disk full, permission error, or invalid SQL on a Pi. Th
 - No down migrations are provided; forward-only is sufficient.
 - The SQLite file remains at `DATA_FOLDER/resources.db` and WAL mode remains enabled outside migrations.
 
-## Success Criteria
 - **SC-001**: An existing `resources.db` with 10k+ rows and `taken` column already present upgrades on next boot without manual deletion and all `get_resources_this_week_visible` / `get_all_hidden` queries return identical results before and after.
 - **SC-002**: A fresh installation creates `resources.db` via migrations alone and passes the same integration tests as a migrated existing DB.
-- **SC-003**: `Migrations::validate()` succeeds on CI for the committed `migrations/` set and fails for a misordered or syntactically invalid migration file.
+- **SC-003**: `MIGRATIONS.validate()` succeeds for the committed `migrations/` set and fails for a migration file with non-consecutive version, duplicate version after sorting, or invalid SQL; validate sorts lexicographically via `split_once('-')` — misordered filesystem names that sort to consecutive versions are not flagged, version order is defined by sorted names and not filesystem creation order.
 - **SC-004**: Migration from `user_version = 0` to latest completes in under 500 ms on a Pi-class device for a DB with 100k rows (excluding `V2` backfill scan time) and leaves `user_version` equal to the number of migration files.
 - **SC-005**: If a migration is forced to fail (e.g., injected invalid SQL), the process exits with non-zero status, logs the migration error, and does not serve HTTP; a subsequent restart with valid SQL succeeds without manual DB repair.
