@@ -1,4 +1,6 @@
 -- V1 / 01-initial: baseline schema, idempotent for both fresh and existing DBs with user_version=0
+-- Note: very-old DBs without resources.taken are handled by Rust pre-migration guard in
+-- resource_store::initialize (pragma_table_info + idempotent ALTER) so V2 UPDATE never sees missing column.
 CREATE TABLE IF NOT EXISTS hidden (
     id TEXT PRIMARY KEY
 );

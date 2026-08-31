@@ -303,7 +303,34 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
         let mut conn = persistent_file_store_pool
             .get()
             .expect("Failed to get connection for migrations");
+        // P1 fix (A1/C2): very-old DBs had resources(id,value) without taken.
+        // V1's CREATE TABLE IF NOT EXISTS is no-op then, so V2 UPDATE would fail
+        // with "no such column: taken". Ensure column exists idempotently before
+        // running versioned migrations. This runs outside user_version tracking,
+        // keeps each SQL migration atomic, and is a no-op for fresh/migrated DBs.
+        let has_taken: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('resources') WHERE name='taken'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
+        if has_taken == 0 {
+            // Check if resources table exists at all before ALTER
+            let has_resources: i32 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='resources'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap_or(0);
+            if has_resources == 1 {
+                // Ignore duplicate-column error if raced; idempotent
+                let _ = conn.execute("ALTER TABLE resources ADD COLUMN taken TEXT", []);
+            }
+        }
         if let Err(e) = MIGRATIONS.to_latest(&mut conn) {
+            eprintln!("Database migration failed: {}", e);
             error!("Database migration failed: {}", e);
             panic!("Database migration failed: {}", e);
         }
@@ -709,5 +736,52 @@ mod tests {
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
         assert_eq!(uv2, 3);
+    }
+    #[test]
+    fn very_old_db_without_taken_column_upgrades_without_deletion() {
+        // GIVEN a very-old DB: resources without taken column, user_version=0
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("resources.db");
+        {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "CREATE TABLE hidden (id TEXT PRIMARY KEY);
+                 CREATE TABLE resources (id TEXT PRIMARY KEY, value TEXT);
+                 CREATE TABLE geo_location_cache (id TEXT PRIMARY KEY, value TEXT);
+                 CREATE TABLE data_cache (id TEXT PRIMARY KEY, data BLOB);
+                 INSERT INTO resources(id,value) VALUES('old1','{\"id\":\"old1\",\"taken\":\"2020-03-15T10:00:00\"}');
+                 INSERT INTO hidden(id) VALUES('h1');
+                 PRAGMA user_version = 0;",
+            ).unwrap();
+            let uv: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+            assert_eq!(uv, 0);
+            let has_taken: i32 = conn.query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('resources') WHERE name='taken'",
+                [], |r| r.get(0)
+            ).unwrap();
+            assert_eq!(has_taken, 0);
+        }
+        // WHEN initializing
+        let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let conn = store.persistent_file_store_pool.get().unwrap();
+        // THEN user_version 3, taken backfilled, hidden preserved, data_cache dropped
+        let uv: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+        assert_eq!(uv, 3);
+        let taken: Option<String> = conn.query_row(
+            "SELECT taken FROM resources WHERE id='old1'", [], |r| r.get(0)
+        ).unwrap();
+        assert_eq!(taken, Some("2020-03-15T10:00:00".to_string()));
+        let idx: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_resources_taken'",
+            [], |r| r.get(0)
+        ).unwrap();
+        assert_eq!(idx, 1);
+        let hidden: Vec<String> = store.get_all_hidden();
+        assert!(hidden.contains(&"h1".to_string()));
+        let cache: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='data_cache'",
+            [], |r| r.get(0)
+        ).unwrap();
+        assert_eq!(cache, 0);
     }
 }
