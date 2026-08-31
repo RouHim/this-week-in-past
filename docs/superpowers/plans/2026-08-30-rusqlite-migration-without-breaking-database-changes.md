@@ -25,6 +25,7 @@
 - Forward-only compatibility: existing `resources.db` upgrades without deletion; downgrade after `V3` need not restore `data_cache`.
 - Migration authoring uses SQL files in `migrations/` with ordered versions (spec says `V__` prefix); mapped to `from-directory` directory naming `NN-name/up.sql`.
 - Single SQLite file `DATA_FOLDER/resources.db` remains; WAL mode stays enabled outside migrations.
+Historical spec used V__ flat naming; implementation uses from-directory NN-name/up.sql — spec fixed 2026-08-31.
 
 ---
 

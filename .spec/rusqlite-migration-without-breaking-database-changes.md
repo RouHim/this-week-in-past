@@ -38,7 +38,7 @@ A migration fails due to disk full, permission error, or invalid SQL on a Pi. Th
 2. Given a migration fails atomically, When the app is restarted after fixing the cause (e.g., freeing disk), Then the same migration retries and succeeds without manual DB repair.
 
 ## Functional Requirements
-- **FR-001**: The system must store all schema changes as ordered, versioned migrations loaded from SQL files in a `migrations/` directory using `rusqlite_migration` with the `from-directory` feature.
+- **FR-001**: The system must store all schema changes as ordered, versioned migrations loaded from `migrations/NN-<name>/up.sql` directories using `rusqlite_migration` with the `from-directory` feature and `include_dir!` embedding.
 - **FR-002**: The system must apply pending migrations automatically at startup via `to_latest()` before any application query, using the same `r2d2` connection handling and WAL pragmas as before.
 - **FR-003**: The baseline migration `V1` must recreate the current schema idempotently: `hidden(id TEXT PRIMARY KEY)`, `resources(id TEXT PRIMARY KEY, value TEXT, taken TEXT)`, `geo_location_cache(id TEXT PRIMARY KEY, value TEXT)`, and `idx_resources_taken ON resources(taken)`, using `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS` so it succeeds on both fresh and existing DBs with `user_version = 0`.
 - **FR-004**: The migration `V2` must idempotently backfill `resources.taken` from `json_extract(value, '$.taken')` where `taken IS NULL`, so existing rows gain the indexed column without data loss or duplicate updates on re-run.
@@ -51,7 +51,7 @@ A migration fails due to disk full, permission error, or invalid SQL on a Pi. Th
 
 ## Key Entities
 - **resources.db**: Single SQLite file at `DATA_FOLDER/resources.db` containing all persistent tables. Source of truth for photos metadata, hidden state, and geo cache.
-- **Migration**: An ordered, immutable `V{version}__{name}.sql` file in `migrations/`. Each defines forward-only SQL executed once and tracked via `user_version`.
+- **Migration**: An ordered, immutable `migrations/NN-<name>/up.sql` directory (e.g. `01-initial/up.sql`) loaded via `rusqlite_migration::Migrations::from_directory` using `include_dir!`. Version is integer before first `-` (e.g. `01` → 1). Lexicographic directory order defines version order; `PRAGMA user_version` tracks applied count.
 - **Schema Version**: Integer stored in `PRAGMA user_version` representing the number of successfully applied migrations. `0` means no migrations applied (legacy DB).
 
 ## Edge Cases
@@ -71,7 +71,7 @@ A migration fails due to disk full, permission error, or invalid SQL on a Pi. Th
 
 ## Assumptions
 - "Without breaking" means forward-only compatibility: existing `resources.db` files must upgrade without deletion; downgrade to the old binary after `V3` is not required to restore `data_cache`.
-- Migration authoring uses SQL files in `migrations/` with `V` prefix and ordered versions, not inline `Migrations::from_slice`.
+- Migration authoring uses `migrations/NN-<name>/up.sql` directories with ordered versions parsed via `split_once('-')` on the directory name, not inline `Migrations::from_slice`.
 - Failure handling is fail-fast and blocks startup; no automatic `resources.db.bak` copy is created by the app (operator handles backups).
 - No down migrations are provided; forward-only is sufficient.
 - The SQLite file remains at `DATA_FOLDER/resources.db` and WAL mode remains enabled outside migrations.
