@@ -32,7 +32,7 @@ rusqlite = { version = "0.40", features = ["bundled"] }
 r2d2_sqlite = "0.35"
 parking_lot = "0.12"
 rusqlite_migration = { version = "2.6.0", features = ["from-directory"] }
-include_dir = "0.7.4"
+include_dir = "0.7.4" # explicit for clarity; also transitive via from-directory, keep pinned
 # rstar Euclidean-only; geo_location.rs compensates via k-nearest haversine scan within 50km
 rstar = "0.12"
 

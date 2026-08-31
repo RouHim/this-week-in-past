@@ -276,6 +276,10 @@ impl ResourceStore {
     }
 }
 
+/// Initializes a new datastore in the $DATA_FOLDER folder and returns the instance
+/// If no $DATA_FOLDER env var is configured, ./data/ is used
+/// Creates data folder if it does not exists
+/// Also creates all tables via versioned migrations (see `MIGRATIONS`)
 pub fn initialize(data_folder: &str) -> ResourceStore {
     fs::create_dir_all(data_folder)
         .unwrap_or_else(|error| panic!("Could not create data folder: {}", error));
