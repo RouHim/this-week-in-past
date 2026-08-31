@@ -330,6 +330,8 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
             }
         }
         if let Err(e) = MIGRATIONS.to_latest(&mut conn) {
+            // FR-008: fail fast, visible even if logger not yet init (tests, early init)
+            // eprintln! ensures Pi operator sees error when log sink not yet configured; error! satisfies structured logging when available.
             eprintln!("Database migration failed: {}", e);
             error!("Database migration failed: {}", e);
             panic!("Database migration failed: {}", e);
