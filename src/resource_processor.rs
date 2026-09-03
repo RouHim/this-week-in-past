@@ -3,7 +3,6 @@ use std::env;
 use crate::geo_location;
 use crate::resource_reader::ImageResource;
 use crate::resource_store::ResourceStore;
-
 /// Builds the display value for the specified resource
 /// The display value contains the date and location of a resource
 pub async fn build_display_value(
@@ -36,24 +35,12 @@ pub async fn build_display_value(
 }
 
 /// Returns the city name for the specified resource
-/// The city name is taken from the cache, if available
-/// If not, the city name is taken from the geo location service
-async fn get_city_name(resource: &ImageResource, resource_store: &ResourceStore) -> Option<String> {
+/// Directly resolves via offline `cities500` RTree (<1ms) — no persistent cache.
+/// The historic `geo_location_cache` SQLite table is dropped via migration 04.
+async fn get_city_name(
+    resource: &ImageResource,
+    _resource_store: &ResourceStore,
+) -> Option<String> {
     let resource_location = resource.location?;
-    let resource_location_string = resource_location.to_string();
-
-    // Check if cache contains resource location
-    if resource_store.location_exists(resource_location_string.as_str()) {
-        resource_store.get_location(resource_location_string.as_str())
-    } else {
-        // Get city name
-        let city_name = geo_location::resolve_city_name(resource_location).await;
-
-        if let Some(city_name) = &city_name {
-            // Write to cache
-            resource_store.add_location(resource_location_string, city_name.clone());
-        }
-
-        city_name
-    }
+    geo_location::resolve_city_name(resource_location).await
 }

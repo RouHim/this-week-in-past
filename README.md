@@ -96,10 +96,9 @@ SLIDESHOW_INTERVAL=60 \
 > ```
 > and run with `CITIES500_PATH=$(pwd)/cities500.txt` (defaults to `/cities500.txt` in the container). Without the file city resolution is disabled with a `warn!` log.
 
-> **BREAKING CHANGE:** `BIGDATA_CLOUD_API_KEY` is deprecated and ignored since the offline `cities500` migration. Remove it from `docker run -e` / `compose.yaml` / `.env` at your convenience — offline lookup needs no API key or network. Native execution now requires the one-time download above; container image already bakes `/cities500.txt` (+~10 MB).
+> **District display (since #209):** Districts (`P:PPLX`) now show hierarchically as `District, City` (e.g. `Bayenthal, Köln` instead of `Bayenthal`, `Christianshavn, Copenhagen`). The former persistent `geo_location_cache` is auto-dropped on next startup via migration `04` (offline RTree is `<1ms`, no manual `DELETE` needed).
 
-> Since the binary is compiled [completely statically](https://github.com/rust-cross/rust-musl-cross), there are no
-> dependencies on system libraries like glibc.
+> **BREAKING CHANGE:** `BIGDATA_CLOUD_API_KEY` is deprecated and ignored since the offline `cities500` migration. Remove it from `docker run -e` / `compose.yaml` / `.env` at your convenience — offline lookup needs no API key or network. Native execution now requires the one-time download above; container image already bakes `/cities500.txt` (+~10 MB).
 
 ## Configuration
 

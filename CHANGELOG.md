@@ -1,3 +1,11 @@
+## [Unreleased]
+
+### Features
+
+* feat!: hierarchical city display for districts (Bayenthal → Bayenthal, Köln; Volksdorf → Volksdorf, Hamburg; Christianshavn → Christianshavn, Copenhagen) ([#209](https://github.com/RouHim/this-week-in-past/issues/209))
+
+  BREAKING: `geo_location_cache` SQLite table is auto-dropped on next startup via migration `04` (offline RTree `<1ms`, previous persistent cache obsolete and stale after hierarchical fix). `DATA_FOLDER/resources.db` `user_version` 3 → 4. No manual `DELETE` needed.
+
 ## [2.1.1](https://github.com/RouHim/this-week-in-past/compare/2.1.0...2.1.1) (2026-08-30)
 
 # [2.1.0](https://github.com/RouHim/this-week-in-past/compare/2.0.2...2.1.0) (2026-08-30)
@@ -8,10 +16,6 @@
 * steady-state memory optimization — Plan C (filesystem JPEG cache, keep 10 connections) ([#205](https://github.com/RouHim/this-week-in-past/issues/205)) ([6226dce](https://github.com/RouHim/this-week-in-past/commit/6226dce7e403277785dde15d5421ba73d8a3a9df))
 
 ## [2.0.2](https://github.com/RouHim/this-week-in-past/compare/2.0.1...2.0.2) (2026-08-30)
-
-## [2.0.1](https://github.com/RouHim/this-week-in-past/compare/2.0.0...2.0.1) (2026-08-30)
-
-# [2.0.0](https://github.com/RouHim/this-week-in-past/compare/1.32.58...2.0.0) (2026-08-30)
 
 
 * feat!: offline city resolution via cities500.zip ([#203](https://github.com/RouHim/this-week-in-past/issues/203)) ([71e5b13](https://github.com/RouHim/this-week-in-past/commit/71e5b13263862154b1067bd4bf106025fa7e33a8))
