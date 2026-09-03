@@ -149,15 +149,22 @@ const CITIES500_PATH: &str = "/cities500.txt";
 
 static DEPRECATION_ONCE: OnceLock<()> = OnceLock::new();
 static CITY_INDEX: OnceLock<Option<CityIndex>> = OnceLock::new();
+static CITY_INDEX_INIT_MUTEX: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
-#[allow(dead_code)]
 #[derive(Clone)]
 struct CityEntry {
     name: String,
     lat: f64,
     lon: f64,
+    feature_class: String,
     feature_code: String,
+    // country_code/admin1_code parsed per FR-001/FR-005, reserved for future
+    // 3-level display (District, City, Country); retained despite not yet
+    // rendered. Heap budget documented at load site: steady-state <50 MB
+    // (FR-008); transient peak 60-85 MB before bulk_load moves vectors.
+    #[allow(dead_code)]
     country_code: String,
+    #[allow(dead_code)]
     admin1_code: String,
     population: i64,
 }
@@ -186,15 +193,16 @@ struct CityIndex {
     parent_tree: RTree<CityEntry>,
 }
 
-fn is_parent_city(code: &str) -> bool {
-    matches!(
-        code,
-        "PPL" | "PPLA" | "PPLA2" | "PPLA3" | "PPLA4" | "PPLC" | "PPLG" | "PPLS"
-    )
+fn is_parent_city(entry: &CityEntry) -> bool {
+    entry.feature_class == "P"
+        && matches!(
+            entry.feature_code.as_str(),
+            "PPL" | "PPLA" | "PPLA2" | "PPLA3" | "PPLA4" | "PPLC" | "PPLG" | "PPLS"
+        )
 }
 
 fn is_district(entry: &CityEntry) -> bool {
-    entry.feature_code == "PPLX"
+    entry.feature_class == "P" && entry.feature_code == "PPLX"
 }
 
 fn maybe_warn_deprecated() {
@@ -277,6 +285,7 @@ fn load_city_index() -> Option<CityIndex> {
             }
         };
         // Extended columns — tolerant parsing (FR-001 edge: incomplete lines)
+        let feature_class = cols.get(6).unwrap_or(&"").trim().to_string();
         let feature_code = cols.get(7).unwrap_or(&"").trim().to_string();
         let country_code = cols.get(8).unwrap_or(&"").trim().to_ascii_uppercase();
         let admin1_code = cols.get(10).unwrap_or(&"").trim().to_string();
@@ -288,6 +297,7 @@ fn load_city_index() -> Option<CityIndex> {
             name,
             lat,
             lon,
+            feature_class,
             feature_code,
             country_code,
             admin1_code,
@@ -304,9 +314,15 @@ fn load_city_index() -> Option<CityIndex> {
     }
 
     let len = entries.len();
+    // Peak transient heap ~60-85 MB (FR-008): entries Vec with 4 Strings per
+    // entry (~30 MB), parent clone of ~224k entries (~25 MB), plus two RTree
+    // node allocations (~2×15 MB). Steady-state after bulk_load moves vectors
+    // into RTrees is <50 MB. Single-flight in ensure_city_index prevents
+    // N× peak burst under concurrent startup; clone is kept for simplicity
+    // (Rc/Arc would add indirection without measurable win).
     let parent_entries: Vec<CityEntry> = entries
         .iter()
-        .filter(|e| is_parent_city(&e.feature_code))
+        .filter(|e| is_parent_city(e))
         .cloned()
         .collect();
     let district_count = entries.iter().filter(|e| is_district(e)).count();
@@ -330,7 +346,15 @@ fn get_city_index() -> Option<&'static CityIndex> {
     CITY_INDEX.get().and_then(|opt| opt.as_ref())
 }
 
+// Single-flight via tokio::sync::Mutex + double-checked locking. First caller
+// holds the mutex while doing web::block(load_city_index) (~60-85 MB transient,
+// steady-state <50 MB per FR-008 above); concurrent callers await the mutex,
+// re-check CITY_INDEX, and reuse the winner's index, preventing N×50 MB burst.
 async fn ensure_city_index() -> Option<&'static CityIndex> {
+    if let Some(opt) = CITY_INDEX.get() {
+        return opt.as_ref();
+    }
+    let _guard = CITY_INDEX_INIT_MUTEX.lock().await;
     if let Some(opt) = CITY_INDEX.get() {
         return opt.as_ref();
     }
@@ -398,9 +422,14 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     if !is_district(best_entry) {
         return Some(best_entry.name.clone());
     }
-    // District → find best parent city within MAX_PARENT_DISTANCE_KM (FR-003)
-    // Prefer most populous parent (e.g. Hamburg 1.8M over Ahrensburg 33k for Volksdorf)
-    // to match user expectation Bayenthal→Köln, Volksdorf→Hamburg. Distance tie-breaker.
+    // District → parent resolution (FR-003, see .spec/district-aware-city-display.md).
+    // Intentionally NOT pure closest-haversine: we pick the most populous city within
+    // MAX_PARENT_DISTANCE_KM (population desc, haversine asc tie-breaker). This matches
+    // product expectations for Scenario 1 (Volksdorf 53.651,10.166 → Hamburg ~12–16km, 1.8M
+    // over nearer Ahrensburg ~6km, 33k) and Bayenthal→Köln (~4km) ties, while a strict
+    // minimum-distance rule would surprise users in dense metro areas. Candidates are
+    // collected from parent_tree.nearest_neighbor_iter(..).take(50) for each antimeridian
+    // probe, filtered by haversine ≤30km, then deduped by name+coords.
     let mut candidates: Vec<(&CityEntry, f64)> = Vec::new();
     for query_point in [point, alt_point] {
         for candidate in index
@@ -416,7 +445,9 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     }
     // Deduplicate by name+coords to avoid double counting from antimeridian probes
     candidates.sort_by(|a, b| a.0.name.cmp(&b.0.name));
-    candidates.dedup_by(|a, b| a.0.name == b.0.name && (a.0.lat - b.0.lat).abs() < 1e-9);
+    candidates.dedup_by(|a, b| {
+        a.0.name == b.0.name && (a.0.lat - b.0.lat).abs() < 1e-9 && (a.0.lon - b.0.lon).abs() < 1e-9
+    });
     let best_parent = candidates.into_iter().max_by(|(a, da), (b, db)| {
         match a.population.cmp(&b.population) {
             std::cmp::Ordering::Equal => {

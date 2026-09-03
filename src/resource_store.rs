@@ -265,6 +265,7 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
         let mut conn = persistent_file_store_pool
             .get()
             .expect("Failed to get connection for migrations");
+
         if let Err(e) = MIGRATIONS.to_latest(&mut conn) {
             // Fail fast, visible even if the logger is not initialized yet (tests, early init).
             // eprintln! ensures Pi operator sees error when log sink not yet configured; error! satisfies structured logging when available.
@@ -699,5 +700,4 @@ mod tests {
             .unwrap();
         assert_eq!(uv2, 4);
     }
-
 }
