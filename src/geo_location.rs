@@ -314,8 +314,8 @@ fn load_city_index() -> Option<CityIndex> {
     }
 
     let len = entries.len();
-    // Peak transient heap ~60-85 MB (FR-008): entries Vec with 4 Strings per
-    // entry (~30 MB), parent clone of ~224k entries (~25 MB), plus two RTree
+    // Peak transient heap ~60-85 MB (FR-008): entries Vec with 5 Strings per
+    // entry (~30 MB), parent clone of filtered parents (~10-15 MB), plus two RTree
     // node allocations (~2×15 MB). Steady-state after bulk_load moves vectors
     // into RTrees is <50 MB. Single-flight in ensure_city_index prevents
     // N× peak burst under concurrent startup; clone is kept for simplicity
@@ -362,6 +362,7 @@ async fn ensure_city_index() -> Option<&'static CityIndex> {
         Ok(opt) => opt,
         Err(e) => {
             log::warn!("cities500 load blocked task failed: {}", e);
+            let _ = CITY_INDEX.set(None);
             return None;
         }
     };
@@ -428,14 +429,14 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     // product expectations for Scenario 1 (Volksdorf 53.651,10.166 → Hamburg ~12–16km, 1.8M
     // over nearer Ahrensburg ~6km, 33k) and Bayenthal→Köln (~4km) ties, while a strict
     // minimum-distance rule would surprise users in dense metro areas. Candidates are
-    // collected from parent_tree.nearest_neighbor_iter(..).take(50) for each antimeridian
+    // collected from parent_tree.nearest_neighbor_iter(..).take(100) for each antimeridian
     // probe, filtered by haversine ≤30km, then deduped by name+coords.
     let mut candidates: Vec<(&CityEntry, f64)> = Vec::new();
     for query_point in [point, alt_point] {
         for candidate in index
             .parent_tree
             .nearest_neighbor_iter(&query_point)
-            .take(50)
+            .take(100)
         {
             let dist = haversine_km(lat, lon, candidate.lat, candidate.lon);
             if dist <= MAX_PARENT_DISTANCE_KM {
@@ -444,7 +445,12 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
         }
     }
     // Deduplicate by name+coords to avoid double counting from antimeridian probes
-    candidates.sort_by(|a, b| a.0.name.cmp(&b.0.name));
+    candidates.sort_by(|a, b| {
+        a.0.name
+            .cmp(&b.0.name)
+            .then_with(|| a.0.lat.to_bits().cmp(&b.0.lat.to_bits()))
+            .then_with(|| a.0.lon.to_bits().cmp(&b.0.lon.to_bits()))
+    });
     candidates.dedup_by(|a, b| {
         a.0.name == b.0.name && (a.0.lat - b.0.lat).abs() < 1e-9 && (a.0.lon - b.0.lon).abs() < 1e-9
     });
