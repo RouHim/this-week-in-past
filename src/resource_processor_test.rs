@@ -149,15 +149,7 @@ async fn resolve_bayenthal_returns_hierarchical() {
     };
     let city_name = geo_location::resolve_city_name(geo_location).await;
     let name = city_name.expect("expected Bayenthal/Köln to resolve, got None");
-    // dataset-tolerant: must contain Köln; if Bayenthal PPLX present then "Bayenthal, Köln"
-    assert!(
-        name.contains("Köln"),
-        "expected Köln in '{}' for Bayenthal",
-        name
-    );
-    if name.contains("Bayenthal") {
-        assert_eq!(name, "Bayenthal, Köln");
-    }
+    assert_eq!(name, "Bayenthal, Köln");
 }
 
 #[actix_rt::test]
@@ -169,19 +161,16 @@ async fn resolve_christianshavn_hierarchical() {
     };
     let city_name = geo_location::resolve_city_name(geo_location).await;
     let name = city_name.expect("expected Christianshavn/Copenhagen to resolve");
-    // Accept both Danish and English names (dataset uses Copenhagen)
     assert!(
-        name.contains("København") || name.contains("Copenhagen"),
-        "expected København/Copenhagen in '{}' for Christianshavn",
+        name.contains(','),
+        "expected hierarchical comma in '{}' for Christianshavn",
         name
     );
-    if name.contains("Christianshavn") {
-        assert!(
-            name == "Christianshavn, Copenhagen" || name == "Christianshavn, København",
-            "unexpected hierarchical '{}'",
-            name
-        );
-    }
+    assert!(
+        name == "Christianshavn, Copenhagen" || name == "Christianshavn, København",
+        "unexpected hierarchical '{}'",
+        name
+    );
 }
 
 #[actix_rt::test]
@@ -193,14 +182,7 @@ async fn resolve_volksdorf_hierarchical() {
     };
     let city_name = geo_location::resolve_city_name(geo_location).await;
     let name = city_name.expect("expected Volksdorf/Hamburg to resolve");
-    assert!(
-        name.contains("Hamburg"),
-        "expected Hamburg in '{}' for Volksdorf",
-        name
-    );
-    if name.contains("Volksdorf") {
-        assert_eq!(name, "Volksdorf, Hamburg");
-    }
+    assert_eq!(name, "Volksdorf, Hamburg");
 }
 
 #[actix_rt::test]
@@ -235,8 +217,7 @@ async fn resolve_district_without_parent_falls_back() {
     // Synthetic CityIndex isolation requires private OnceLock, so we cover fallback
     // via two dataset-tolerant assertions:
     // 1) Bayenthal (50.9049,6.9606) is hierarchical Bayenthal, Köln — verifies
-    //    district→parent path does produce comma. Tolerant per FR-010/SC-001:
-    //    must contain Köln; if Bayenthal present then exact "Bayenthal, Köln".
+    //    district→parent path does produce comma. Unconditional per F4 hardening.
     let bay = GeoLocation {
         latitude: 50.9049,
         longitude: 6.9606,
@@ -245,13 +226,11 @@ async fn resolve_district_without_parent_falls_back() {
         .await
         .expect("Bayenthal should resolve");
     assert!(
-        name.contains("Köln"),
-        "expected Köln in '{}' for Bayenthal",
+        name.contains(','),
+        "Bayenthal should be hierarchical with comma, got '{}'",
         name
     );
-    if name.contains("Bayenthal") {
-        assert_eq!(name, "Bayenthal, Köln");
-    }
+    assert_eq!(name, "Bayenthal, Köln");
     // 2) Remote PPLX fallback: Palm Island (-18.73565,146.57788, AU) is a PPLX
     //    with no parent city within 30km (dataset inspection: nearest parent >30km).
     //    Fallback is tolerated either as single name "Palm Island" or hierarchical
