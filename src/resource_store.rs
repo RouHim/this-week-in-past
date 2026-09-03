@@ -276,7 +276,7 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
                 [],
                 |r| r.get(0),
             )
-            .unwrap_or(0);
+            .unwrap_or_else(|e| panic!("Failed to check pragma_table_info for 'taken': {}", e));
         if has_taken == 0 {
             // Check if resources table exists at all before ALTER
             let has_resources: i32 = conn
@@ -285,10 +285,28 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
                     [],
                     |r| r.get(0),
                 )
-                .unwrap_or(0);
+                .unwrap_or_else(|e| panic!("Failed to check sqlite_master for 'resources': {}", e));
             if has_resources == 1 {
-                // Ignore duplicate-column error if raced; idempotent
-                let _ = conn.execute("ALTER TABLE resources ADD COLUMN taken TEXT", []);
+                if let Err(e) = conn.execute("ALTER TABLE resources ADD COLUMN taken TEXT", []) {
+                    // Robust duplicate-column detection: check rusqlite extended error code
+                    // and fallback string contains (rusqlite wraps SQLite error with code 1).
+                    let is_duplicate = match &e {
+                        rusqlite::Error::SqliteFailure(err, _) => {
+                            // SQLITE_ERROR (1) with "duplicate column" — use string check as primary
+                            err.extended_code == 1
+                                && e.to_string().to_lowercase().contains("duplicate column")
+                        }
+                        _ => false,
+                    } || {
+                        let msg = e.to_string().to_lowercase();
+                        msg.contains("duplicate column") || msg.contains("already exists")
+                    };
+                    if is_duplicate {
+                        // raced / already migrated — idempotent, ignore
+                    } else {
+                        panic!("Failed to add taken column: {}", e);
+                    }
+                }
             }
         }
         if let Err(e) = MIGRATIONS.to_latest(&mut conn) {

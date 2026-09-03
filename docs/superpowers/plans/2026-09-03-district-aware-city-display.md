@@ -4,9 +4,9 @@
 
 **Goal:** Replace bare district name (`Bayenthal`) with hierarchical display (`Bayenthal, Köln`) by enriching offline `cities500` entries with `feature_code/country_code`, adding parent-city lookup (`PPLX → nearest PPL*`). Strictly two-level `District, City` or `City` — no country suffix, no env var.
 
-**Architecture:** Extend `CityEntry` to hold 4 extra GeoNames columns (`feature_code`, `country_code`, `admin1`, `population`). Build two `RTree`s in `CityIndex { full_tree, parent_tree }` (second tree ~120k filtered entries, no string duplication beyond entries). `resolve_city_name` path: nearest `full_tree` (existing 20-nearest haversine + antimeridian probe) → if `PPLX` then second 20-nearest scan over `parent_tree` within `MAX_PARENT_DISTANCE_KM=30` → format `District, City`. Country code parsed but not rendered (future use).
+**Architecture:** Extend `CityEntry` to hold 4 extra GeoNames columns (`feature_code`, `country_code`, `admin1`, `population`). Build two `RTree`s in `CityIndex { full_tree, parent_tree }` (second tree ~224k filtered entries, strings cloned for simplicity). `resolve_city_name` path: nearest `full_tree` (existing 20-nearest haversine + antimeridian probe) → if `PPLX` then second 50-nearest scan over `parent_tree` within `MAX_PARENT_DISTANCE_KM=30` filtered by haversine ≤30km then pick most populous (population desc, haversine asc tie-breaker) → format `District, City`. Country code parsed but not rendered (future use).
 
-**Tech Stack:** Rust stable, `rstar 0.12` (Euclidean `distance_2` + haversine post-filter), `r2d2 0.8 / r2d2_sqlite 0.35 / rusqlite 0.40 bundled`, `actix-web::web::block` for non-blocking load, `OnceLock` index, `regex/lazy_static` existing. No new env var, no new crate.
+**Tech Stack:** Rust stable, `rstar 0.12` (Euclidean `distance_2` + haversine post-filter), `r2d2 0.8 / r2d2_sqlite 0.35 / rusqlite 0.40 bundled`, `actix-web::web::block` for non-blocking load, `OnceLock` index, `regex/lazy_static` existing. No new env var. Adds `rusqlite_migration 2.6.0` + `include_dir 0.7.4` (`from-directory`, small pure-Rust, musl-clean per FR-008).
 
 **Spec:** `.spec/district-aware-city-display.md` (covers FR-001…010, SC-001…005 — rev 2026-09-03: env var dropped).
 
@@ -20,7 +20,7 @@
 - Formatting: strictly `District, City` or `City` — no country suffix (FR-004/005).
 - **Remove persistent cache**: `geo_location_cache` is dropped via migration `04`; `get_city_name` becomes direct `resolve_city_name` passthrough (FR-006, Option 2).
 - `BIGDATA_CLOUD_API_KEY` stays deprecated, `CITIES500_PATH` unchanged, no new env var (FR-007).
-- Load via `web::block`, `<1 s / <50 MB`, parent scan ≤20 haversines, `p95 <1 ms` extra, no nightly/new heavy dep (FR-008). Removing cache reduces WAL writes.
+- Load via `web::block`, `<1 s / <50 MB`, parent scan ≤50 per probe haversines (deduped, ≤100), `p95 <1 ms` extra, no nightly/new heavy dep (FR-008). Removing cache reduces WAL writes.
 - Observability: `info! "loaded N cities (M parents, K districts)"`, `debug!` for district→parent, migration `04` `info!` (FR-009).
 - Existing 9 `resolve_*` tests stay green (updated to not expect cache); new tests off real `cities500.txt` + migration `04` drop check (FR-010).
 Historical offline-migration decisions (heap <20 MB, `hash32/heapless/libm` only, nightly rejected) remain.
@@ -40,7 +40,7 @@ Historical offline-migration decisions (heap <20 MB, `hash32/heapless/libm` only
 - `migrations/01-initial/up.sql` — unchanged (still creates `geo_location_cache`, `04` drops it right after for idempotent fresh-vs-migrated).
 - `README.md` — no env row; optional `BREAKING` note that `geo_location_cache` is auto-dropped (no manual `DELETE` needed).
 - `CHANGELOG.md` — entry `feat: hierarchical District, City + drop persistent geo cache`.
-- `Cargo.toml`/`Containerfile` — no change.
+- `Cargo.toml` — adds `rusqlite_migration 2.6.0` + `include_dir 0.7.4` (small, `from-directory`, musl-clean); `Containerfile` — no change.
 
 **No new files** otherwise. Keep diff minimal.
 ---
@@ -151,23 +151,30 @@ Historical offline-migration decisions (heap <20 MB, `hash32/heapless/libm` only
   if !is_district(best_entry) {
       return Some(best_entry.name.clone());
   }
-  // district → parent lookup
-  let mut best_parent: Option<(&CityEntry, f64)> = None;
+  // district → parent lookup — most populous within 30km (not pure nearest)
+  let mut candidates: Vec<(&CityEntry, f64)> = Vec::new();
   for q in [point, alt_point] {
-      for cand in index.parent_tree.nearest_neighbor_iter(&q).take(20) {
+      for cand in index.parent_tree.nearest_neighbor_iter(&q).take(50) {
           let d = haversine_km(lat, lon, cand.lat, cand.lon);
           if d <= MAX_PARENT_DISTANCE_KM {
-              match &best_parent { Some((_, bd)) if d >= *bd => {}, _ => best_parent = Some((cand, d)) }
+              candidates.push((cand, d));
           }
       }
   }
+  candidates.sort_by(|a, b| a.0.name.cmp(&b.0.name));
+  candidates.dedup_by(|a, b| a.0.name == b.0.name && (a.0.lat - b.0.lat).abs() < 1e-9 && (a.0.lon - b.0.lon).abs() < 1e-9);
+  let best_parent = candidates.into_iter().max_by(|(a, da), (b, db)| {
+      match a.population.cmp(&b.population) {
+          std::cmp::Ordering::Equal => db.partial_cmp(da).unwrap_or(std::cmp::Ordering::Equal),
+          ord => ord,
+      }
+  });
   if let Some((parent, dist)) = best_parent {
-      log::debug!("district '{}' -> parent '{}' {:.1}km", best_entry.name, parent.name, dist);
+      log::debug!("district '{}' -> parent '{}' (pop {}, {:.1}km)", best_entry.name, parent.name, parent.population, dist);
       return Some(format!("{}, {}", best_entry.name, parent.name));
   }
   log::debug!("district '{}' has no parent within {}km", best_entry.name, MAX_PARENT_DISTANCE_KM);
   Some(best_entry.name.clone())
-  ```
 
   **Edge:** Use photo coordinate for parent distance, not district centroid. Probe both `point` and `alt_point`. Do not fallback to far parent >30 km.
 

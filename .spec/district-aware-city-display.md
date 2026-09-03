@@ -48,10 +48,10 @@ Coordinate maps to a `PPLX` entry but no parent candidate within 30 km (e.g. iso
 - **FR-002 — Subdivision detection**: An entry is a *district/subdivision* iff `feature_class == "P" && feature_code == "PPLX"` (section of populated place). `STLMT`, `PPLL`, `PPLQ` etc. are **not** treated as districts in v1; they render as plain names. Rationale: `cities500` filters `P` down to `PPLA4`; `PPLX` alone covers the reported cases (Bayenthal, Volksdorf, Christianshavn). Keep single predicate for reviewability; extend via data-driven list later if needed.
 
 - **FR-003 — Parent resolution**: Maintain two `RTree`s **or** one tree with a filtered view: `full_tree` (all entries) for initial nearest, `parent_tree` (entries where `feature_code in {"PPL","PPLA","PPLA2","PPLA3","PPLA4","PPLC","PPLG","PPLS"}`) for parent lookup. When `best` from `full_tree` (existing 20-nearest haversine scan + antimeridian probe) is a `PPLX`:
-  1. Scan `parent_tree.nearest_neighbor_iter(&best_point).take(20)` (same Euclidean `distance_2` / `AABB` envelope contract).
-  2. Score by `haversine_km` from the **photo coordinate** (not district centroid) and pick minimum within `MAX_PARENT_DISTANCE_KM = 30.0`.
+  1. Scan `parent_tree.nearest_neighbor_iter(&query_point).take(50)` for each of `point` and `alt_point` (same Euclidean `distance_2` / `AABB` envelope contract; increased from 20 to 50 to collect denser urban candidates, deduped by `name+lat+lon` to avoid double counting from the antimeridian probe).
+  2. Collect all candidates with `haversine_km` from the **photo coordinate** (not district centroid) `<= MAX_PARENT_DISTANCE_KM = 30.0`, then pick the **most populous** parent — `population` descending, `haversine_km` ascending as tie-breaker — within 30 km.
   3. If none within 30 km, parent = `None`.
-  Parent scan reuses the existing `haversine_km` clamp and antimeridian `lon±360` probe. Memory delta stays <5 MB (second tree holds ~120k refs or a `Vec` of indices, not duplicated strings beyond `CityEntry`).
+  Parent scan reuses the existing `haversine_km` clamp and antimeridian `lon±360` probe. Rationale (see `src/geo_location.rs::resolve_city_name`): population heuristic matches product expectations — e.g. Volksdorf (53.651, 10.166) prefers Hamburg (~1.8M, ~12–16 km) over the geographically closer Ahrensburg (~6 km, 33k); Bayenthal→Köln ties are broken by distance. Pure closest-haversine would select Ahrensburg and break Scenario 1, so FR-003 intentionally diverges from a minimum-distance rule.
 
 - **FR-004 — Display formatting** (`geo_location::resolve_city_name` returns the *display string*, not raw name):
   ```
@@ -66,7 +66,7 @@ Coordinate maps to a `PPLX` entry but no parent candidate within 30 km (e.g. iso
 
 - **FR-007 — Configuration & deprecation**: `BIGDATA_CLOUD_API_KEY` stays deprecated/ignored. `CITIES500_PATH` unchanged. No new env var. `geo_location_cache` removal is breaking at DB level but invisible to API (same `display_value` string, just computed live).
 
-- **FR-008 — Performance & resource bounds**: `load_city_index` via `web::block` still non-blocking on actix workers; load time <1 s for 185k rows, heap <20 MB for entries + ~15 MB for R*-tree nodes, total <50 MB. `resolve_city_name` stays `async fn → Option<String>`; parent lookup adds at most one extra 20-candidate haversine scan (~20* trig) — p95 <1 ms. No new crate with nightly or large transitive deps. Removing the SQLite cache actually reduces WAL writes and DB size.
+- **FR-008 — Performance & resource bounds**: `load_city_index` via `web::block` still non-blocking on actix workers; load time <1 s for 185k rows, heap <20 MB for entries + ~15 MB for R*-tree nodes, total <50 MB. `resolve_city_name` stays `async fn → Option<String>`; parent lookup adds at most one extra 50-per-probe haversine scan (up to ~100 trig with antimeridian probe, deduped) — p95 <1 ms. No new crate with nightly or large transitive deps. Removing the SQLite cache actually reduces WAL writes and DB size.
 
 - **FR-009 — Observability**: `load_city_index` `info!` logs `loaded N cities (M parents, K districts)`; district→parent resolutions `debug!` with `district, parent, distance_km`. Existing `warn!` for malformed lines retained. Migration `04` logs via `rusqlite_migration` `info!` on apply.
 
@@ -85,7 +85,7 @@ Coordinate maps to a `PPLX` entry but no parent candidate within 30 km (e.g. iso
 ## Edge Cases
 - Ocean / desert >50 km from any entry → `None` → `build_display_value` shows date only (unchanged).
 - Antimeridian: district near 180° — both `lon` and `lon±360` probes apply to parent scan as well.
-- Duplicate names: Hamburg has `Hamburg` and `Hamburg-Nord` etc.; parent scan picks closest haversine, not lexicographic.
+- Duplicate names: Hamburg has `Hamburg` and `Hamburg-Nord` etc.; parent scan picks the most populous candidate within 30 km (population desc, haversine asc tie-breaker), not the geographically closest nor lexicographic.
 - Invalid/future GeoNames columns: `cols.len() < 15` → column 14 missing → population defaults 0, not fatal; feature/country empty → treat as plain city.
 - Concurrent `ensure_city_index` callers: `OnceLock` + `web::block` single flight preserved.
 - Migration `04` idempotent `DROP TABLE IF EXISTS geo_location_cache` — succeeds whether table present, already dropped, or fresh DB (where `01-initial` still creates it briefly before `04` drops it; final schema has no `geo_location_cache`).
@@ -94,7 +94,7 @@ Coordinate maps to a `PPLX` entry but no parent candidate within 30 km (e.g. iso
 ## Research Notes
 - GeoNames `cities500.zip` ~10 MB uncompressed, ~185k rows, tab-delimited UTF-8. Columns: `geonameid name asciiname alternatenames latitude longitude feature_class feature_code country_code cc2 admin1 admin2 admin3 admin4 population elevation dem timezone mod_date`. Verified via `https://download.geonames.org/export/dump/readme.txt` and `https://www.geonames.org/export/codes.html` — `P:PPLX` = “section of populated place” (district/neighborhood). `PPL*` family filtered for parents. Alternative `hierarchy.zip` provides parentId/childId but requires second file + ~10 MB and graph walk — rejected for Pi 512 MB.
 - Offline `rstar 0.12` R*-tree: pure-Rust, no unsafe, musl static cross builds cleanly (chosen in prior decision over `kiddo` nightly). Euclidean `distance_2` contract satisfied; haversine post-filter within 50 km ensures true geo nearest (existing pattern).
-- `MAX_DISTANCE_KM=50` already covers ocean case; `MAX_PARENT_DISTANCE_KM=30` chosen to cover Volksdorf→Hamburg (~12 km), Bayenthal→Köln (~4 km), Christianshavn→København (~2 km) while rejecting far spurious parents. Tuneable via const.
+- `MAX_DISTANCE_KM=50` already covers ocean case; `MAX_PARENT_DISTANCE_KM=30` chosen to cover Volksdorf→Hamburg (~12 km), Bayenthal→Köln (~4 km), Christianshavn→København (~2 km) while rejecting far spurious parents. Tuneable via const. Parent within 30 km is selected by most populous (`population` desc, haversine asc tie-breaker) per FR-003 — e.g. Volksdorf prefers Hamburg (1.8M) over nearer Ahrensburg (33k, ~6 km) — not pure closest haversine.
 - Prior art: `bigdatacloud` API + `geo_location_cache` (persistent SQLite) kept `locality` alone and cached it. With offline `rstar` the cache is obsolete (`<1ms` vs `~0.5ms` SQLite) — Option 2 drops it entirely, reducing WAL writes. Env var for home country considered and dropped 2026-09-03.
 
 ## Assumptions
