@@ -4,7 +4,7 @@
 
 **Goal:** Replace bare district name (`Bayenthal`) with hierarchical display (`Bayenthal, Köln`) by enriching offline `cities500` entries with `feature_code/country_code`, adding parent-city lookup (`PPLX → nearest PPL*`). Strictly two-level `District, City` or `City` — no country suffix, no env var.
 
-**Architecture:** Extend `CityEntry` to hold 4 extra GeoNames columns (`feature_code`, `country_code`, `admin1`, `population`). Build two `RTree`s in `CityIndex { full_tree, parent_tree }` (second tree ~224k filtered entries, strings cloned for simplicity). `resolve_city_name` path: nearest `full_tree` (existing 20-nearest haversine + antimeridian probe) → if `PPLX` then second 50-nearest scan over `parent_tree` within `MAX_PARENT_DISTANCE_KM=30` filtered by haversine ≤30km then pick most populous (population desc, haversine asc tie-breaker) → format `District, City`. Country code parsed but not rendered (future use).
+**Architecture:** Extend `CityEntry` to hold 4 extra GeoNames columns (`feature_code`, `country_code`, `admin1`, `population`). Build two `RTree`s in `CityIndex { full_tree, parent_tree }` (second tree holds the filtered parent subset, strings cloned for simplicity). `resolve_city_name` path: nearest `full_tree` (existing 20-nearest haversine + antimeridian probe) → if `PPLX` then second 100-nearest scan over `parent_tree` within `MAX_PARENT_DISTANCE_KM=30` filtered by haversine ≤30km then pick most populous (population desc, haversine asc tie-breaker) → format `District, City`. Country code parsed but not rendered (future use).
 
 **Tech Stack:** Rust stable, `rstar 0.12` (Euclidean `distance_2` + haversine post-filter), `r2d2 0.8 / r2d2_sqlite 0.35 / rusqlite 0.40 bundled`, `actix-web::web::block` for non-blocking load, `OnceLock` index, `regex/lazy_static` existing. No new env var. Adds `rusqlite_migration 2.6.0` + `include_dir 0.7.4` (`from-directory`, small pure-Rust, musl-clean per FR-008).
 
@@ -16,13 +16,13 @@
 
 - Parse extended columns: `feature_class` col 6, `feature_code` col 7, `country_code` col 8, `admin1` col 10, `population` col 14. Skip malformed with `warn!`, do not panic (FR-001).
 - Subdivision predicate exactly `P:PPLX` in v1 (FR-002).
-- Parent candidates: `feature_code ∈ {PPL, PPLA, PPLA2, PPLA3, PPLA4, PPLC, PPLG, PPLS}`; pick nearest haversine within 30 km from **photo** coordinate; fallback to district alone (FR-003).
+- Parent candidates: `feature_code ∈ {PPL, PPLA, PPLA2, PPLA3, PPLA4, PPLC, PPLG, PPLS}`; pick most populous within 30 km (population desc, haversine asc tie-breaker) from **photo** coordinate; fallback to district alone (FR-003).
 - Formatting: strictly `District, City` or `City` — no country suffix (FR-004/005).
 - **Remove persistent cache**: `geo_location_cache` is dropped via migration `04`; `get_city_name` becomes direct `resolve_city_name` passthrough (FR-006, Option 2).
 - `BIGDATA_CLOUD_API_KEY` stays deprecated, `CITIES500_PATH` unchanged, no new env var (FR-007).
-- Load via `web::block`, `<1 s / <50 MB`, parent scan ≤50 per probe haversines (deduped, ≤100), `p95 <1 ms` extra, no nightly/new heavy dep (FR-008). Removing cache reduces WAL writes.
+- Load via `web::block`, `<1 s / <50 MB`, parent scan ≤100 per probe haversines (deduped, ≤200 total with antimeridian probe), `p95 <1 ms` extra, no nightly/new heavy dep (FR-008). Removing cache reduces WAL writes.
 - Observability: `info! "loaded N cities (M parents, K districts)"`, `debug!` for district→parent, migration `04` `info!` (FR-009).
-- Existing 9 `resolve_*` tests stay green (updated to not expect cache); new tests off real `cities500.txt` + migration `04` drop check (FR-010).
+- Existing 8 `resolve_*` tests stay green (updated to not expect cache); new tests off real `cities500.txt` + migration `04` drop check (FR-010).
 Historical offline-migration decisions (heap <20 MB, `hash32/heapless/libm` only, nightly rejected) remain.
 
 ---
@@ -126,7 +126,7 @@ Historical offline-migration decisions (heap <20 MB, `hash32/heapless/libm` only
   }
   #[actix_rt::test]
   async fn resolve_koln_dom_plain() {
-      let koln = GeoLocation { latitude: 50.941, longitude: 6.958 };
+      let koln = GeoLocation { latitude: 50.93333, longitude: 6.95 };
       assert_eq!(geo_location::resolve_city_name(koln).await, Some("Köln".into()));
   }
   #[actix_rt::test]
@@ -154,7 +154,7 @@ Historical offline-migration decisions (heap <20 MB, `hash32/heapless/libm` only
   // district → parent lookup — most populous within 30km (not pure nearest)
   let mut candidates: Vec<(&CityEntry, f64)> = Vec::new();
   for q in [point, alt_point] {
-      for cand in index.parent_tree.nearest_neighbor_iter(&q).take(50) {
+      for cand in index.parent_tree.nearest_neighbor_iter(&q).take(100) {
           let d = haversine_km(lat, lon, cand.lat, cand.lon);
           if d <= MAX_PARENT_DISTANCE_KM {
               candidates.push((cand, d));

@@ -362,7 +362,6 @@ async fn ensure_city_index() -> Option<&'static CityIndex> {
         Ok(opt) => opt,
         Err(e) => {
             log::warn!("cities500 load blocked task failed: {}", e);
-            let _ = CITY_INDEX.set(None);
             return None;
         }
     };

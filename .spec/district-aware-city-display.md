@@ -29,10 +29,13 @@ A user opens a photo taken in Christianshavn (55.676, 12.593, `DK`).
 2. Given Amsterdam at 52.37403, 4.88969 (plain city, not district), then display is `Amsterdam` (single name).
 
 ### Scenario 3 — Plain city (P2)
-Photo near Köln Dom (50.941, 6.958) resolves to `Köln` (feature `PPLA`, not `PPLX`).
+Photo at Köln city center (50.93333, 6.95) resolves to `Köln` (feature `PPLA2`, not `PPLX`).
 
 **Acceptance**
 1. Given coordinate resolves to plain city `Köln`, then display is `Köln` (no parent, no country).
+Note: Köln Dom (50.941, 6.958) is actually PPLX `Altstadt Nord` (~0.23 km away) and
+resolves hierarchically to `Altstadt Nord, Köln` — expected, not a bug. The city-center
+coordinate above is the plain-city example.
 
 ### Scenario 4 — No parent found / ocean (P2)
 Coordinate maps to a `PPLX` entry but no parent candidate within 30 km (e.g. isolated `PPLX` on island) or ocean/desert >50 km.
@@ -70,9 +73,9 @@ Coordinate maps to a `PPLX` entry but no parent candidate within 30 km (e.g. iso
 
 - **FR-009 — Observability**: `load_city_index` `info!` logs `loaded N cities (M parents, K districts)`; district→parent resolutions `debug!` with `district, parent, distance_km`. Existing `warn!` for malformed lines retained. Migration `04` logs via `rusqlite_migration` `info!` on apply.
 
-- **FR-010 — Testing**: Keep existing `resolve_koblenz/amsterdam/kottenheim/negative_dms/invalid/mid_ocean` tests green (update any that seeded `geo_location_cache` to not expect caching). Add new tests:
+- **FR-010 — Testing**: Keep existing `resolve_koblenz/amsterdam/kottenheim/negative_dms/invalid_data/mid_ocean/invalid_lat/nan_infinite` tests green (update any that seeded `geo_location_cache` to not expect caching). Add new tests:
   - `resolve_bayenthal_returns_hierarchical` (approx Bayenthal 50.904, 6.960 → `Bayenthal, Köln` when present; dataset-tolerant: assert `contains "Köln"` and if `contains "Bayenthal"` then exact `Bayenthal, Köln`).
-  - `resolve_plain_city_unchanged` (Köln Dom → `Köln`).
+  - `resolve_plain_city_unchanged` (Köln city center 50.93333, 6.95 → `Köln`).
   - `resolve_christianshavn_hierarchical` (55.676, 12.593 → `Christianshavn, København` tolerant: `contains København`).
   - `parent_out_of_range_fallback` — synthetic `CityEntry` with lone `PPLX` far from any parent, assert fallback to district alone.
   - Migration test: `geo_location_cache` dropped after `04` (in-memory `MIGRATIONS.validate()` and on-disk `user_version` bump).
@@ -107,6 +110,6 @@ Coordinate maps to a `PPLX` entry but no parent candidate within 30 km (e.g. iso
 ## Success Criteria
 - **SC-001 — District hierarchical**: Photo at Bayenthal (≈50.90,6.96) resolves to string containing `Köln` and, when `Bayenthal` present, to `Bayenthal, Köln` (fallback `Köln` if absent) when `CITIES500_PATH` present.
 - **SC-002 — Foreign district hierarchical**: Christianshavn (≈55.67,12.59) resolves to string containing `København` and, when `Christianshavn` present, to `Christianshavn, København`; Amsterdam (52.374,4.889) → `Amsterdam`.
-- **SC-003 — Plain city unchanged**: Köln Dom (50.94,6.95) → `Köln`.
-- **SC-004 — Backwards compat & perf**: Existing 9 `resolve_*` tests pass; fresh index load <1 s; `resolve_city_name` p95 <1 ms extra; RSS delta <5 MB over baseline; `geo_location_cache` table absent after migration `04` (`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='geo_location_cache'` =0) for both fresh and migrated DBs; concurrent 3-client load does not deadlock.
+- **SC-003 — Plain city unchanged**: Köln city center (50.93333, 6.95) → `Köln`.
+- **SC-004 — Backwards compat & perf**: Existing 8 `resolve_*` tests pass; fresh index load <1 s; `resolve_city_name` p95 <1 ms extra; RSS delta <5 MB over baseline; `geo_location_cache` table absent after migration `04` (`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='geo_location_cache'` =0) for both fresh and migrated DBs; concurrent 3-client load does not deadlock.
 - **SC-005 — Docs**: `README.md` unchanged regarding env vars (no new var); `CHANGELOG.md` notes hierarchical `District, City` + `BREAKING` note that `geo_location_cache` is dropped automatically (no manual `DELETE` needed); `CITIES500_PATH` missing still disables resolution with `warn!` (no panic).
