@@ -2,7 +2,7 @@
 
 ### Features
 
-* feat!: hierarchical city display for districts (Bayenthal → Bayenthal, Köln; Volksdorf → Volksdorf, Hamburg; Christianshavn → Christianshavn, Copenhagen (København)) ([#209](https://github.com/RouHim/this-week-in-past/issues/209))
+* feat!: hierarchical city display for districts (Bayenthal → Bayenthal, Köln; Volksdorf → Volksdorf, Hamburg; Christianshavn → Christianshavn, København) ([#209](https://github.com/RouHim/this-week-in-past/issues/209))
 
   BREAKING: `geo_location_cache` SQLite table is auto-dropped on next startup via migration `04` (offline RTree `<1ms`, previous persistent cache obsolete and stale after hierarchical fix). `DATA_FOLDER/resources.db` `user_version` 3 → 4. No manual `DELETE` needed.
 
