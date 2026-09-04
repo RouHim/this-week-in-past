@@ -759,23 +759,32 @@ mod tests {
                  INSERT INTO hidden(id) VALUES('h1');
                  PRAGMA user_version = 0;",
             ).unwrap();
-            let uv: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+            let uv: i32 = conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))
+                .unwrap();
             assert_eq!(uv, 0);
-            let has_taken: i32 = conn.query_row(
-                "SELECT COUNT(*) FROM pragma_table_info('resources') WHERE name='taken'",
-                [], |r| r.get(0)
-            ).unwrap();
+            let has_taken: i32 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM pragma_table_info('resources') WHERE name='taken'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap();
             assert_eq!(has_taken, 0);
         }
         // WHEN initializing
         let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
         let conn = store.persistent_file_store_pool.get().unwrap();
         // THEN user_version 3, taken backfilled, hidden preserved, data_cache dropped
-        let uv: i32 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+        let uv: i32 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(uv, 3);
-        let taken: Option<String> = conn.query_row(
-            "SELECT taken FROM resources WHERE id='old1'", [], |r| r.get(0)
-        ).unwrap();
+        let taken: Option<String> = conn
+            .query_row("SELECT taken FROM resources WHERE id='old1'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!(taken, Some("2020-03-15T10:00:00".to_string()));
         let idx: i32 = conn.query_row(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_resources_taken'",
@@ -784,10 +793,13 @@ mod tests {
         assert_eq!(idx, 1);
         let hidden: Vec<String> = store.get_all_hidden();
         assert!(hidden.contains(&"h1".to_string()));
-        let cache: i32 = conn.query_row(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='data_cache'",
-            [], |r| r.get(0)
-        ).unwrap();
+        let cache: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='data_cache'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
         assert_eq!(cache, 0);
     }
 }
