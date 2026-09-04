@@ -140,16 +140,33 @@ pub fn from_degrees_minutes_seconds(
 /// Beyond this threshold the result is `None` (ocean / desert case).
 const MAX_DISTANCE_KM: f64 = 50.0;
 
+/// Maximum distance from query point to parent city for hierarchical display.
+/// Covers Bayenthal→Köln ~4km, Volksdorf→Hamburg ~12km, Christianshavn→København ~2km.
+const MAX_PARENT_DISTANCE_KM: f64 = 30.0;
+
 /// Default path of the cities500 data file inside the container.
 const CITIES500_PATH: &str = "/cities500.txt";
 
 static DEPRECATION_ONCE: OnceLock<()> = OnceLock::new();
 static CITY_INDEX: OnceLock<Option<CityIndex>> = OnceLock::new();
+static CITY_INDEX_INIT_MUTEX: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+#[derive(Clone)]
 struct CityEntry {
     name: String,
     lat: f64,
     lon: f64,
+    feature_class: String,
+    feature_code: String,
+    // country_code/admin1_code parsed per FR-001/FR-005, reserved for future
+    // 3-level display (District, City, Country); retained despite not yet
+    // rendered. Heap budget documented at load site: steady-state <50 MB
+    // (FR-008); transient peak 60-85 MB before bulk_load moves vectors.
+    #[allow(dead_code)]
+    country_code: String,
+    #[allow(dead_code)]
+    admin1_code: String,
+    population: i64,
 }
 
 impl RTreeObject for CityEntry {
@@ -172,7 +189,20 @@ impl PointDistance for CityEntry {
 }
 
 struct CityIndex {
-    tree: RTree<CityEntry>,
+    full_tree: RTree<CityEntry>,
+    parent_tree: RTree<CityEntry>,
+}
+
+fn is_parent_city(entry: &CityEntry) -> bool {
+    entry.feature_class == "P"
+        && matches!(
+            entry.feature_code.as_str(),
+            "PPL" | "PPLA" | "PPLA2" | "PPLA3" | "PPLA4" | "PPLC" | "PPLG" | "PPLS"
+        )
+}
+
+fn is_district(entry: &CityEntry) -> bool {
+    entry.feature_class == "P" && entry.feature_code == "PPLX"
 }
 
 fn maybe_warn_deprecated() {
@@ -254,7 +284,25 @@ fn load_city_index() -> Option<CityIndex> {
                 continue;
             }
         };
-        entries.push(CityEntry { name, lat, lon });
+        // Extended columns — tolerant parsing (FR-001 edge: incomplete lines)
+        let feature_class = cols.get(6).unwrap_or(&"").trim().to_string();
+        let feature_code = cols.get(7).unwrap_or(&"").trim().to_string();
+        let country_code = cols.get(8).unwrap_or(&"").trim().to_ascii_uppercase();
+        let admin1_code = cols.get(10).unwrap_or(&"").trim().to_string();
+        let population: i64 = cols
+            .get(14)
+            .and_then(|s| s.trim().parse::<i64>().ok())
+            .unwrap_or(0);
+        entries.push(CityEntry {
+            name,
+            lat,
+            lon,
+            feature_class,
+            feature_code,
+            country_code,
+            admin1_code,
+            population,
+        });
     }
 
     if entries.is_empty() {
@@ -266,16 +314,47 @@ fn load_city_index() -> Option<CityIndex> {
     }
 
     let len = entries.len();
-    let tree = RTree::bulk_load(entries);
-    log::info!("loaded {} cities from {}", len, path);
-    Some(CityIndex { tree })
+    // Peak transient heap ~60-85 MB (FR-008): entries Vec with 5 Strings per
+    // entry (~30 MB), parent clone of filtered parents (~10-15 MB), plus two RTree
+    // node allocations (~2×15 MB). Steady-state after bulk_load moves vectors
+    // into RTrees is <50 MB. Single-flight in ensure_city_index prevents
+    // N× peak burst under concurrent startup; clone is kept for simplicity
+    // (Rc/Arc would add indirection without measurable win).
+    let parent_entries: Vec<CityEntry> = entries
+        .iter()
+        .filter(|e| is_parent_city(e))
+        .cloned()
+        .collect();
+    let district_count = entries.iter().filter(|e| is_district(e)).count();
+    let parent_count = parent_entries.len();
+    let full_tree = RTree::bulk_load(entries);
+    let parent_tree = RTree::bulk_load(parent_entries);
+    log::info!(
+        "loaded {} cities ({} parents, {} districts) from {}",
+        len,
+        parent_count,
+        district_count,
+        path
+    );
+    Some(CityIndex {
+        full_tree,
+        parent_tree,
+    })
 }
 
 fn get_city_index() -> Option<&'static CityIndex> {
     CITY_INDEX.get().and_then(|opt| opt.as_ref())
 }
 
+// Single-flight via tokio::sync::Mutex + double-checked locking. First caller
+// holds the mutex while doing web::block(load_city_index) (~60-85 MB transient,
+// steady-state <50 MB per FR-008 above); concurrent callers await the mutex,
+// re-check CITY_INDEX, and reuse the winner's index, preventing N×50 MB burst.
 async fn ensure_city_index() -> Option<&'static CityIndex> {
+    if let Some(opt) = CITY_INDEX.get() {
+        return opt.as_ref();
+    }
+    let _guard = CITY_INDEX_INIT_MUTEX.lock().await;
     if let Some(opt) = CITY_INDEX.get() {
         return opt.as_ref();
     }
@@ -324,7 +403,7 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     // haversine within threshold from both query points.
     let mut best: Option<(&CityEntry, f64)> = None;
     for query_point in [point, alt_point] {
-        for candidate in index.tree.nearest_neighbor_iter(&query_point).take(20) {
+        for candidate in index.full_tree.nearest_neighbor_iter(&query_point).take(20) {
             let dist = haversine_km(lat, lon, candidate.lat, candidate.lon);
             if dist <= MAX_DISTANCE_KM {
                 match &best {
@@ -335,5 +414,72 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
         }
     }
 
-    best.map(|(entry, _)| entry.name.clone())
+    let best_entry = match best {
+        Some((entry, _)) => entry,
+        None => return None,
+    };
+
+    if !is_district(best_entry) {
+        return Some(best_entry.name.clone());
+    }
+    // District → parent resolution (FR-003, see .spec/district-aware-city-display.md).
+    // Intentionally NOT pure closest-haversine: we pick the most populous city within
+    // MAX_PARENT_DISTANCE_KM (population desc, haversine asc tie-breaker). This matches
+    // product expectations for Scenario 1 (Volksdorf 53.651,10.166 → Hamburg ~12–16km, 1.8M
+    // over nearer Ahrensburg ~6km, 33k) and Bayenthal→Köln (~4km) ties, while a strict
+    // minimum-distance rule would surprise users in dense metro areas. Candidates are
+    // collected from parent_tree.nearest_neighbor_iter(..).take(100) for each antimeridian
+    // probe, filtered by haversine ≤30km, then deduped by name+coords.
+    let mut candidates: Vec<(&CityEntry, f64)> = Vec::new();
+    for query_point in [point, alt_point] {
+        for candidate in index
+            .parent_tree
+            .nearest_neighbor_iter(&query_point)
+            .take(100)
+        {
+            let dist = haversine_km(lat, lon, candidate.lat, candidate.lon);
+            if dist <= MAX_PARENT_DISTANCE_KM {
+                candidates.push((candidate, dist));
+            }
+        }
+    }
+    // Deduplicate by name+coords to avoid double counting from antimeridian probes
+    candidates.sort_by(|a, b| {
+        a.0.name
+            .cmp(&b.0.name)
+            .then_with(|| a.0.lat.to_bits().cmp(&b.0.lat.to_bits()))
+            .then_with(|| a.0.lon.to_bits().cmp(&b.0.lon.to_bits()))
+    });
+    candidates.dedup_by(|a, b| {
+        a.0.name == b.0.name && (a.0.lat - b.0.lat).abs() < 1e-9 && (a.0.lon - b.0.lon).abs() < 1e-9
+    });
+    let best_parent = candidates.into_iter().max_by(|(a, da), (b, db)| {
+        match a.population.cmp(&b.population) {
+            std::cmp::Ordering::Equal => {
+                // smaller distance wins → reverse ordering for max_by
+                db.partial_cmp(da).unwrap_or(std::cmp::Ordering::Equal)
+            }
+            ord => ord,
+        }
+    });
+
+    if let Some((parent, dist)) = best_parent {
+        log::debug!(
+            "district '{}' -> parent '{}' (pop {}, {:.1}km) for {}",
+            best_entry.name,
+            parent.name,
+            parent.population,
+            dist,
+            geo_location
+        );
+        Some(format!("{}, {}", best_entry.name, parent.name))
+    } else {
+        log::debug!(
+            "district '{}' has no parent within {}km for {}",
+            best_entry.name,
+            MAX_PARENT_DISTANCE_KM,
+            geo_location
+        );
+        Some(best_entry.name.clone())
+    }
 }

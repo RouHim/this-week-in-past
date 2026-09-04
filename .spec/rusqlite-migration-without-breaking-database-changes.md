@@ -24,7 +24,7 @@ A fresh installation with empty `DATA_FOLDER` (no `resources.db`) starts the app
 2. Given a fresh DB created via migrations, When week queries and hidden/resource APIs are used, Then behavior matches a migrated existing DB.
 
 ### Scenario 3 - Developer adds a new schema change (P2)
-A developer needs to add a new table, column, or index. They add a new `NN-name/up.sql` directory (e.g. `04-new_feature/up.sql`) and CI validates it before merge.
+A developer needs to add a new table, column, or index. They add a new `NN-name/up.sql` directory (e.g. `05-new_feature/up.sql`) and CI validates it before merge.
 
 **Acceptance**
 1. Given a new migration file with a valid `NN-name/up.sql` directory and consecutive version, When `MIGRATIONS.validate()` runs, Then validation succeeds.

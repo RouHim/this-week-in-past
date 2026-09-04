@@ -2,13 +2,20 @@ use std::env;
 
 use crate::geo_location;
 use crate::resource_reader::ImageResource;
-use crate::resource_store::ResourceStore;
-
 /// Builds the display value for the specified resource
 /// The display value contains the date and location of a resource
+///
+/// `_resource_store` is intentionally retained for API compatibility per
+/// FR-006 and plan `2026-09-03-district-aware-city-display.md` (keep `_store`
+/// param to avoid churn). Removing it would require editing
+/// `src/resource_endpoint.rs:248` (`resource_store.as_ref()` call site) which
+/// is outside the allowed diff scope for iteration 2 and would break
+/// compilation if this signature alone changed. The offline `cities500` RTree
+/// needs no store — the param is unused by design (`_`-prefixed to suppress
+/// `unused_variables`).
 pub async fn build_display_value(
     resource: ImageResource,
-    resource_store: &ResourceStore,
+    _resource_store: &crate::resource_store::ResourceStore,
 ) -> String {
     let mut display_value: String = String::new();
 
@@ -26,7 +33,7 @@ pub async fn build_display_value(
     };
 
     // Append city name
-    let city_name = get_city_name(&resource, resource_store).await;
+    let city_name = get_city_name(&resource).await;
     if let Some(city_name) = city_name {
         display_value.push_str(", ");
         display_value.push_str(city_name.as_str());
@@ -36,24 +43,9 @@ pub async fn build_display_value(
 }
 
 /// Returns the city name for the specified resource
-/// The city name is taken from the cache, if available
-/// If not, the city name is taken from the geo location service
-async fn get_city_name(resource: &ImageResource, resource_store: &ResourceStore) -> Option<String> {
+/// Directly resolves via offline `cities500` RTree (<1ms) — no persistent cache.
+/// The historic `geo_location_cache` SQLite table is dropped via migration 04.
+async fn get_city_name(resource: &ImageResource) -> Option<String> {
     let resource_location = resource.location?;
-    let resource_location_string = resource_location.to_string();
-
-    // Check if cache contains resource location
-    if resource_store.location_exists(resource_location_string.as_str()) {
-        resource_store.get_location(resource_location_string.as_str())
-    } else {
-        // Get city name
-        let city_name = geo_location::resolve_city_name(resource_location).await;
-
-        if let Some(city_name) = &city_name {
-            // Write to cache
-            resource_store.add_location(resource_location_string, city_name.clone());
-        }
-
-        city_name
-    }
+    geo_location::resolve_city_name(resource_location).await
 }

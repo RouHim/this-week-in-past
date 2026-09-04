@@ -213,48 +213,6 @@ impl ResourceStore {
         tx.commit().expect("Transaction commit failed");
     }
 
-    /// Adds a geo location cache entry, if an entry already exists it gets updated
-    pub fn add_location(&self, id: String, value: String) {
-        let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection
-            .prepare("INSERT OR REPLACE INTO geo_location_cache(id, value) VALUES(?, ?)")
-            .unwrap();
-        stmt.execute((&id, value))
-            .unwrap_or_else(|error| panic!("Insertion of {id} failed:n{}", error));
-    }
-
-    /// Get a geo location entry by id entry
-    pub fn get_location(&self, id: &str) -> Option<String> {
-        let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection
-            .prepare("SELECT value FROM geo_location_cache WHERE id = ?")
-            .unwrap();
-        let mut rows = stmt.query([id]).unwrap();
-
-        let first_entry = rows.next();
-
-        if let Ok(first_entry) = first_entry {
-            first_entry
-                .map(|entry| entry.get(0))
-                .and_then(|entry| entry.ok())
-        } else {
-            None
-        }
-    }
-
-    /// Checks if the specified geo location entry exists
-    pub fn location_exists(&self, id: &str) -> bool {
-        let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection
-            .prepare("SELECT COUNT(id) FROM geo_location_cache WHERE id = ?")
-            .unwrap();
-        let mut rows = stmt.query([id]).unwrap();
-
-        let count: i32 = rows.next().unwrap().unwrap().get(0).unwrap();
-
-        count == 1
-    }
-
     /// Returns the current time of the database
     pub fn get_database_time(&self) -> String {
         let connection = self.persistent_file_store_pool.get().unwrap();
@@ -318,7 +276,7 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
                 [],
                 |r| r.get(0),
             )
-            .unwrap_or(0);
+            .unwrap_or_else(|e| panic!("Failed to check pragma_table_info for 'taken': {}", e));
         if has_taken == 0 {
             // Check if resources table exists at all before ALTER
             let has_resources: i32 = conn
@@ -327,10 +285,28 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
                     [],
                     |r| r.get(0),
                 )
-                .unwrap_or(0);
+                .unwrap_or_else(|e| panic!("Failed to check sqlite_master for 'resources': {}", e));
             if has_resources == 1 {
-                // Ignore duplicate-column error if raced; idempotent
-                let _ = conn.execute("ALTER TABLE resources ADD COLUMN taken TEXT", []);
+                if let Err(e) = conn.execute("ALTER TABLE resources ADD COLUMN taken TEXT", []) {
+                    // Robust duplicate-column detection: check rusqlite extended error code
+                    // and fallback string contains (rusqlite wraps SQLite error with code 1).
+                    let is_duplicate = match &e {
+                        rusqlite::Error::SqliteFailure(err, _) => {
+                            // SQLITE_ERROR (1) with "duplicate column" — use string check as primary
+                            err.extended_code == 1
+                                && e.to_string().to_lowercase().contains("duplicate column")
+                        }
+                        _ => false,
+                    } || {
+                        let msg = e.to_string().to_lowercase();
+                        msg.contains("duplicate column") || msg.contains("already exists")
+                    };
+                    if is_duplicate {
+                        // raced / already migrated — idempotent, ignore
+                    } else {
+                        panic!("Failed to add taken column: {}", e);
+                    }
+                }
             }
         }
         if let Err(e) = MIGRATIONS.to_latest(&mut conn) {
@@ -540,12 +516,12 @@ mod tests {
             })
             .unwrap();
         assert_eq!(taken, Some("2021-03-15T12:00:00".to_string()));
-        // AND user_version advanced to latest (3)
+        // AND user_version advanced to latest (4) — V4 drops geo_location_cache
         let uv: i32 = conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(uv, 3);
-        // AND data_cache dropped by V3
+        assert_eq!(uv, 4);
+        // AND data_cache dropped by V3 and geo_location_cache dropped by V4
         let cache: i32 = conn
             .query_row(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='data_cache'",
@@ -554,6 +530,14 @@ mod tests {
             )
             .unwrap();
         assert_eq!(cache, 0);
+        let geo_cache: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='geo_location_cache'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(geo_cache, 0);
     }
 
     #[test]
@@ -570,8 +554,8 @@ mod tests {
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
         assert_eq!(
-            uv, 3,
-            "user_version must equal number of migration files (3)"
+            uv, 4,
+            "user_version must equal number of migration files (4)"
         );
     }
 
@@ -663,7 +647,7 @@ mod tests {
                 .unwrap();
             assert_eq!(idx, 1, "idx_resources_taken missing");
         }
-        for tbl in ["hidden", "geo_location_cache", "resources"] {
+        for tbl in ["hidden", "resources"] {
             let cnt: i32 = mig_conn
                 .query_row(
                     "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
@@ -672,6 +656,17 @@ mod tests {
                 )
                 .unwrap();
             assert_eq!(cnt, 1, "table {} missing", tbl);
+        }
+        // geo_location_cache is dropped by V4 — must be absent in both fresh and migrated
+        for (label, conn) in [("fresh", &fresh_conn), ("migrated", &mig_conn)] {
+            let cnt: i32 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='geo_location_cache'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(cnt, 0, "{} still has geo_location_cache", label);
         }
         for (label, conn) in [("fresh", &fresh_conn), ("migrated", &mig_conn)] {
             let cnt: i32 = conn
@@ -715,7 +710,7 @@ mod tests {
         let uv: i32 = conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(uv, 3);
+        assert_eq!(uv, 4);
         let photo: Option<String> = conn
             .query_row("SELECT value FROM resources WHERE id='photo1'", [], |r| {
                 r.get(0)
@@ -724,8 +719,15 @@ mod tests {
         assert!(photo.is_some());
         let hidden: Vec<String> = store.get_all_hidden();
         assert!(hidden.contains(&"hidden1".to_string()));
-        let loc = store.get_location("geo1");
-        assert!(loc.is_some());
+        // geo_location_cache is dropped by V4
+        let geo_cache: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='geo_location_cache'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(geo_cache, 0);
         let cache_count: i32 = conn
             .query_row(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='data_cache'",
@@ -741,8 +743,9 @@ mod tests {
             .unwrap()
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(uv2, 3);
+        assert_eq!(uv2, 4);
     }
+
     #[test]
     fn very_old_db_without_taken_column_upgrades_without_deletion() {
         // GIVEN a very-old DB: resources without taken column, user_version=0
@@ -775,11 +778,11 @@ mod tests {
         // WHEN initializing
         let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
         let conn = store.persistent_file_store_pool.get().unwrap();
-        // THEN user_version 3, taken backfilled, hidden preserved, data_cache dropped
+        // THEN user_version 4, taken backfilled, hidden preserved, data_cache+geo_cache dropped
         let uv: i32 = conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(uv, 3);
+        assert_eq!(uv, 4);
         let taken: Option<String> = conn
             .query_row("SELECT taken FROM resources WHERE id='old1'", [], |r| {
                 r.get(0)
@@ -801,5 +804,10 @@ mod tests {
             )
             .unwrap();
         assert_eq!(cache, 0);
+        let geo_cache: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='geo_location_cache'",
+            [], |r| r.get(0)
+        ).unwrap();
+        assert_eq!(geo_cache, 0);
     }
 }
