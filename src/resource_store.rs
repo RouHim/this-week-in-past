@@ -1,13 +1,22 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 
 use crate::config;
 use chrono::Datelike;
+use include_dir::{include_dir, Dir};
 use log::{debug, error};
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use rand::seq::SliceRandom;
+use rusqlite_migration::Migrations;
+
+static MIGRATIONS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/migrations");
+pub static MIGRATIONS: LazyLock<Migrations<'_>> = LazyLock::new(|| {
+    Migrations::from_directory(&MIGRATIONS_DIR)
+        .expect("Failed to load migrations from migrations/ directory")
+});
 
 #[derive(Clone)]
 pub struct ResourceStore {
@@ -270,7 +279,7 @@ impl ResourceStore {
 /// Initializes a new datastore in the $DATA_FOLDER folder and returns the instance
 /// If no $DATA_FOLDER env var is configured, ./data/ is used
 /// Creates data folder if it does not exists
-/// Also creates all tables if needed
+/// Also creates all tables via versioned migrations (see `MIGRATIONS`)
 pub fn initialize(data_folder: &str) -> ResourceStore {
     fs::create_dir_all(data_folder)
         .unwrap_or_else(|error| panic!("Could not create data folder: {}", error));
@@ -278,7 +287,7 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
     let database_path = PathBuf::from(data_folder).join("resources.db");
 
     // Create persistent file store and enable WAL mode
-    let sqlite_manager = SqliteConnectionManager::file(database_path).with_init(|c| {
+    let sqlite_manager = SqliteConnectionManager::file(&database_path).with_init(|c| {
         c.execute_batch(
             "
             PRAGMA journal_mode=WAL;            -- better write-concurrency
@@ -292,76 +301,50 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
     let persistent_file_store_pool = Pool::new(sqlite_manager)
         .unwrap_or_else(|error| panic!("Could not create persistent file store: {}", error));
 
-    create_table_hidden(&persistent_file_store_pool);
-    create_table_data_cache(&persistent_file_store_pool);
-    create_table_geo_location_cache(&persistent_file_store_pool);
-    create_table_resources(&persistent_file_store_pool);
-    migrate_taken_column_and_index(&persistent_file_store_pool);
+    // Apply pending migrations atomically before any application query (FR-002, FR-007, FR-008)
+    // Uses the same r2d2 pool handling and WAL pragmas as before; each migration is transactional.
+    {
+        let mut conn = persistent_file_store_pool
+            .get()
+            .expect("Failed to get connection for migrations");
+        // P1 fix (A1/C2): very-old DBs had resources(id,value) without taken.
+        // V1's CREATE TABLE IF NOT EXISTS is no-op then, so V2 UPDATE would fail
+        // with "no such column: taken". Ensure column exists idempotently before
+        // running versioned migrations. This runs outside user_version tracking,
+        // keeps each SQL migration atomic, and is a no-op for fresh/migrated DBs.
+        let has_taken: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('resources') WHERE name='taken'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
+        if has_taken == 0 {
+            // Check if resources table exists at all before ALTER
+            let has_resources: i32 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='resources'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap_or(0);
+            if has_resources == 1 {
+                // Ignore duplicate-column error if raced; idempotent
+                let _ = conn.execute("ALTER TABLE resources ADD COLUMN taken TEXT", []);
+            }
+        }
+        if let Err(e) = MIGRATIONS.to_latest(&mut conn) {
+            // FR-008: fail fast, visible even if logger not yet init (tests, early init)
+            // eprintln! ensures Pi operator sees error when log sink not yet configured; error! satisfies structured logging when available.
+            eprintln!("Database migration failed: {}", e);
+            error!("Database migration failed: {}", e);
+            panic!("Database migration failed: {}", e);
+        }
+    }
 
     ResourceStore {
         persistent_file_store_pool,
     }
-}
-
-/// Creates the "hidden" database table
-fn create_table_hidden(pool: &Pool<SqliteConnectionManager>) {
-    pool.get()
-        .unwrap()
-        .execute(
-            "CREATE TABLE IF NOT EXISTS hidden (id TEXT PRIMARY KEY);",
-            (),
-        )
-        .unwrap_or_else(|error| panic!("table creation of 'hidden' failed.\n{}", error));
-}
-
-/// Creates the "data_cache" database table
-fn create_table_data_cache(pool: &Pool<SqliteConnectionManager>) {
-    pool.get()
-        .unwrap()
-        .execute(
-            "CREATE TABLE IF NOT EXISTS data_cache (id TEXT PRIMARY KEY, data BLOB);",
-            (),
-        )
-        .unwrap_or_else(|error| panic!("table creation of 'data_cache' failed.\n{}", error));
-}
-
-/// Creates the "geo_location_cache" database table
-fn create_table_geo_location_cache(pool: &Pool<SqliteConnectionManager>) {
-    pool.get()
-        .unwrap()
-        .execute(
-            "CREATE TABLE IF NOT EXISTS geo_location_cache (id TEXT PRIMARY KEY, value TEXT);",
-            (),
-        )
-        .unwrap_or_else(|error| {
-            panic!("table creation of 'geo_location_cache' failed.\n{}", error)
-        });
-}
-
-/// Creates the "resources" database table
-fn create_table_resources(pool: &Pool<SqliteConnectionManager>) {
-    pool.get()
-        .unwrap()
-        .execute(
-            "CREATE TABLE IF NOT EXISTS resources (id TEXT PRIMARY KEY, value TEXT, taken TEXT);",
-            (),
-        )
-        .unwrap_or_else(|error| panic!("table creation of 'resources' failed.\n{}", error));
-}
-
-fn migrate_taken_column_and_index(pool: &Pool<SqliteConnectionManager>) {
-    let conn = pool.get().unwrap();
-    let _ = conn.execute("ALTER TABLE resources ADD COLUMN taken TEXT", []);
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_resources_taken ON resources(taken)",
-        [],
-    )
-    .unwrap();
-    conn.execute(
-        "UPDATE resources SET taken = json_extract(value, '$.taken') WHERE taken IS NULL AND json_extract(value, '$.taken') IS NOT NULL",
-        [],
-    )
-    .unwrap();
 }
 
 /// Checks if today +-3 hits new year
@@ -508,23 +491,31 @@ mod tests {
 
     #[test]
     fn initialize_creates_taken_column_and_index_and_backfills() {
-        // GIVEN a store with a legacy row inserted without the taken column
+        // GIVEN a legacy DB with user_version=0 and a row where taken is NULL
+        // (simulates DB created by old initialize before V2 backfill)
         let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("resources.db");
+        {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "CREATE TABLE hidden (id TEXT PRIMARY KEY);
+                 CREATE TABLE resources (id TEXT PRIMARY KEY, value TEXT, taken TEXT);
+                 CREATE TABLE geo_location_cache (id TEXT PRIMARY KEY, value TEXT);
+                 CREATE TABLE data_cache (id TEXT PRIMARY KEY, data BLOB);
+                 CREATE INDEX IF NOT EXISTS idx_resources_taken ON resources(taken);
+                 INSERT INTO resources(id,value,taken) VALUES('legacy1','{\"id\":\"legacy1\",\"taken\":\"2021-03-15T12:00:00\"}',NULL);
+                 PRAGMA user_version = 0;",
+            )
+            .unwrap();
+            let uv: i32 = conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(uv, 0);
+        }
+
+        // WHEN initializing (which runs migrations V1-V3)
         let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
         let conn = store.persistent_file_store_pool.get().unwrap();
-        conn.execute(
-            "INSERT INTO resources(id,value) VALUES(?1,?2)",
-            rusqlite::params![
-                "legacy1",
-                r#"{"id":"legacy1","taken":"2021-03-15T12:00:00"}"#
-            ],
-        )
-        .unwrap();
-        drop(conn);
-
-        // WHEN re-initializing the store (triggering migration/backfill)
-        let store2 = crate::resource_store::initialize(dir.path().to_str().unwrap());
-        let conn = store2.persistent_file_store_pool.get().unwrap();
 
         // THEN the taken column, index, and backfilled value exist
         let col: i32 = conn
@@ -549,5 +540,266 @@ mod tests {
             })
             .unwrap();
         assert_eq!(taken, Some("2021-03-15T12:00:00".to_string()));
+        // AND user_version advanced to latest (3)
+        let uv: i32 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(uv, 3);
+        // AND data_cache dropped by V3
+        let cache: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='data_cache'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(cache, 0);
+    }
+
+    #[test]
+    fn migrations_validate_succeeds() {
+        assert!(crate::resource_store::MIGRATIONS.validate().is_ok());
+    }
+
+    #[test]
+    fn migrations_user_version_equals_migration_count_on_fresh_db() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let conn = store.persistent_file_store_pool.get().unwrap();
+        let uv: i32 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(
+            uv, 3,
+            "user_version must equal number of migration files (3)"
+        );
+    }
+
+    #[test]
+    fn migration_failure_is_atomic_and_retriable() {
+        use rusqlite::Connection;
+        use rusqlite_migration::{Migrations, M};
+        let mut conn = Connection::open_in_memory().unwrap();
+        let good = Migrations::new(vec![M::up("CREATE TABLE t1 (x TEXT);")]);
+        good.to_latest(&mut conn).unwrap();
+        assert_eq!(usize::from(good.current_version(&conn).unwrap()), 1);
+        let bad = Migrations::new(vec![
+            M::up("CREATE TABLE t1 (x TEXT);"),
+            M::up("THIS IS NOT SQL;"),
+        ]);
+        let res = bad.to_latest(&mut conn);
+        assert!(res.is_err(), "bad migration should fail");
+        assert_eq!(usize::from(bad.current_version(&conn).unwrap()), 1);
+        let fixed = Migrations::new(vec![
+            M::up("CREATE TABLE t1 (x TEXT);"),
+            M::up("CREATE TABLE t2 (y TEXT);"),
+        ]);
+        fixed.to_latest(&mut conn).unwrap();
+        assert_eq!(usize::from(fixed.current_version(&conn).unwrap()), 2);
+    }
+    #[test]
+    fn fresh_install_and_migrated_db_have_identical_schema() {
+        let fresh_dir = tempfile::tempdir().unwrap();
+        let fresh = crate::resource_store::initialize(fresh_dir.path().to_str().unwrap());
+        let fresh_conn = fresh.persistent_file_store_pool.get().unwrap();
+        let migrated_dir = tempfile::tempdir().unwrap();
+        let db_path = migrated_dir.path().join("resources.db");
+        {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "CREATE TABLE hidden (id TEXT PRIMARY KEY);
+                 CREATE TABLE resources (id TEXT PRIMARY KEY, value TEXT);
+                 CREATE TABLE geo_location_cache (id TEXT PRIMARY KEY, value TEXT);
+                 CREATE TABLE data_cache (id TEXT PRIMARY KEY, data BLOB);
+                 ALTER TABLE resources ADD COLUMN taken TEXT;
+                 CREATE INDEX idx_resources_taken ON resources(taken);",
+            )
+            .unwrap();
+            conn.execute("PRAGMA user_version = 0", []).unwrap();
+        }
+        let migrated = crate::resource_store::initialize(migrated_dir.path().to_str().unwrap());
+        let mig_conn = migrated.persistent_file_store_pool.get().unwrap();
+        // Compare schema via pragma_table_info for resources
+        let fresh_cols: Vec<(String, String)> = {
+            let mut stmt = fresh_conn
+                .prepare("SELECT name, type FROM pragma_table_info('resources') ORDER BY cid")
+                .unwrap();
+            stmt.query_map([], |r| {
+                Ok((
+                    r.get::<_, String>(0).unwrap(),
+                    r.get::<_, String>(1).unwrap(),
+                ))
+            })
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+        };
+        let mig_cols: Vec<(String, String)> = {
+            let mut stmt = mig_conn
+                .prepare("SELECT name, type FROM pragma_table_info('resources') ORDER BY cid")
+                .unwrap();
+            stmt.query_map([], |r| {
+                Ok((
+                    r.get::<_, String>(0).unwrap(),
+                    r.get::<_, String>(1).unwrap(),
+                ))
+            })
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap()
+        };
+        assert_eq!(
+            fresh_cols, mig_cols,
+            "fresh and migrated resources columns must match"
+        );
+        // Also check taken index exists in both
+        for conn in [&fresh_conn, &mig_conn] {
+            let idx: i32 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_resources_taken'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(idx, 1, "idx_resources_taken missing");
+        }
+        for tbl in ["hidden", "geo_location_cache", "resources"] {
+            let cnt: i32 = mig_conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?1",
+                    rusqlite::params![tbl],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(cnt, 1, "table {} missing", tbl);
+        }
+        for (label, conn) in [("fresh", &fresh_conn), ("migrated", &mig_conn)] {
+            let cnt: i32 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='data_cache'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(cnt, 0, "{} still has data_cache", label);
+        }
+    }
+
+    #[test]
+    fn existing_db_with_user_version_0_upgrades_without_deletion() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("resources.db");
+        {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "CREATE TABLE hidden (id TEXT PRIMARY KEY);
+                 CREATE TABLE resources (id TEXT PRIMARY KEY, value TEXT);
+                 CREATE TABLE geo_location_cache (id TEXT PRIMARY KEY, value TEXT);
+                 CREATE TABLE data_cache (id TEXT PRIMARY KEY, data BLOB);
+                 ALTER TABLE resources ADD COLUMN taken TEXT;
+                 CREATE INDEX idx_resources_taken ON resources(taken);
+                 INSERT INTO resources(id,value,taken) VALUES('photo1','{\"id\":\"photo1\",\"taken\":\"2020-06-15T10:00:00\"}','2020-06-15T10:00:00');
+                 INSERT INTO hidden(id) VALUES('hidden1');
+                 INSERT INTO geo_location_cache(id,value) VALUES('geo1','{\"lat\":1}');
+                 INSERT INTO data_cache(id,data) VALUES('blob1', randomblob(10));
+                 PRAGMA user_version = 0;",
+            )
+            .unwrap();
+            let uv: i32 = conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(uv, 0);
+        }
+        let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let conn = store.persistent_file_store_pool.get().unwrap();
+        let uv: i32 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(uv, 3);
+        let photo: Option<String> = conn
+            .query_row("SELECT value FROM resources WHERE id='photo1'", [], |r| {
+                r.get(0)
+            })
+            .ok();
+        assert!(photo.is_some());
+        let hidden: Vec<String> = store.get_all_hidden();
+        assert!(hidden.contains(&"hidden1".to_string()));
+        let loc = store.get_location("geo1");
+        assert!(loc.is_some());
+        let cache_count: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='data_cache'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(cache_count, 0);
+        let store2 = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let uv2: i32 = store2
+            .persistent_file_store_pool
+            .get()
+            .unwrap()
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(uv2, 3);
+    }
+    #[test]
+    fn very_old_db_without_taken_column_upgrades_without_deletion() {
+        // GIVEN a very-old DB: resources without taken column, user_version=0
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("resources.db");
+        {
+            let conn = rusqlite::Connection::open(&db_path).unwrap();
+            conn.execute_batch(
+                "CREATE TABLE hidden (id TEXT PRIMARY KEY);
+                 CREATE TABLE resources (id TEXT PRIMARY KEY, value TEXT);
+                 CREATE TABLE geo_location_cache (id TEXT PRIMARY KEY, value TEXT);
+                 CREATE TABLE data_cache (id TEXT PRIMARY KEY, data BLOB);
+                 INSERT INTO resources(id,value) VALUES('old1','{\"id\":\"old1\",\"taken\":\"2020-03-15T10:00:00\"}');
+                 INSERT INTO hidden(id) VALUES('h1');
+                 PRAGMA user_version = 0;",
+            ).unwrap();
+            let uv: i32 = conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(uv, 0);
+            let has_taken: i32 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM pragma_table_info('resources') WHERE name='taken'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(has_taken, 0);
+        }
+        // WHEN initializing
+        let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
+        let conn = store.persistent_file_store_pool.get().unwrap();
+        // THEN user_version 3, taken backfilled, hidden preserved, data_cache dropped
+        let uv: i32 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(uv, 3);
+        let taken: Option<String> = conn
+            .query_row("SELECT taken FROM resources WHERE id='old1'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(taken, Some("2020-03-15T10:00:00".to_string()));
+        let idx: i32 = conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_resources_taken'",
+            [], |r| r.get(0)
+        ).unwrap();
+        assert_eq!(idx, 1);
+        let hidden: Vec<String> = store.get_all_hidden();
+        assert!(hidden.contains(&"h1".to_string()));
+        let cache: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='data_cache'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(cache, 0);
     }
 }
