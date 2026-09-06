@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/RouHim/this-week-in-past/compare/2.2.0...2.3.0) (2026-09-06)
+
+
+### Features
+
+* optional HOME_COUNTRY for home-country-aware location display ([#211](https://github.com/RouHim/this-week-in-past/issues/211)) ([7471467](https://github.com/RouHim/this-week-in-past/commit/7471467e6bde821c5f5a7228a6fc38b10bbcbbfd))
+
 ## [Unreleased]
 
 ### Features
