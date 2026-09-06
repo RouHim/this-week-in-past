@@ -244,8 +244,7 @@ pub async fn get_resource_metadata_description_by_id(
         .get_resource(resources_id.as_str())
         .and_then(|resource_json_string| serde_json::from_str(resource_json_string.as_str()).ok());
 
-    let display_value = resource
-        .map(|resource| resource_processor::build_display_value(resource, resource_store.as_ref()));
+    let display_value = resource.map(resource_processor::build_display_value);
 
     if let Some(display_value) = display_value {
         HttpResponse::Ok()
