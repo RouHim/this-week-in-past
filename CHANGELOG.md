@@ -1,3 +1,10 @@
+## [2.3.1](https://github.com/RouHim/this-week-in-past/compare/2.3.0...2.3.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* remove image dimension and pixel limits ([#212](https://github.com/RouHim/this-week-in-past/issues/212)) ([8d13c91](https://github.com/RouHim/this-week-in-past/commit/8d13c91d9359650822740681b57429399dbe3e0c))
+
 # [2.3.0](https://github.com/RouHim/this-week-in-past/compare/2.2.0...2.3.0) (2026-09-06)
 
 
