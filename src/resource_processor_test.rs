@@ -5,6 +5,7 @@ use crate::geo_location::GeoLocation;
 
 #[actix_rt::test]
 async fn resolve_koblenz() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN are the geo coordinates for Koblenz
     let geo_location: GeoLocation = GeoLocation {
         latitude: 50.35357,
@@ -20,6 +21,7 @@ async fn resolve_koblenz() {
 
 #[actix_rt::test]
 async fn resolve_amsterdam() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN are the geo coordinates for Amsterdam
     let geo_location: GeoLocation = GeoLocation {
         latitude: 52.37403,
@@ -35,6 +37,7 @@ async fn resolve_amsterdam() {
 
 #[actix_rt::test]
 async fn resolve_kottenheim() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN are the geo coordinates for Kottenheim
     let geo_location: GeoLocation = GeoLocation {
         latitude: 50.34604,
@@ -50,6 +53,7 @@ async fn resolve_kottenheim() {
 
 #[actix_rt::test]
 async fn resolve_negative_dms() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN are the degree minutes seconds coordinates near Playa del Ingles (Gran Canaria)
     // 27 deg 45 min 22.22 sec N, 15 deg 34 min 13.76 sec W ≈ 27.756, -15.570
     let lat = "27 deg 45 min 22.22 sec";
@@ -75,6 +79,7 @@ async fn resolve_negative_dms() {
 
 #[actix_rt::test]
 async fn resolve_invalid_data() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN are invalid geo coordinates
     let geo_location: GeoLocation = GeoLocation {
         latitude: -100.0,
@@ -90,6 +95,7 @@ async fn resolve_invalid_data() {
 
 #[actix_rt::test]
 async fn resolve_mid_ocean_returns_none() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN a coordinate in the middle of the Pacific Ocean (far from any city)
     let geo_location: GeoLocation = GeoLocation {
         latitude: 0.0,
@@ -105,6 +111,7 @@ async fn resolve_mid_ocean_returns_none() {
 
 #[actix_rt::test]
 async fn resolve_invalid_lat_out_of_range_returns_none() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN out-of-range latitude
     let geo_location = GeoLocation {
         latitude: 91.0,
@@ -124,6 +131,7 @@ async fn resolve_invalid_lat_out_of_range_returns_none() {
 
 #[actix_rt::test]
 async fn resolve_nan_and_infinite_returns_none() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     for (lat, lon) in [
         (f32::NAN, 0.0),
         (0.0, f32::NAN),
@@ -142,6 +150,7 @@ async fn resolve_nan_and_infinite_returns_none() {
 
 #[actix_rt::test]
 async fn resolve_bayenthal_returns_hierarchical() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN Bayenthal district coordinate (approx 50.9049, 6.9606) — PPLX near Köln
     let geo_location = GeoLocation {
         latitude: 50.9049,
@@ -160,6 +169,7 @@ async fn resolve_bayenthal_returns_hierarchical() {
 
 #[actix_rt::test]
 async fn resolve_christianshavn_hierarchical() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN Christianshavn district (55.67383, 12.59541) — PPLX near Copenhagen/København
     let geo_location = GeoLocation {
         latitude: 55.676,
@@ -184,6 +194,7 @@ async fn resolve_christianshavn_hierarchical() {
 
 #[actix_rt::test]
 async fn resolve_volksdorf_hierarchical() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN Volksdorf district (53.64972, 10.18417) — PPLX near Hamburg
     let geo_location = GeoLocation {
         latitude: 53.651,
@@ -202,6 +213,7 @@ async fn resolve_volksdorf_hierarchical() {
 
 #[actix_rt::test]
 async fn resolve_koln_dom_plain() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN plain city Köln center (50.93333,6.95) — PPLA2, not PPLX
     // Plain-city guarantee: exactly "Köln" (single name, no comma).
     // Note: Köln Dom 50.941,6.958 is actually PPLX Altstadt Nord (~0.23km) and would
@@ -227,6 +239,7 @@ async fn resolve_koln_dom_plain() {
 }
 #[actix_rt::test]
 async fn resolve_district_without_parent_falls_back() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // Isolated district fallback: PPLX with no parent within 30km → district alone (no comma).
     // Synthetic CityIndex isolation requires private OnceLock, so we cover fallback
     // via two dataset-tolerant assertions:
@@ -299,5 +312,133 @@ fn migration_04_drops_geo_cache_in_resource_processor_context() {
     assert_eq!(
         cnt, 0,
         "geo_location_cache should be dropped after migration 04"
+    );
+}
+
+/// Serializes HOME_COUNTRY mutation across async tests; restores the prior value on drop.
+struct HomeCountryGuard {
+    prev: Option<String>,
+    _serial: tokio::sync::MutexGuard<'static, ()>,
+}
+
+impl HomeCountryGuard {
+    async fn set(code: Option<String>) -> Self {
+        let serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+        let prev = crate::geo_location::home_country_for_tests();
+        crate::geo_location::set_home_country_for_tests(code);
+        Self {
+            prev,
+            _serial: serial,
+        }
+    }
+}
+
+impl Drop for HomeCountryGuard {
+    fn drop(&mut self) {
+        crate::geo_location::set_home_country_for_tests(self.prev.clone());
+    }
+}
+
+#[actix_rt::test]
+async fn home_country_match_hides_country_suffix() {
+    // GIVEN home Germany and a Bayenthal photo
+    let _home = HomeCountryGuard::set(Some("DE".to_string())).await;
+    let geo_location = GeoLocation {
+        latitude: 50.9049,
+        longitude: 6.9606,
+    };
+    // WHEN resolving
+    let name = geo_location::resolve_city_name(geo_location)
+        .await
+        .expect("Bayenthal should resolve");
+    // THEN hierarchical display with no country suffix (dataset-tolerant)
+    assert!(
+        name == "Bayenthal, Köln" || name == "Köln",
+        "unexpected home display '{}'",
+        name
+    );
+    assert!(!name.contains("Germany"), "home suffix leaked: '{}'", name);
+}
+
+#[actix_rt::test]
+async fn foreign_country_appends_country_name() {
+    // GIVEN home Germany and a Christianshavn photo
+    let _home = HomeCountryGuard::set(Some("DE".to_string())).await;
+    let geo_location = GeoLocation {
+        latitude: 55.676,
+        longitude: 12.593,
+    };
+    // WHEN resolving
+    let name = geo_location::resolve_city_name(geo_location)
+        .await
+        .expect("Christianshavn should resolve");
+    // THEN display ends with the English country name
+    assert!(
+        name.ends_with(", Denmark"),
+        "expected Denmark suffix, got '{}'",
+        name
+    );
+}
+
+#[actix_rt::test]
+async fn home_country_value_is_normalized() {
+    // GIVEN a lowercase, padded home value
+    let home = geo_location::parse_home_country(" de ").unwrap();
+    let _guard = HomeCountryGuard::set(home).await;
+    let geo_location = GeoLocation {
+        latitude: 50.93333,
+        longitude: 6.95,
+    };
+    // WHEN resolving a home-city photo
+    let name = geo_location::resolve_city_name(geo_location)
+        .await
+        .expect("Köln center should resolve");
+    // THEN plain home display, no suffix
+    assert_eq!(name, "Köln");
+}
+
+#[actix_rt::test]
+async fn unset_home_country_shows_no_suffix() {
+    // GIVEN explicitly unset home and a foreign photo
+    let _home = HomeCountryGuard::set(None).await;
+    let geo_location = GeoLocation {
+        latitude: 55.676,
+        longitude: 12.593,
+    };
+    // WHEN resolving
+    let name = geo_location::resolve_city_name(geo_location)
+        .await
+        .expect("Christianshavn should resolve");
+    // THEN no country suffix (dataset-tolerant on the city rendering)
+    assert!(
+        !name.contains("Denmark"),
+        "country shown while unset: '{}'",
+        name
+    );
+    assert!(
+        name.contains("København") || name.contains("Copenhagen"),
+        "expected city without country, got '{}'",
+        name
+    );
+}
+
+#[test]
+fn parse_home_country_validation() {
+    // GIVEN/WHEN/THEN pure validation without globals
+    assert_eq!(
+        geo_location::parse_home_country("DE").unwrap(),
+        Some("DE".to_string())
+    );
+    assert_eq!(
+        geo_location::parse_home_country(" de ").unwrap(),
+        Some("DE".to_string())
+    );
+    assert_eq!(geo_location::parse_home_country("").unwrap(), None);
+    assert_eq!(geo_location::parse_home_country("   ").unwrap(), None);
+    let err = geo_location::parse_home_country("XX").unwrap_err();
+    assert!(
+        err.contains("HOME_COUNTRY") && err.contains("XX"),
+        "unexpected error: {}",
+        err
     );
 }

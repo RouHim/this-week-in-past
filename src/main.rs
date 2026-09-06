@@ -6,6 +6,7 @@ use log::{info, warn, LevelFilter};
 
 mod config;
 mod config_endpoint;
+mod country_names;
 mod exif_reader;
 mod filesystem_client;
 mod geo_location;
@@ -53,7 +54,8 @@ async fn main() -> std::io::Result<()> {
         .filter(Some("actix_web::middleware::logger"), LevelFilter::Error)
         .init();
 
-    // Print cargo version to console
+    // Home-country display config; invalid HOME_COUNTRY fails fast here.
+    geo_location::init_home_country();
     info!(
         "👋 Welcome to this-week-in-past version {}",
         env!("CARGO_PKG_VERSION")
