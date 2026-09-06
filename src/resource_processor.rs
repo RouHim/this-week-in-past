@@ -4,15 +4,7 @@ use crate::geo_location;
 use crate::resource_reader::ImageResource;
 /// Builds the display value for the specified resource
 /// The display value contains the date and location of a resource
-///
-/// `_resource_store` is intentionally retained for API compatibility:
-/// removing it would mean touching the `resource_endpoint.rs` call site
-/// for no benefit. The offline `cities500` RTree needs no store — the param
-/// is unused by design (`_`-prefixed to suppress `unused_variables`).
-pub async fn build_display_value(
-    resource: ImageResource,
-    _resource_store: &crate::resource_store::ResourceStore,
-) -> String {
+pub async fn build_display_value(resource: ImageResource) -> String {
     let mut display_value: String = String::new();
 
     // Append taken date
@@ -39,7 +31,6 @@ pub async fn build_display_value(
 }
 
 /// Returns the city name for the specified resource
-/// Directly resolves via offline `cities500` RTree (<1ms) — no persistent cache.
 /// The historic `geo_location_cache` SQLite table is dropped via migration 04.
 async fn get_city_name(resource: &ImageResource) -> Option<String> {
     let resource_location = resource.location?;

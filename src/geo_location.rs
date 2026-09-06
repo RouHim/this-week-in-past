@@ -302,12 +302,7 @@ fn load_city_index() -> Option<CityIndex> {
     }
 
     let len = entries.len();
-    // Peak transient heap ~60-85 MB: entries Vec with 3 Strings per
-    // entry (~30 MB), parent clone of filtered parents (~10-15 MB), plus two RTree
-    // node allocations (~2×15 MB). Steady-state after bulk_load moves vectors
-    // into RTrees is <50 MB. Single-flight in ensure_city_index prevents
-    // N× peak burst under concurrent startup; clone is kept for simplicity
-    // (Rc/Arc would add indirection without measurable win).
+    // Split out parent cities so district-to-parent lookup scans a smaller tree.
     let parent_entries: Vec<CityEntry> = entries
         .iter()
         .filter(|e| is_parent_city(e))
