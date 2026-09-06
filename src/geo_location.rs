@@ -158,14 +158,6 @@ struct CityEntry {
     lon: f64,
     feature_class: String,
     feature_code: String,
-    // country_code/admin1_code parsed per FR-001/FR-005, reserved for future
-    // 3-level display (District, City, Country); retained despite not yet
-    // rendered. Heap budget documented at load site: steady-state <50 MB
-    // (FR-008); transient peak 60-85 MB before bulk_load moves vectors.
-    #[allow(dead_code)]
-    country_code: String,
-    #[allow(dead_code)]
-    admin1_code: String,
     population: i64,
 }
 
@@ -284,11 +276,9 @@ fn load_city_index() -> Option<CityIndex> {
                 continue;
             }
         };
-        // Extended columns — tolerant parsing (FR-001 edge: incomplete lines)
+        // Extended columns — tolerant parsing, skip incomplete lines.
         let feature_class = cols.get(6).unwrap_or(&"").trim().to_string();
         let feature_code = cols.get(7).unwrap_or(&"").trim().to_string();
-        let country_code = cols.get(8).unwrap_or(&"").trim().to_ascii_uppercase();
-        let admin1_code = cols.get(10).unwrap_or(&"").trim().to_string();
         let population: i64 = cols
             .get(14)
             .and_then(|s| s.trim().parse::<i64>().ok())
@@ -299,8 +289,6 @@ fn load_city_index() -> Option<CityIndex> {
             lon,
             feature_class,
             feature_code,
-            country_code,
-            admin1_code,
             population,
         });
     }
@@ -314,7 +302,7 @@ fn load_city_index() -> Option<CityIndex> {
     }
 
     let len = entries.len();
-    // Peak transient heap ~60-85 MB (FR-008): entries Vec with 5 Strings per
+    // Peak transient heap ~60-85 MB: entries Vec with 3 Strings per
     // entry (~30 MB), parent clone of filtered parents (~10-15 MB), plus two RTree
     // node allocations (~2×15 MB). Steady-state after bulk_load moves vectors
     // into RTrees is <50 MB. Single-flight in ensure_city_index prevents
@@ -348,7 +336,7 @@ fn get_city_index() -> Option<&'static CityIndex> {
 
 // Single-flight via tokio::sync::Mutex + double-checked locking. First caller
 // holds the mutex while doing web::block(load_city_index) (~60-85 MB transient,
-// steady-state <50 MB per FR-008 above); concurrent callers await the mutex,
+// steady-state <50 MB as documented above); concurrent callers await the mutex,
 // re-check CITY_INDEX, and reuse the winner's index, preventing N×50 MB burst.
 async fn ensure_city_index() -> Option<&'static CityIndex> {
     if let Some(opt) = CITY_INDEX.get() {
@@ -422,7 +410,7 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     if !is_district(best_entry) {
         return Some(best_entry.name.clone());
     }
-    // District → parent resolution (FR-003, see .spec/district-aware-city-display.md).
+    // District → parent resolution:
     // Intentionally NOT pure closest-haversine: we pick the most populous city within
     // MAX_PARENT_DISTANCE_KM (population desc, haversine asc tie-breaker). This matches
     // product expectations for Scenario 1 (Volksdorf 53.651,10.166 → Hamburg ~12–16km, 1.8M

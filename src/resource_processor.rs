@@ -5,14 +5,10 @@ use crate::resource_reader::ImageResource;
 /// Builds the display value for the specified resource
 /// The display value contains the date and location of a resource
 ///
-/// `_resource_store` is intentionally retained for API compatibility per
-/// FR-006 and plan `2026-09-03-district-aware-city-display.md` (keep `_store`
-/// param to avoid churn). Removing it would require editing
-/// `src/resource_endpoint.rs:248` (`resource_store.as_ref()` call site) which
-/// is outside the allowed diff scope for iteration 2 and would break
-/// compilation if this signature alone changed. The offline `cities500` RTree
-/// needs no store — the param is unused by design (`_`-prefixed to suppress
-/// `unused_variables`).
+/// `_resource_store` is intentionally retained for API compatibility:
+/// removing it would mean touching the `resource_endpoint.rs` call site
+/// for no benefit. The offline `cities500` RTree needs no store — the param
+/// is unused by design (`_`-prefixed to suppress `unused_variables`).
 pub async fn build_display_value(
     resource: ImageResource,
     _resource_store: &crate::resource_store::ResourceStore,

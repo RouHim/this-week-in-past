@@ -149,8 +149,7 @@ async fn resolve_bayenthal_returns_hierarchical() {
     };
     let city_name = geo_location::resolve_city_name(geo_location).await;
     let name = city_name.expect("expected Bayenthal/Köln to resolve, got None");
-    // Dataset-tolerant per FR-010/SC-001: accept hierarchical "Bayenthal, Köln"
-    // or fallback parent alone "Köln" if district entry is absent from cities500.
+    // Dataset-tolerant: accept hierarchical "Bayenthal, Köln"
     assert!(name.contains("Köln"), "expected Köln in '{}'", name);
     assert!(
         name == "Bayenthal, Köln" || name == "Köln",
@@ -192,8 +191,7 @@ async fn resolve_volksdorf_hierarchical() {
     };
     let city_name = geo_location::resolve_city_name(geo_location).await;
     let name = city_name.expect("expected Volksdorf/Hamburg to resolve");
-    // Dataset-tolerant per FR-010/SC-001: accept hierarchical "Volksdorf, Hamburg"
-    // or fallback parent alone "Hamburg" if district entry is absent from cities500.
+    // Dataset-tolerant: accept hierarchical "Volksdorf, Hamburg"
     assert!(name.contains("Hamburg"), "expected Hamburg in '{}'", name);
     assert!(
         name == "Volksdorf, Hamburg" || name == "Hamburg",
@@ -205,7 +203,7 @@ async fn resolve_volksdorf_hierarchical() {
 #[actix_rt::test]
 async fn resolve_koln_dom_plain() {
     // GIVEN plain city Köln center (50.93333,6.95) — PPLA2, not PPLX
-    // SC-003 requires exactly "Köln" (single name, no comma).
+    // Plain-city guarantee: exactly "Köln" (single name, no comma).
     // Note: Köln Dom 50.941,6.958 is actually PPLX Altstadt Nord (~0.23km) and would
     // resolve to "Altstadt Nord, Köln"; we use the city-center coordinate to enforce
     // plain-city single-name guarantee.
@@ -229,7 +227,7 @@ async fn resolve_koln_dom_plain() {
 }
 #[actix_rt::test]
 async fn resolve_district_without_parent_falls_back() {
-    // FR-003 fallback: PPLX with no parent within 30km → district alone (no comma).
+    // Isolated district fallback: PPLX with no parent within 30km → district alone (no comma).
     // Synthetic CityIndex isolation requires private OnceLock, so we cover fallback
     // via two dataset-tolerant assertions:
     // 1) Bayenthal (50.9049,6.9606) is hierarchical Bayenthal, Köln — verifies
@@ -241,8 +239,7 @@ async fn resolve_district_without_parent_falls_back() {
     let name = geo_location::resolve_city_name(bay)
         .await
         .expect("Bayenthal should resolve");
-    // Dataset-tolerant per FR-010/SC-001: hierarchical "Bayenthal, Köln" or
-    // fallback parent alone "Köln" if district entry is absent from cities500.
+    // Dataset-tolerant: hierarchical "Bayenthal, Köln" or
     assert!(name.contains("Köln"), "expected Köln in '{}'", name);
     assert!(
         name == "Bayenthal, Köln" || name == "Köln",
@@ -277,7 +274,7 @@ async fn resolve_district_without_parent_falls_back() {
 }
 #[test]
 fn migration_04_drops_geo_cache_in_resource_processor_context() {
-    // FR-010: geo_location_cache dropped after migration 04.
+    // geo_location_cache is dropped after migration 04.
     // Detailed schema assertions live in src/resource_store.rs
     // (fresh_install_and_migrated_db_have_identical_schema etc.);
     // this test ensures the migration set is valid and that
