@@ -46,7 +46,8 @@ pub struct ResourceReader {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Configure logger
+    // Configure logger BEFORE any initialize() so migration failures are visible via log::error!
+    // resource_store::initialize also eprintln!s as fallback for tests/early callers.
     let mut builder = Builder::from_default_env();
     builder
         .filter(Some("actix_web::middleware::logger"), LevelFilter::Error)
