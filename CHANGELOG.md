@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/RouHim/this-week-in-past/compare/2.1.2...2.2.0) (2026-09-06)
+
+
+### Features
+
+* rusqlite_migration without breaking database changes ([#207](https://github.com/RouHim/this-week-in-past/issues/207)) ([c57e05b](https://github.com/RouHim/this-week-in-past/commit/c57e05bacd1f3c0aad1856524b125e3b2e077028))
+
 ## [2.1.2](https://github.com/RouHim/this-week-in-past/compare/2.1.1...2.1.2) (2026-09-05)
 
 ## [2.1.1](https://github.com/RouHim/this-week-in-past/compare/2.1.0...2.1.1) (2026-08-30)
