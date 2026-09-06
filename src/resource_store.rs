@@ -301,13 +301,13 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
     let persistent_file_store_pool = Pool::new(sqlite_manager)
         .unwrap_or_else(|error| panic!("Could not create persistent file store: {}", error));
 
-    // Apply pending migrations atomically before any application query (FR-002, FR-007, FR-008)
+    // Apply pending migrations atomically before any application query.
     // Uses the same r2d2 pool handling and WAL pragmas as before; each migration is transactional.
     {
         let mut conn = persistent_file_store_pool
             .get()
             .expect("Failed to get connection for migrations");
-        // P1 fix (A1/C2): very-old DBs had resources(id,value) without taken.
+        // Very-old DBs had resources(id,value) without taken.
         // V1's CREATE TABLE IF NOT EXISTS is no-op then, so V2 UPDATE would fail
         // with "no such column: taken". Ensure column exists idempotently before
         // running versioned migrations. This runs outside user_version tracking,
@@ -334,7 +334,7 @@ pub fn initialize(data_folder: &str) -> ResourceStore {
             }
         }
         if let Err(e) = MIGRATIONS.to_latest(&mut conn) {
-            // FR-008: fail fast, visible even if logger not yet init (tests, early init)
+            // Fail fast, visible even if the logger is not initialized yet (tests, early init).
             // eprintln! ensures Pi operator sees error when log sink not yet configured; error! satisfies structured logging when available.
             eprintln!("Database migration failed: {}", e);
             error!("Database migration failed: {}", e);
