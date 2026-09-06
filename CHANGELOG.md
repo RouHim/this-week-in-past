@@ -6,6 +6,8 @@
 
   BREAKING: `geo_location_cache` SQLite table is auto-dropped on next startup via migration `04` (offline RTree `<1ms`, previous persistent cache obsolete and stale after hierarchical fix). `DATA_FOLDER/resources.db` `user_version` 3 → 4. No manual `DELETE` needed.
 
+* feat: optional `HOME_COUNTRY` env var for home-country-aware location display: same-country photos omit the country suffix, foreign photos append the English country name (e.g. `Christianshavn, København, Denmark` with `HOME_COUNTRY=DE`). Unset preserves current display; invalid codes fail fast at startup.
+
 # [2.2.0](https://github.com/RouHim/this-week-in-past/compare/2.1.2...2.2.0) (2026-09-06)
 
 

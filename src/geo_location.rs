@@ -4,9 +4,12 @@ use std::sync::OnceLock;
 
 use actix_web::web;
 use lazy_static::lazy_static;
+use parking_lot::RwLock;
 use regex::{Captures, Regex};
 use rstar::{PointDistance, RTree, RTreeObject, AABB};
 use serde::{Deserialize, Serialize};
+
+use crate::country_names::country_name;
 
 /// Struct representing a geo location
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
@@ -151,6 +154,61 @@ static DEPRECATION_ONCE: OnceLock<()> = OnceLock::new();
 static CITY_INDEX: OnceLock<Option<CityIndex>> = OnceLock::new();
 static CITY_INDEX_INIT_MUTEX: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+static HOME_COUNTRY: RwLock<Option<String>> = RwLock::new(None);
+
+/// Parses a raw `HOME_COUNTRY` value: trims and uppercases; empty means unset.
+/// Returns an error naming the variable and value when not a known ISO code.
+pub fn parse_home_country(raw: &str) -> Result<Option<String>, String> {
+    let code = raw.trim().to_ascii_uppercase();
+    if code.is_empty() {
+        return Ok(None);
+    }
+    if country_name(&code).is_some() {
+        Ok(Some(code))
+    } else {
+        Err(format!(
+            "HOME_COUNTRY=\"{raw}\" is not a known ISO-3166 alpha-2 country code"
+        ))
+    }
+}
+
+/// Reads `HOME_COUNTRY` once at startup; panics on invalid value.
+pub fn init_home_country() {
+    match parse_home_country(&env::var("HOME_COUNTRY").unwrap_or_default()) {
+        Ok(code) => *HOME_COUNTRY.write() = code,
+        Err(e) => panic!("{e}"),
+    }
+}
+
+fn home_country() -> Option<String> {
+    HOME_COUNTRY.read().clone()
+}
+
+#[cfg(test)]
+pub(crate) fn set_home_country_for_tests(code: Option<String>) {
+    *HOME_COUNTRY.write() = code;
+}
+
+#[cfg(test)]
+pub(crate) fn home_country_for_tests() -> Option<String> {
+    home_country()
+}
+
+/// Appends the English country name unless the photo is home, unknown, or unset.
+fn apply_home_country(display: &str, photo_country: &str) -> String {
+    if photo_country.is_empty() {
+        return display.to_string();
+    }
+    match home_country().as_deref() {
+        None => display.to_string(),
+        Some(home) if home == photo_country => display.to_string(),
+        Some(_) => match country_name(photo_country) {
+            Some(name) => format!("{display}, {name}"),
+            None => display.to_string(),
+        },
+    }
+}
+
 #[derive(Clone)]
 struct CityEntry {
     name: String,
@@ -158,6 +216,7 @@ struct CityEntry {
     lon: f64,
     feature_class: String,
     feature_code: String,
+    country_code: String,
     population: i64,
 }
 
@@ -279,6 +338,7 @@ fn load_city_index() -> Option<CityIndex> {
         // Extended columns — tolerant parsing, skip incomplete lines.
         let feature_class = cols.get(6).unwrap_or(&"").trim().to_string();
         let feature_code = cols.get(7).unwrap_or(&"").trim().to_string();
+        let country_code = cols.get(8).unwrap_or(&"").trim().to_ascii_uppercase();
         let population: i64 = cols
             .get(14)
             .and_then(|s| s.trim().parse::<i64>().ok())
@@ -289,6 +349,7 @@ fn load_city_index() -> Option<CityIndex> {
             lon,
             feature_class,
             feature_code,
+            country_code,
             population,
         });
     }
@@ -403,7 +464,10 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     };
 
     if !is_district(best_entry) {
-        return Some(best_entry.name.clone());
+        return Some(apply_home_country(
+            &best_entry.name,
+            &best_entry.country_code,
+        ));
     }
     // District → parent resolution:
     // Intentionally NOT pure closest-haversine: we pick the most populous city within
@@ -455,7 +519,10 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
             dist,
             geo_location
         );
-        Some(format!("{}, {}", best_entry.name, parent.name))
+        Some(apply_home_country(
+            &format!("{}, {}", best_entry.name, parent.name),
+            &parent.country_code,
+        ))
     } else {
         log::debug!(
             "district '{}' has no parent within {}km for {}",
@@ -463,6 +530,9 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
             MAX_PARENT_DISTANCE_KM,
             geo_location
         );
-        Some(best_entry.name.clone())
+        Some(apply_home_country(
+            &best_entry.name,
+            &best_entry.country_code,
+        ))
     }
 }
