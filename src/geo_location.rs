@@ -372,10 +372,8 @@ fn get_city_index() -> Option<&'static CityIndex> {
 }
 
 // Single-flight via tokio::sync::Mutex + double-checked locking. First caller
-// holds the mutex while doing web::block(load_city_index) (single R-tree over
-// all cities; the former two-tree layout measured ~630 MB steady for 235k
-// entries); concurrent callers await the mutex, re-check CITY_INDEX, and reuse
-// the winner's index.
+// holds the mutex while doing web::block(load_city_index); concurrent callers
+// await the mutex, re-check CITY_INDEX, and reuse the winner's index.
 async fn ensure_city_index() -> Option<&'static CityIndex> {
     if let Some(opt) = CITY_INDEX.get() {
         return opt.as_ref();
