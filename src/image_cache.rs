@@ -1,5 +1,6 @@
 use parking_lot::Mutex;
 use std::{
+    collections::HashSet,
     fs, io,
     path::{Path, PathBuf},
     time::SystemTime,
@@ -73,17 +74,27 @@ pub fn put(cache_dir: &Path, key: &str, data: &[u8]) -> io::Result<()> {
     evict_if_needed(cache_dir);
     Ok(())
 }
-
-/// Clears all files in the cache directory.
-/// Thread-safe; returns `Ok(())` if the directory does not exist.
-pub fn clear(cache_dir: &Path) -> io::Result<()> {
+/// Removes cached entries whose resource id is not in `keep_ids`.
+/// Cache keys are `{id}_{width}_{height}.jpg`; the id is the part before
+/// the first '_'. Files without '_' or with invalid keys are kept (the LRU
+/// bounds in `put` still apply to them).
+/// Thread-safe via the global mutex; returns `Ok(())` if the directory does not exist.
+pub fn retain(cache_dir: &Path, keep_ids: &HashSet<String>) -> io::Result<()> {
     let _guard = CACHE_MUTEX.lock();
-    if !cache_dir.exists() {
+    let Ok(rd) = fs::read_dir(cache_dir) else {
         return Ok(());
-    }
-    for entry in fs::read_dir(cache_dir)? {
-        let entry = entry?;
-        let _ = fs::remove_file(entry.path());
+    };
+    for entry in rd.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.starts_with(".tmp-") || !is_valid_key(&name) {
+            continue;
+        }
+        let Some((id, _)) = name.split_once('_') else {
+            continue;
+        };
+        if !keep_ids.contains(id) {
+            let _ = fs::remove_file(entry.path());
+        }
     }
     Ok(())
 }
@@ -216,5 +227,24 @@ mod tests {
         // THEN no corruption occurred and all entries are present
         assert_eq!(count, 20);
         assert_eq!(bytes, 20 * 100);
+    }
+    #[test]
+    fn retain_removes_only_unknown_ids() {
+        // GIVEN a cache with entries for kept and removed ids
+        let dir = tempfile::tempdir().unwrap();
+        let cache = dir.path().join("cache");
+        fs::create_dir_all(&cache).unwrap();
+        put(&cache, "keep1_10_10.jpg", b"a").unwrap();
+        put(&cache, "keep1_0_0.jpg", b"b").unwrap();
+        put(&cache, "gone9_10_10.jpg", b"c").unwrap();
+
+        // WHEN retaining only keep1
+        let keep: std::collections::HashSet<String> = ["keep1".to_string()].into_iter().collect();
+        retain(&cache, &keep).unwrap();
+
+        // THEN kept entries survive and unknown ids are removed
+        assert!(get(&cache, "keep1_10_10.jpg").is_some());
+        assert!(get(&cache, "keep1_0_0.jpg").is_some());
+        assert_eq!(get(&cache, "gone9_10_10.jpg"), None);
     }
 }
