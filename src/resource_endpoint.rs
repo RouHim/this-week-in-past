@@ -112,10 +112,15 @@ pub async fn get_this_week_resource_image(
     let cache_key = format!("{}_0_0.jpg", safe_id);
     let content_type = image_resource.content_type.clone();
     if let Some(cached) = crate::image_cache::get(&cache_dir, &cache_key) {
-        return HttpResponse::Ok().content_type(content_type).body(cached);
+        if bytes_match_content_type(&cached, &content_type) {
+            return HttpResponse::Ok()
+                .content_type(content_type.clone())
+                .body(cached);
+        }
+        // Stale entry from older code (re-encoded JPEG) under the same key:
+        // drop it so the miss path below regenerates correct bytes.
+        let _ = fs::remove_file(cache_dir.join(&cache_key));
     }
-
-    // 0x0 requests the original file: serve bytes directly without decode.
     let resource_data = fs::read(&image_resource.path).ok();
 
     if let Some(resource_data) = resource_data {
@@ -270,4 +275,54 @@ pub async fn get_all_hidden_resources(resource_store: web::Data<ResourceStore>) 
     HttpResponse::Ok()
         .content_type(CONTENT_TYPE_APPLICATION_JSON)
         .body(serde_json::to_string(&hidden_ids).unwrap())
+}
+/// Returns true when the leading magic bytes match the claimed image content type.
+/// Guards caches shared across code versions (e.g. week/image entries written as
+/// re-encoded JPEGs by older code) against serving mismatched bodies.
+fn bytes_match_content_type(bytes: &[u8], content_type: &str) -> bool {
+    match content_type {
+        "image/jpeg" => bytes.starts_with(&[0xFF, 0xD8]),
+        "image/png" => bytes.starts_with(&[0x89, b'P', b'N', b'G']),
+        "image/gif" => bytes.starts_with(b"GIF"),
+        "image/webp" => bytes.len() > 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP",
+        "image/bmp" => bytes.starts_with(b"BM"),
+        _ => true,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn jpeg_magic_matches_jpeg_content_type() {
+        // GIVEN JPEG magic bytes with a JPEG content type
+        // WHEN checking the match
+        // THEN it matches, while PNG bytes do not
+        assert!(bytes_match_content_type(&[0xFF, 0xD8, 0xFF], "image/jpeg"));
+        assert!(!bytes_match_content_type(
+            &[0x89, b'P', b'N', b'G'],
+            "image/jpeg"
+        ));
+    }
+
+    #[test]
+    fn stale_jpeg_entry_mismatches_png_content_type() {
+        // GIVEN re-encoded JPEG bytes from older code with a PNG content type
+        // WHEN checking the match
+        // THEN it mismatches so the caller regenerates the entry
+        assert!(!bytes_match_content_type(&[0xFF, 0xD8, 0xFF], "image/png"));
+        assert!(bytes_match_content_type(
+            &[0x89, b'P', b'N', b'G', 0x0D],
+            "image/png"
+        ));
+    }
+
+    #[test]
+    fn unknown_content_type_always_matches() {
+        // GIVEN an unlisted content type
+        // WHEN checking any bytes
+        // THEN it matches (no false evictions)
+        assert!(bytes_match_content_type(&[], "image/svg+xml"));
+    }
 }
