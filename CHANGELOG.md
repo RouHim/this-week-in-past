@@ -1,3 +1,12 @@
+## [2.3.2](https://github.com/RouHim/this-week-in-past/compare/2.3.1...2.3.2) (2026-09-08)
+
+
+### Performance Improvements
+
+* halve image-resize memory with thumbnail, serve week image original ([#213](https://github.com/RouHim/this-week-in-past/issues/213)) ([698e481](https://github.com/RouHim/this-week-in-past/commit/698e48176fdb3f4a788dd4c5fe1ac68471e0cd68))
+* resolve district parents from single city tree ([#214](https://github.com/RouHim/this-week-in-past/issues/214)) ([358204a](https://github.com/RouHim/this-week-in-past/commit/358204abdb62797431cf6ff84283b3510e88153c))
+* retain warm image cache across re-indexes ([#215](https://github.com/RouHim/this-week-in-past/issues/215)) ([580af4c](https://github.com/RouHim/this-week-in-past/commit/580af4cfffe3858dc3a6d253534e359c9f219c60))
+
 ## [2.3.1](https://github.com/RouHim/this-week-in-past/compare/2.3.0...2.3.1) (2026-09-06)
 
 
