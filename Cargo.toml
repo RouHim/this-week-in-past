@@ -34,7 +34,7 @@ parking_lot = "0.12"
 rusqlite_migration = { version = "2.6.0", features = ["from-directory"] }
 include_dir = "0.7.4" # explicit for clarity; also transitive via from-directory, keep pinned
 # rstar Euclidean-only; geo_location.rs compensates via k-nearest haversine scan within 50km
-rstar = "0.12"
+rstar = "0.13"
 tokio = { version = "1.53", features = ["sync"] }
 
 [target.'cfg(target_env = "musl")'.dependencies]
