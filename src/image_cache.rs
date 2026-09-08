@@ -75,9 +75,10 @@ pub fn put(cache_dir: &Path, key: &str, data: &[u8]) -> io::Result<()> {
     Ok(())
 }
 /// Removes cached entries whose resource id is not in `keep_ids`.
-/// Cache keys are `{id}_{width}_{height}.jpg`; the id is the part before
-/// the first '_'. Files without '_' or with invalid keys are kept (the LRU
-/// bounds in `put` still apply to them).
+/// Cache keys are `{id}_{width}_{height}.jpg`; the id is everything before
+/// the trailing `_{width}_{height}.jpg` (parsed from the right, since
+/// sanitized ids may themselves contain '_'). Files of unknown shape or with
+/// invalid keys are kept (the LRU bounds in `put` still apply to them).
 /// Thread-safe via the global mutex; returns `Ok(())` if the directory does not exist.
 pub fn retain(cache_dir: &Path, keep_ids: &HashSet<String>) -> io::Result<()> {
     let _guard = CACHE_MUTEX.lock();
@@ -89,7 +90,7 @@ pub fn retain(cache_dir: &Path, keep_ids: &HashSet<String>) -> io::Result<()> {
         if name.starts_with(".tmp-") || !is_valid_key(&name) {
             continue;
         }
-        let Some((id, _)) = name.split_once('_') else {
+        let Some(id) = cache_key_id(&name) else {
             continue;
         };
         if !keep_ids.contains(id) {
@@ -97,6 +98,21 @@ pub fn retain(cache_dir: &Path, keep_ids: &HashSet<String>) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+/// Extracts the resource id from a `{id}_{width}_{height}.jpg` cache key.
+/// Returns `None` for keys of unknown shape, which callers keep.
+fn cache_key_id(key: &str) -> Option<&str> {
+    let base = key.strip_suffix(".jpg")?;
+    let (rest, height) = base.rsplit_once('_')?;
+    let (id, width) = rest.rsplit_once('_')?;
+    if id.is_empty()
+        || !width.chars().all(|c| c.is_ascii_digit())
+        || !height.chars().all(|c| c.is_ascii_digit())
+    {
+        return None;
+    }
+    Some(id)
 }
 
 /// Returns cache statistics as `(file_count, total_bytes)`, skipping `.tmp-` files.
@@ -246,5 +262,24 @@ mod tests {
         assert!(get(&cache, "keep1_10_10.jpg").is_some());
         assert!(get(&cache, "keep1_0_0.jpg").is_some());
         assert_eq!(get(&cache, "gone9_10_10.jpg"), None);
+    }
+    #[test]
+    fn retain_parses_id_from_right_for_underscored_ids() {
+        // GIVEN entries with '_' inside the id and one of unknown shape
+        let dir = tempfile::tempdir().unwrap();
+        let cache = dir.path().join("cache");
+        fs::create_dir_all(&cache).unwrap();
+        put(&cache, "we_ird_10_10.jpg", b"a").unwrap();
+        put(&cache, "plain_10_10.jpg", b"b").unwrap();
+        fs::write(cache.join("oddname.jpg"), b"c").unwrap();
+
+        // WHEN retaining only the underscored id
+        let keep: std::collections::HashSet<String> = ["we_ird".to_string()].into_iter().collect();
+        retain(&cache, &keep).unwrap();
+
+        // THEN the full underscored id is kept, others pruned, unknown kept
+        assert!(get(&cache, "we_ird_10_10.jpg").is_some());
+        assert_eq!(get(&cache, "plain_10_10.jpg"), None);
+        assert!(cache.join("oddname.jpg").exists());
     }
 }
