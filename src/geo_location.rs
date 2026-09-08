@@ -241,7 +241,6 @@ impl PointDistance for CityEntry {
 
 struct CityIndex {
     full_tree: RTree<CityEntry>,
-    parent_tree: RTree<CityEntry>,
 }
 
 fn is_parent_city(entry: &CityEntry) -> bool {
@@ -363,27 +362,9 @@ fn load_city_index() -> Option<CityIndex> {
     }
 
     let len = entries.len();
-    // Split out parent cities so district-to-parent lookup scans a smaller tree.
-    let parent_entries: Vec<CityEntry> = entries
-        .iter()
-        .filter(|e| is_parent_city(e))
-        .cloned()
-        .collect();
-    let district_count = entries.iter().filter(|e| is_district(e)).count();
-    let parent_count = parent_entries.len();
     let full_tree = RTree::bulk_load(entries);
-    let parent_tree = RTree::bulk_load(parent_entries);
-    log::info!(
-        "loaded {} cities ({} parents, {} districts) from {}",
-        len,
-        parent_count,
-        district_count,
-        path
-    );
-    Some(CityIndex {
-        full_tree,
-        parent_tree,
-    })
+    log::info!("loaded {} cities from {}", len, path);
+    Some(CityIndex { full_tree })
 }
 
 fn get_city_index() -> Option<&'static CityIndex> {
@@ -391,9 +372,10 @@ fn get_city_index() -> Option<&'static CityIndex> {
 }
 
 // Single-flight via tokio::sync::Mutex + double-checked locking. First caller
-// holds the mutex while doing web::block(load_city_index) (~60-85 MB transient,
-// steady-state <50 MB as documented above); concurrent callers await the mutex,
-// re-check CITY_INDEX, and reuse the winner's index, preventing N×50 MB burst.
+// holds the mutex while doing web::block(load_city_index) (single R-tree over
+// all cities; the former two-tree layout measured ~630 MB steady for 235k
+// entries); concurrent callers await the mutex, re-check CITY_INDEX, and reuse
+// the winner's index.
 async fn ensure_city_index() -> Option<&'static CityIndex> {
     if let Some(opt) = CITY_INDEX.get() {
         return opt.as_ref();
@@ -475,13 +457,15 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     // product expectations for Scenario 1 (Volksdorf 53.651,10.166 → Hamburg ~12–16km, 1.8M
     // over nearer Ahrensburg ~6km, 33k) and Bayenthal→Köln (~4km) ties, while a strict
     // minimum-distance rule would surprise users in dense metro areas. Candidates are
-    // collected from parent_tree.nearest_neighbor_iter(..).take(100) for each antimeridian
-    // probe, filtered by haversine ≤30km, then deduped by name+coords.
+    // the 100 nearest parents in full_tree per antimeridian probe (filter preserves
+    // Euclidean order, so the set matches the former dedicated parent tree exactly),
+    // filtered by haversine ≤30km, then deduped by name+coords.
     let mut candidates: Vec<(&CityEntry, f64)> = Vec::new();
     for query_point in [point, alt_point] {
         for candidate in index
-            .parent_tree
+            .full_tree
             .nearest_neighbor_iter(&query_point)
+            .filter(|candidate| is_parent_city(candidate))
             .take(100)
         {
             let dist = haversine_km(lat, lon, candidate.lat, candidate.lon);
