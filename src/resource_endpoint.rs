@@ -276,34 +276,37 @@ pub async fn get_all_hidden_resources(resource_store: web::Data<ResourceStore>) 
         .content_type(CONTENT_TYPE_APPLICATION_JSON)
         .body(serde_json::to_string(&hidden_ids).unwrap())
 }
-/// Returns true when the leading magic bytes match the claimed image content type.
-/// Guards caches shared across code versions (e.g. week/image entries written as
-/// re-encoded JPEGs by older code) against serving mismatched bodies.
+/// Returns true when the sniffed image format matches the claimed content type.
+/// Generic over every format the `image` crate supports: the expected format
+/// comes from the MIME type, the actual one from magic-byte sniffing. Unknown
+/// MIME types or unsniffable bytes (e.g. TGA, which has no magic) match, so
+/// nothing is ever evicted on uncertainty. Guards caches shared across code
+/// versions (e.g. week/image entries written as re-encoded JPEGs by older
+/// code) against serving mismatched bodies.
 fn bytes_match_content_type(bytes: &[u8], content_type: &str) -> bool {
-    match content_type {
-        "image/jpeg" => bytes.starts_with(&[0xFF, 0xD8]),
-        "image/png" => bytes.starts_with(&[0x89, b'P', b'N', b'G']),
-        "image/gif" => bytes.starts_with(b"GIF"),
-        "image/webp" => bytes.len() > 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP",
-        "image/bmp" => bytes.starts_with(b"BM"),
-        _ => true,
+    let Some(expected) = image::ImageFormat::from_mime_type(content_type) else {
+        return true;
+    };
+    match image::guess_format(bytes) {
+        Ok(actual) => actual == expected,
+        Err(_) => true,
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const JPEG_MAGIC: &[u8] = &[0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46];
+    const PNG_MAGIC: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
+    const TIFF_MAGIC: &[u8] = &[b'I', b'I', 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00];
 
     #[test]
     fn jpeg_magic_matches_jpeg_content_type() {
         // GIVEN JPEG magic bytes with a JPEG content type
         // WHEN checking the match
         // THEN it matches, while PNG bytes do not
-        assert!(bytes_match_content_type(&[0xFF, 0xD8, 0xFF], "image/jpeg"));
-        assert!(!bytes_match_content_type(
-            &[0x89, b'P', b'N', b'G'],
-            "image/jpeg"
-        ));
+        assert!(bytes_match_content_type(JPEG_MAGIC, "image/jpeg"));
+        assert!(!bytes_match_content_type(PNG_MAGIC, "image/jpeg"));
     }
 
     #[test]
@@ -311,11 +314,17 @@ mod tests {
         // GIVEN re-encoded JPEG bytes from older code with a PNG content type
         // WHEN checking the match
         // THEN it mismatches so the caller regenerates the entry
-        assert!(!bytes_match_content_type(&[0xFF, 0xD8, 0xFF], "image/png"));
-        assert!(bytes_match_content_type(
-            &[0x89, b'P', b'N', b'G', 0x0D],
-            "image/png"
-        ));
+        assert!(!bytes_match_content_type(JPEG_MAGIC, "image/png"));
+        assert!(bytes_match_content_type(PNG_MAGIC, "image/png"));
+    }
+
+    #[test]
+    fn uncovered_format_matches_generically() {
+        // GIVEN TIFF magic (no hardcoded branch ever covered TIFF)
+        // WHEN checking against tiff and png content types
+        // THEN sniffing decides without per-format code
+        assert!(bytes_match_content_type(TIFF_MAGIC, "image/tiff"));
+        assert!(!bytes_match_content_type(TIFF_MAGIC, "image/png"));
     }
 
     #[test]
