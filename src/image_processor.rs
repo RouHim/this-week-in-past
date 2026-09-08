@@ -1,7 +1,6 @@
 use std::io::Cursor;
 
 use image::codecs::jpeg::JpegEncoder;
-use image::imageops::FilterType;
 use image::ImageReader;
 use serde::{Deserialize, Serialize};
 
@@ -58,7 +57,7 @@ pub fn adjust_image(
     };
 
     image = if display_height > 0 && display_width > 0 {
-        image.resize(display_width, display_height, FilterType::Triangle)
+        image.thumbnail(display_width, display_height)
     } else {
         image
     };

@@ -110,29 +110,18 @@ pub async fn get_this_week_resource_image(
     );
     let safe_id = sanitize_cache_key(&image_resource.id);
     let cache_key = format!("{}_0_0.jpg", safe_id);
+    let content_type = image_resource.content_type.clone();
     if let Some(cached) = crate::image_cache::get(&cache_dir, &cache_key) {
-        return HttpResponse::Ok()
-            .content_type(CONTENT_TYPE_IMAGE_JPEG)
-            .body(cached);
+        return HttpResponse::Ok().content_type(content_type).body(cached);
     }
 
-    // Read the image data from the file system and adjust the image to the display
-    let resource_data = fs::read(&image_resource.path)
-        .ok()
-        .and_then(|resource_data| {
-            image_processor::adjust_image(
-                image_resource.path,
-                resource_data,
-                0,
-                0,
-                image_resource.orientation,
-            )
-        });
+    // 0x0 requests the original file: serve bytes directly without decode.
+    let resource_data = fs::read(&image_resource.path).ok();
 
     if let Some(resource_data) = resource_data {
         let _ = crate::image_cache::put(&cache_dir, &cache_key, &resource_data);
         HttpResponse::Ok()
-            .content_type(CONTENT_TYPE_IMAGE_JPEG)
+            .content_type(content_type)
             .body(resource_data)
     } else {
         HttpResponse::InternalServerError().finish()
