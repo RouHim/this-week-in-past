@@ -56,13 +56,14 @@ pub fn index_resources(resource_reader: ResourceReader, resource_store: Resource
     info!("Purging resources store");
     resource_store.clear_resources();
 
-    info!("Cleanup cache");
+    info!("Pruning image cache entries of removed resources");
     let cache_dir = crate::image_cache::cache_dir(
         &std::env::var("DATA_FOLDER")
             .or_else(|_| std::env::var("CACHE_DIR"))
             .unwrap_or_else(|_| "./data".into()),
     );
-    let _ = crate::image_cache::clear(&cache_dir);
+    let keep_ids: std::collections::HashSet<String> = map.keys().cloned().collect();
+    let _ = crate::image_cache::retain(&cache_dir, &keep_ids);
 
     info!("Inserting new resources");
     resource_store.add_resources(map);
