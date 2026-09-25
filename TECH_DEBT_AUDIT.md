@@ -91,12 +91,12 @@ Deliberate behavior change, measured against the HEAD implementation over all 23
 duplicate dataset positions (identical coordinates), now resolved by population instead of tree order
 (`Pöllauberg` pop 0 → `Unterneuberg` pop 536, `Felben` pop 727 → `Mittersill` pop 1888).
 
-Tests: 18 module tests in `src/city_index.rs` (radius boundary, cell boundaries, antimeridian wrap, poles,
-population ties, malformed rows, 900-city grid invariant) plus the unchanged dataset-backed hierarchy tests
-(`resolve_volksdorf_hierarchical`, `resolve_bayenthal_returns_hierarchical`,
-`resolve_christianshavn_hierarchical`, mid-ocean → `None`). Verification: `cargo fmt --check`,
+Tests: 21 module tests in `src/city_index.rs` (radius boundary in both axes, cell boundaries, antimeridian wrap,
+poles, population ties, malformed and non-finite rows, 900-city grid invariant) plus the unchanged dataset-backed
+hierarchy tests (`resolve_volksdorf_hierarchical`, `resolve_bayenthal_returns_hierarchical`,
+`resolve_christianshavn_hierarchical`, mid-ocean → `None`). Verification: `cargo fmt --all -- --check`,
 `cargo clippy --all-targets --all-features -- -D warnings`, `CITIES500_PATH=./cities500.txt cargo test`
-(91 passed; the one failure is the documented key/network-gated weather test).
+(94 passed; the one failure is the documented key/network-gated weather test).
 
 ## Top 5 remaining
 
