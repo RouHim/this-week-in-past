@@ -6,9 +6,9 @@ use actix_web::web;
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
 use regex::{Captures, Regex};
-use rstar::{PointDistance, RTree, RTreeObject, AABB};
 use serde::{Deserialize, Serialize};
 
+use crate::city_index::CityIndex;
 use crate::country_names::country_name;
 
 /// Struct representing a geo location
@@ -209,52 +209,6 @@ fn apply_home_country(display: &str, photo_country: &str) -> String {
     }
 }
 
-#[derive(Clone)]
-struct CityEntry {
-    name: String,
-    lat: f64,
-    lon: f64,
-    feature_class: String,
-    feature_code: String,
-    country_code: String,
-    population: i64,
-}
-
-impl RTreeObject for CityEntry {
-    type Envelope = AABB<[f64; 2]>;
-
-    fn envelope(&self) -> Self::Envelope {
-        AABB::from_point([self.lon, self.lat])
-    }
-}
-
-impl PointDistance for CityEntry {
-    fn distance_2(&self, point: &[f64; 2]) -> f64 {
-        // Plain Euclidean — must match AABB::distance_2 used for R-tree
-        // internal nodes (rstar contract). Antimeridian wrap is handled
-        // at query time by probing lon±360.
-        let dx = self.lon - point[0];
-        let dy = self.lat - point[1];
-        dx * dx + dy * dy
-    }
-}
-
-struct CityIndex {
-    full_tree: RTree<CityEntry>,
-}
-
-fn is_parent_city(entry: &CityEntry) -> bool {
-    entry.feature_class == "P"
-        && matches!(
-            entry.feature_code.as_str(),
-            "PPL" | "PPLA" | "PPLA2" | "PPLA3" | "PPLA4" | "PPLC" | "PPLG" | "PPLS"
-        )
-}
-
-fn is_district(entry: &CityEntry) -> bool {
-    entry.feature_class == "P" && entry.feature_code == "PPLX"
-}
-
 fn maybe_warn_deprecated() {
     if env::var("BIGDATA_CLOUD_API_KEY").is_ok() {
         DEPRECATION_ONCE.get_or_init(|| {
@@ -265,106 +219,15 @@ fn maybe_warn_deprecated() {
     }
 }
 
-fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
-    const R: f64 = 6371.0088;
-    let dlat = (lat2 - lat1).to_radians();
-    let dlon = (lon2 - lon1).to_radians();
-    let a = (dlat / 2.0).sin().powi(2)
-        + lat1.to_radians().cos() * lat2.to_radians().cos() * (dlon / 2.0).sin().powi(2);
-    let c = 2.0 * a.clamp(0.0, 1.0).sqrt().asin();
-    R * c
-}
-
 fn get_cities500_path() -> String {
     env::var("CITIES500_PATH").unwrap_or_else(|_| CITIES500_PATH.to_string())
 }
 
 fn load_city_index() -> Option<CityIndex> {
     let path = get_cities500_path();
-    let content = match std::fs::read_to_string(&path) {
-        Ok(c) => c,
-        Err(e) => {
-            log::warn!(
-                "cities500 data not found at {}; city resolution disabled: {}",
-                path,
-                e
-            );
-            return None;
-        }
-    };
-
-    let mut entries: Vec<CityEntry> = Vec::new();
-    for (line_no, line) in content.lines().enumerate() {
-        if line.trim().is_empty() {
-            continue;
-        }
-        let cols: Vec<&str> = line.split('\t').collect();
-        if cols.len() < 6 {
-            log::warn!(
-                "skipping malformed cities500 line {}: expected >=6 cols, got {}",
-                line_no + 1,
-                cols.len()
-            );
-            continue;
-        }
-        let name = cols[1].to_string();
-        if name.trim().is_empty() {
-            log::warn!("skipping cities500 line {}: empty name", line_no + 1);
-            continue;
-        }
-        let lat: f64 = match cols[4].parse() {
-            Ok(v) => v,
-            Err(_) => {
-                log::warn!(
-                    "skipping cities500 line {}: invalid latitude '{}'",
-                    line_no + 1,
-                    cols[4]
-                );
-                continue;
-            }
-        };
-        let lon: f64 = match cols[5].parse() {
-            Ok(v) => v,
-            Err(_) => {
-                log::warn!(
-                    "skipping cities500 line {}: invalid longitude '{}'",
-                    line_no + 1,
-                    cols[5]
-                );
-                continue;
-            }
-        };
-        // Extended columns — tolerant parsing, skip incomplete lines.
-        let feature_class = cols.get(6).unwrap_or(&"").trim().to_string();
-        let feature_code = cols.get(7).unwrap_or(&"").trim().to_string();
-        let country_code = cols.get(8).unwrap_or(&"").trim().to_ascii_uppercase();
-        let population: i64 = cols
-            .get(14)
-            .and_then(|s| s.trim().parse::<i64>().ok())
-            .unwrap_or(0);
-        entries.push(CityEntry {
-            name,
-            lat,
-            lon,
-            feature_class,
-            feature_code,
-            country_code,
-            population,
-        });
-    }
-
-    if entries.is_empty() {
-        log::warn!(
-            "cities500 data at {} contained no valid entries; city resolution disabled",
-            path
-        );
-        return None;
-    }
-
-    let len = entries.len();
-    let full_tree = RTree::bulk_load(entries);
-    log::info!("loaded {} cities from {}", len, path);
-    Some(CityIndex { full_tree })
+    let index = CityIndex::load(&path)?;
+    log::info!("loaded {} cities from {}", index.len(), path);
+    Some(index)
 }
 
 fn get_city_index() -> Option<&'static CityIndex> {
@@ -411,110 +274,43 @@ pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     }
 
     let index = ensure_city_index().await?;
-    let lon = geo_location.longitude as f64;
-    let lat = geo_location.latitude as f64;
-    let point = [lon, lat];
-    // Plain Euclidean cannot wrap at the antimeridian. Probe the
-    // wrapped equivalent (lon±360) so a city just across the date
-    // line is found via the second R-tree query; the true nearest
-    // is selected below by haversine (which naturally wraps).
-    let alt_lon = if lon >= 0.0 { lon - 360.0 } else { lon + 360.0 };
-    let alt_point = [alt_lon, lat];
+    let latitude = geo_location.latitude as f64;
+    let longitude = geo_location.longitude as f64;
 
-    // Euclidean ordering diverges from haversine (lon shrinks by cos(lat)),
-    // so the Euclidean-nearest may be outside 50 km while a slightly farther
-    // Euclidean candidate is inside. Scan k nearest and pick the closest
-    // haversine within threshold from both query points.
-    let mut best: Option<(&CityEntry, f64)> = None;
-    for query_point in [point, alt_point] {
-        for candidate in index.full_tree.nearest_neighbor_iter(&query_point).take(20) {
-            let dist = haversine_km(lat, lon, candidate.lat, candidate.lon);
-            if dist <= MAX_DISTANCE_KM {
-                match &best {
-                    Some((_, best_dist)) if dist >= *best_dist => {}
-                    _ => best = Some((candidate, dist)),
-                }
-            }
-        }
+    let nearest = index.nearest_within(latitude, longitude, MAX_DISTANCE_KM)?;
+
+    if !nearest.is_district() {
+        return Some(apply_home_country(nearest.name(), nearest.country_code()));
     }
 
-    let best_entry = match best {
-        Some((entry, _)) => entry,
-        None => return None,
-    };
-
-    if !is_district(best_entry) {
-        return Some(apply_home_country(
-            &best_entry.name,
-            &best_entry.country_code,
-        ));
-    }
-    // District → parent resolution:
-    // Intentionally NOT pure closest-haversine: we pick the most populous city within
-    // MAX_PARENT_DISTANCE_KM (population desc, haversine asc tie-breaker). This matches
-    // product expectations for Scenario 1 (Volksdorf 53.651,10.166 → Hamburg ~12–16km, 1.8M
-    // over nearer Ahrensburg ~6km, 33k) and Bayenthal→Köln (~4km) ties, while a strict
-    // minimum-distance rule would surprise users in dense metro areas. Candidates are
-    // the 100 nearest parents in full_tree per antimeridian probe (filter preserves
-    // Euclidean order, so the set matches the former dedicated parent tree exactly),
-    // filtered by haversine ≤30km, then deduped by name+coords.
-    let mut candidates: Vec<(&CityEntry, f64)> = Vec::new();
-    for query_point in [point, alt_point] {
-        for candidate in index
-            .full_tree
-            .nearest_neighbor_iter(&query_point)
-            .filter(|candidate| is_parent_city(candidate))
-            .take(100)
-        {
-            let dist = haversine_km(lat, lon, candidate.lat, candidate.lon);
-            if dist <= MAX_PARENT_DISTANCE_KM {
-                candidates.push((candidate, dist));
-            }
+    // District → parent resolution: intentionally NOT pure closest-haversine, we pick the most
+    // populous city within MAX_PARENT_DISTANCE_KM (population desc, distance asc tie-breaker).
+    // This matches product expectations (Volksdorf 53.651,10.166 → Hamburg ~12–16 km, 1.8M over
+    // nearer Ahrensburg ~6 km, 33k) and Bayenthal→Köln (~4 km), while a strict minimum-distance
+    // rule would surprise users in dense metro areas.
+    match index.most_populous_parent_within(latitude, longitude, MAX_PARENT_DISTANCE_KM) {
+        Some(parent) => {
+            log::debug!(
+                "district '{}' -> parent '{}' (pop {}, {:.1}km) for {}",
+                nearest.name(),
+                parent.name(),
+                parent.population(),
+                parent.distance_km(),
+                geo_location
+            );
+            Some(apply_home_country(
+                &format!("{}, {}", nearest.name(), parent.name()),
+                parent.country_code(),
+            ))
         }
-    }
-    // Deduplicate by name+coords to avoid double counting from antimeridian probes
-    candidates.sort_by(|a, b| {
-        a.0.name
-            .cmp(&b.0.name)
-            .then_with(|| a.0.lat.to_bits().cmp(&b.0.lat.to_bits()))
-            .then_with(|| a.0.lon.to_bits().cmp(&b.0.lon.to_bits()))
-    });
-    candidates.dedup_by(|a, b| {
-        a.0.name == b.0.name && (a.0.lat - b.0.lat).abs() < 1e-9 && (a.0.lon - b.0.lon).abs() < 1e-9
-    });
-    let best_parent = candidates.into_iter().max_by(|(a, da), (b, db)| {
-        match a.population.cmp(&b.population) {
-            std::cmp::Ordering::Equal => {
-                // smaller distance wins → reverse ordering for max_by
-                db.partial_cmp(da).unwrap_or(std::cmp::Ordering::Equal)
-            }
-            ord => ord,
+        None => {
+            log::debug!(
+                "district '{}' has no parent within {}km for {}",
+                nearest.name(),
+                MAX_PARENT_DISTANCE_KM,
+                geo_location
+            );
+            Some(apply_home_country(nearest.name(), nearest.country_code()))
         }
-    });
-
-    if let Some((parent, dist)) = best_parent {
-        log::debug!(
-            "district '{}' -> parent '{}' (pop {}, {:.1}km) for {}",
-            best_entry.name,
-            parent.name,
-            parent.population,
-            dist,
-            geo_location
-        );
-        Some(apply_home_country(
-            &format!("{}, {}", best_entry.name, parent.name),
-            &parent.country_code,
-        ))
-    } else {
-        log::debug!(
-            "district '{}' has no parent within {}km for {}",
-            best_entry.name,
-            MAX_PARENT_DISTANCE_KM,
-            geo_location
-        );
-        Some(apply_home_country(
-            &best_entry.name,
-            &best_entry.country_code,
-        ))
     }
 }

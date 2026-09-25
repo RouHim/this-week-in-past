@@ -31,6 +31,7 @@ Actix-web HTTP server (Rust 2021, `src/main.rs`) serving a single-page slideshow
 | ERR-2 | Error handling | `src/resource_store.rs:128,248` (`"failed:n"` typo, panic on DB error in request path), `:423` (query errors silently truncate results) | Med | M | NEW | All DB ops `panic!`/`unwrap`; a DB failure inside a request handler kills the request; `execute_query` silently returns partial lists on SQL errors | Return `Result` from store methods used by handlers; fix the typo; log-and-stop on query error |
 | PERF-4 | Performance | `src/resource_store.rs:63,94` (json_each full scan over every resource per week query) | Med | L | NEW | Week/count queries JSON-parse every row with `json_each` — O(N) per slideshow refresh for 90k+ libraries | Denormalize `taken` into a column + index; part of the SPEC-1 territory |
 | CHG-1 | Docs | `.releaserc` (`chore` → patch) + 1305-line `CHANGELOG.md` of near-empty stanzas | Low | S | NEW | Renovate dep bumps generate empty release entries | Group dep bumps with `skip ci` or restrict `chore` release rule; cosmetic |
+| PERF-5 | Performance | `src/geo_location.rs` → `src/city_index.rs`, `Cargo.toml` | High | M | **FIXED 2026-09-24** (issue #219) | City index (235,669 rows, kept for the whole process lifetime) cost ~310 MB RSS: 120-byte rows with four heap strings each, and `RTree::bulk_load` retained oversized buffers through its `Vec::split_off` partitioning (georust/rstar#220, backport request #235 — fixed only in rstar 0.13) | Compact 24-byte rows + one name arena + 0.25° CSR grid; `rstar` removed → 13.4 MB for the whole index |
 | — | Test infra | `src/resource_processor_test.rs`, `src/integration_test_weather_api.rs` | Low | — | REJECTED | 6 tests require live API keys + internet (`BIGDATA_CLOUD_API_KEY`, `OPEN_WEATHER_MAP_API_KEY`) | Deliberate: CI injects both secrets (`build-image.yaml` test job). Local `cargo test` without keys fails these 6 — documented, not a bug |
 | — | Deps | `kamadak-exif` (cargo machete) | — | — | REJECTED | machete flags it unused; false positive — crate lib name is `exif` (`src/exif_reader.rs:2` uses `exif::Exif`) | Ignore |
 
@@ -62,6 +63,40 @@ node --check web-app/script.js → OK
 ```
 
 Live smoke (debug binary, 2-image library): `/api/health` 200; indexing completed (2 resources); image endpoint 200, PNG 10×7; missing metadata → 404; hide/unhide 200/200. Browser (headless Chromium): page loads with zero console errors, image renders through the async config → playlist → image chain, `?SHOW_HIDE_BUTTON=true` URL override honored.
+
+## Fixed since the audit
+
+**PERF-5 — city index memory (issue #219, 2026-09-24).** The offline city index is loaded once per process
+and kept for the whole lifetime. Measured (release, real dataset, 235,669 cities): RSS 5.4 MB → **314.5 MB**
+after the first lookup, of which 282.7 MB is live heap. Breakdown: 41 MB file buffer, 28 MB `Vec<CityEntry>`
+(120 bytes per row) plus ~3 MB for four heap strings per row (918k allocations), and **~220 MB capacity
+over-retention inside `RTree::bulk_load`** — `Vec::split_off` hands the head slab the capacity of the whole
+input buffer, and `size_of::<CityEntry>() == size_of::<RTreeNode<CityEntry>>()` makes Rust's in-place `collect`
+reuse it. Proven by building the identical tree through `insert()` instead (64.5 MB live) and matching upstream
+[georust/rstar#220](https://github.com/georust/rstar/issues/220) / backport request
+[#235](https://github.com/georust/rstar/issues/235) (fixed only in rstar 0.13, still open for 0.12.x).
+
+Replacement — new module `src/city_index.rs`: 24-byte rows (`f32` coordinates, two ASCII country bytes, kind
+enum, name as offset/length into one arena) grouped by a 0.25° lat/lon grid with CSR cell buckets; the file is
+streamed line by line, so the 41 MB buffer is gone as well. Result: **314.5 MB → 18.8 MB RSS** (13.4 MB for the
+whole index), build 180 ms (previously parse 264 ms + `bulk_load` 223 ms), query latency on par
+(p50/p99 7.7 µs/66.9 µs vs 8.5 µs/75.5 µs, standalone harness, all dataset coordinates). `rstar` and its
+transitive deps are gone from `Cargo.lock`.
+
+Deliberate behavior change, measured against the HEAD implementation over all 235,669 dataset coordinates:
+**408 (0.173 %) resolve differently.** The district→parent rule is now what the code comment always claimed —
+"most populous parent city within 30 km" (e.g. `Brandln, Wels` → `Brandln, Linz`, `Zell-Markt, Amstetten` →
+`Zell-Markt, Steyr`); the previous rule took the 100 nearest parents *without* a distance bound and filtered to
+30 km afterwards, so far-away rows consumed ranking slots. 102 of the deltas (0.043 %) are base names at
+duplicate dataset positions (identical coordinates), now resolved by population instead of tree order
+(`Pöllauberg` pop 0 → `Unterneuberg` pop 536, `Felben` pop 727 → `Mittersill` pop 1888).
+
+Tests: 18 module tests in `src/city_index.rs` (radius boundary, cell boundaries, antimeridian wrap, poles,
+population ties, malformed rows, 900-city grid invariant) plus the unchanged dataset-backed hierarchy tests
+(`resolve_volksdorf_hierarchical`, `resolve_bayenthal_returns_hierarchical`,
+`resolve_christianshavn_hierarchical`, mid-ocean → `None`). Verification: `cargo fmt --check`,
+`cargo clippy --all-targets --all-features -- -D warnings`, `CITIES500_PATH=./cities500.txt cargo test`
+(91 passed; the one failure is the documented key/network-gated weather test).
 
 ## Top 5 remaining
 
