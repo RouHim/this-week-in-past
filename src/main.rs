@@ -4,6 +4,7 @@ use actix_web::{middleware, web, App, HttpRequest, HttpResponse, HttpServer};
 use env_logger::Builder;
 use log::{info, warn, LevelFilter};
 
+mod city_index;
 mod config;
 mod config_endpoint;
 mod country_names;
