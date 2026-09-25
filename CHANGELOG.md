@@ -1,3 +1,10 @@
+## [2.3.5](https://github.com/RouHim/this-week-in-past/compare/2.3.4...2.3.5) (2026-09-25)
+
+
+### Bug Fixes
+
+* replace rstar city index with a compact grid ([#220](https://github.com/RouHim/this-week-in-past/issues/220)) ([38f03ff](https://github.com/RouHim/this-week-in-past/commit/38f03fffb7f21c86611f96b71d3ce416aebc5a8f)), closes [#219](https://github.com/RouHim/this-week-in-past/issues/219)
+
 ## [2.3.4](https://github.com/RouHim/this-week-in-past/compare/2.3.3...2.3.4) (2026-09-20)
 
 ## [2.3.3](https://github.com/RouHim/this-week-in-past/compare/2.3.2...2.3.3) (2026-09-13)
