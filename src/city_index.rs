@@ -24,11 +24,22 @@ use log::warn;
 /// quadratically: 0.25° costs ~4 MB of cell offsets, 0.1° already ~26 MB.
 const CELL_DEG: f64 = 0.25;
 
-/// Mean kilometers per degree of latitude (spherical mean, matches the dataset's WGS84 scale).
-const KM_PER_DEG_LAT: f64 = 111.32;
-
 /// Mean Earth radius in kilometers, matching `haversine_km`.
 const EARTH_RADIUS_KM: f64 = 6371.0088;
+
+/// Kilometers per degree of latitude on the sphere [`EARTH_RADIUS_KM`] describes.
+///
+/// Derived rather than hard-coded `111.32`: the candidate box must not be narrower than
+/// the radius `haversine_km` measures, and a single source of truth for the sphere keeps
+/// the two from drifting apart.
+const KM_PER_DEG_LAT: f64 = EARTH_RADIUS_KM * std::f64::consts::PI / 180.0;
+
+/// Slack added to the candidate-box spans, in degrees.
+///
+/// The box must contain every city the radius can reach, while stored coordinates are
+/// `f32` (≤ 4e-6° rounding) and the span arithmetic itself rounds. The margin covers
+/// both, and shifts the scanned range by at most one cell row/column.
+const BOX_SLACK_DEG: f64 = 1e-4;
 
 /// Number of leading tab-separated columns the parser keeps (population is column 14).
 const KEPT_COLUMNS: usize = 15;
@@ -120,8 +131,8 @@ impl CityIndex {
     /// tests that need an index from a literal dataset.
     ///
     /// Tolerates the same malformed input as the previous loader: rows with fewer than six
-    /// columns, empty names, or unparsable coordinates are skipped with a warning, and a
-    /// dataset without any valid row yields `None`.
+    /// columns, empty names, or unparsable or non-finite coordinates are skipped with a
+    /// warning, and a dataset without any valid row yields `None`.
     #[cfg(test)]
     pub fn parse(text: &str) -> Option<CityIndex> {
         let mut builder = Builder::sized_for(text.len() as u64);
@@ -252,7 +263,8 @@ impl CityIndex {
     }
 
     /// Visits every entry whose grid cell overlaps the bounding box of `max_distance_km`
-    /// around the point. The box is a superset of the radius, so callers filter by distance.
+    /// around the point. The box is a strict superset of the radius — both spans come from
+    /// the `haversine_km` sphere plus [`BOX_SLACK_DEG`] — so callers filter by distance.
     fn for_each_candidate<'a>(
         &'a self,
         latitude: f64,
@@ -260,15 +272,19 @@ impl CityIndex {
         max_distance_km: f64,
         visit: &mut impl FnMut(&'a Entry, f64),
     ) {
-        let lat_span = max_distance_km / KM_PER_DEG_LAT;
-        let cos_lat = latitude.to_radians().cos().abs().max(1e-6);
-        let lon_span = (max_distance_km / (KM_PER_DEG_LAT * cos_lat)).min(180.0);
-
+        let lat_span = max_distance_km / KM_PER_DEG_LAT + BOX_SLACK_DEG;
         let min_lat = (latitude - lat_span).max(-90.0);
         let max_lat = (latitude + lat_span).min(90.0);
         if max_lat < -90.0 || min_lat > 90.0 {
             return;
         }
+
+        // A degree of longitude covers fewer kilometers the further the point is from the
+        // equator, so the box's extremal latitude — not the query's — bounds the needed span.
+        let box_lat = min_lat.abs().max(max_lat.abs()).to_radians();
+        let cos_lat = box_lat.cos().abs().max(1e-6);
+        let lon_span =
+            (max_distance_km / (KM_PER_DEG_LAT * cos_lat) + BOX_SLACK_DEG / cos_lat).min(180.0);
 
         let (windows, window_count) = self.longitude_cells(longitude, lon_span);
         for lat_cell in self.lat_cell(min_lat)..=self.lat_cell(max_lat) {
@@ -439,6 +455,13 @@ impl Builder {
             );
             return;
         };
+        if !latitude.is_finite() {
+            warn!(
+                "skipping cities500 line {}: non-finite latitude '{}'",
+                line_number, columns[4]
+            );
+            return;
+        }
         let Ok(longitude) = columns[5].parse::<f64>() else {
             warn!(
                 "skipping cities500 line {}: invalid longitude '{}'",
@@ -446,6 +469,13 @@ impl Builder {
             );
             return;
         };
+        if !longitude.is_finite() {
+            warn!(
+                "skipping cities500 line {}: non-finite longitude '{}'",
+                line_number, columns[5]
+            );
+            return;
+        }
 
         let mut country = [0u8; 2];
         for (slot, byte) in country.iter_mut().zip(columns[8].trim().bytes()) {
@@ -638,6 +668,46 @@ mod tests {
     }
 
     #[test]
+    fn given_city_at_radius_boundary_to_the_north_when_resolving_then_found() {
+        // GIVEN a city 49.999 km due north of the query — 1 m inside a 50 km radius, and in
+        // the latitude cell just above the query's latitude span
+        let query_latitude = -26.94923;
+        let offset_deg = (49.999 / EARTH_RADIUS_KM).to_degrees();
+        let index = index_of(&[city(
+            "Boundary",
+            &(query_latitude + offset_deg).to_string(),
+            "17.1599",
+            "PPL",
+            "1000",
+        )]);
+
+        // WHEN resolving the query point with a 50 km radius
+        let resolved = index
+            .nearest_within(query_latitude, 17.1599, 50.0)
+            .expect("a city 49.999 km away lies within a 50 km radius");
+
+        // THEN the scan reaches it — the box is a strict superset of the radius
+        assert_eq!(resolved.name(), "Boundary");
+        assert!(resolved.distance_km() <= 50.0);
+    }
+
+    #[test]
+    fn given_city_at_radius_boundary_at_higher_latitude_when_resolving_then_found() {
+        // GIVEN a city 2 927 km east of the query but 20° further north, where a longitude
+        // span normalised by the query's own latitude ends ~6° short of it
+        let index = index_of(&[city("Far", "80.0", "60.0", "PPL", "1000")]);
+
+        // WHEN resolving with a 3 000 km radius
+        let resolved = index
+            .nearest_within(60.0, 0.0, 3000.0)
+            .expect("a city 2 927 km away lies within a 3 000 km radius");
+
+        // THEN the span follows the box's highest latitude, not the query latitude
+        assert_eq!(resolved.name(), "Far");
+        assert!(resolved.distance_km() <= 3000.0);
+    }
+
+    #[test]
     fn given_query_near_pole_when_resolving_then_city_found_and_rest_is_none() {
         // GIVEN a city at the North Cape
         let index = index_of(&[city("Nordkapp", "71.17", "25.78", "PPL", "1000")]);
@@ -760,6 +830,26 @@ mod tests {
         assert_eq!(index.len(), 2);
         assert!(index.nearest_within(50.0, 7.0, 50.0).is_some());
         assert!(index.nearest_within(51.0, 7.0, 50.0).is_some());
+    }
+
+    #[test]
+    fn given_non_finite_coordinates_when_parsing_then_row_is_skipped() {
+        // GIVEN a NaN-latitude row ahead of a valid one, plus an infinite-longitude row
+        let index = index_of(&[
+            city("NaNLat", "NaN", "7.0", "PPL", "999999"),
+            city("Valid", "50.0", "7.0", "PPL", "1000"),
+            city("InfLon", "50.1", "inf", "PPL", "1"),
+        ]);
+
+        // WHEN resolving the valid row's position
+        // THEN the non-finite rows are not indexed (a NaN entry wins every distance
+        // comparison while `best` is empty and would be returned with a NaN distance)
+        assert_eq!(index.len(), 1);
+        let resolved = index
+            .nearest_within(50.0, 7.0, 50.0)
+            .expect("the valid row should resolve");
+        assert_eq!(resolved.name(), "Valid");
+        assert!(resolved.distance_km().is_finite());
     }
 
     #[test]
