@@ -93,9 +93,9 @@ duplicate dataset positions (identical coordinates), now resolved by population 
 
 Tests: 21 module tests in `src/city_index.rs` (radius boundary in both axes, cell boundaries, antimeridian wrap,
 poles, population ties, malformed and non-finite rows, 900-city grid invariant) plus the unchanged dataset-backed
-hierarchy tests (`resolve_volksdorf_hierarchical`, `resolve_bayenthal_returns_hierarchical`,
+hierarchy tests (`resolve_volksdorf_hierarchical`, `resolve_koeln_quarter_hierarchical`,
 `resolve_christianshavn_hierarchical`, mid-ocean → `None`). Verification: `cargo fmt --all -- --check`,
-`cargo clippy --all-targets --all-features -- -D warnings`, `CITIES500_PATH=./cities500.txt cargo test`
+`cargo clippy --all-targets --all-features -- -D warnings`, `GEODATA_PATH=$PWD/geodata.txt cargo test`
 (94 passed; the one failure is the documented key/network-gated weather test).
 
 ## Top 5 remaining
