@@ -136,7 +136,7 @@ pub fn from_degrees_minutes_seconds(
 }
 
 // ---------------------------------------------------------------------------
-// Offline city resolution via cities500
+// Offline city resolution via the derived place dataset
 // ---------------------------------------------------------------------------
 
 /// Maximum distance from query point to nearest city for a valid match.
@@ -147,8 +147,8 @@ const MAX_DISTANCE_KM: f64 = 50.0;
 /// Covers Bayenthal→Köln ~4km, Volksdorf→Hamburg ~12km, Christianshavn→København ~2km.
 const MAX_PARENT_DISTANCE_KM: f64 = 30.0;
 
-/// Default path of the cities500 data file inside the container.
-const CITIES500_PATH: &str = "/cities500.txt";
+/// Default path of the derived place dataset inside the container.
+const GEODATA_PATH: &str = "/geodata.txt";
 
 static DEPRECATION_ONCE: OnceLock<()> = OnceLock::new();
 static CITY_INDEX: OnceLock<Option<CityIndex>> = OnceLock::new();
@@ -210,23 +210,29 @@ fn apply_home_country(display: &str, photo_country: &str) -> String {
 }
 
 fn maybe_warn_deprecated() {
-    if env::var("BIGDATA_CLOUD_API_KEY").is_ok() {
-        DEPRECATION_ONCE.get_or_init(|| {
+    // Both deprecation warnings fire at most once per process.
+    DEPRECATION_ONCE.get_or_init(|| {
+        if env::var("BIGDATA_CLOUD_API_KEY").is_ok() {
             log::warn!(
-                "BIGDATA_CLOUD_API_KEY is deprecated and ignored; offline city resolution via cities500 is used. Remove it from compose/env."
+                "BIGDATA_CLOUD_API_KEY is deprecated and ignored; offline city resolution via the derived place dataset is used. Remove it from compose/env."
             );
-        });
-    }
+        }
+        if env::var("CITIES500_PATH").is_ok() {
+            log::warn!(
+                "CITIES500_PATH is no longer used; set GEODATA_PATH to a dataset built by .container/build-geodata.sh (see README)"
+            );
+        }
+    });
 }
 
-fn get_cities500_path() -> String {
-    env::var("CITIES500_PATH").unwrap_or_else(|_| CITIES500_PATH.to_string())
+pub(crate) fn get_geodata_path() -> String {
+    env::var("GEODATA_PATH").unwrap_or_else(|_| GEODATA_PATH.to_string())
 }
 
 fn load_city_index() -> Option<CityIndex> {
-    let path = get_cities500_path();
+    let path = get_geodata_path();
     let index = CityIndex::load(&path)?;
-    log::info!("loaded {} cities from {}", index.len(), path);
+    log::info!("loaded {} places from {}", index.len(), path);
     Some(index)
 }
 
@@ -248,7 +254,7 @@ async fn ensure_city_index() -> Option<&'static CityIndex> {
     let loaded: Option<CityIndex> = match web::block(load_city_index).await {
         Ok(opt) => opt,
         Err(e) => {
-            log::warn!("cities500 load blocked task failed: {}", e);
+            log::warn!("place dataset load blocked task failed: {}", e);
             return None;
         }
     };
@@ -257,7 +263,7 @@ async fn ensure_city_index() -> Option<&'static CityIndex> {
 }
 
 /// Returns the city name for the specified geo location
-/// Resolved offline from the embedded GeoNames cities500 dataset.
+/// Resolved offline from the embedded derived place dataset.
 /// Returns `None` for invalid coordinates or when no city is within `MAX_DISTANCE_KM`.
 pub async fn resolve_city_name(geo_location: GeoLocation) -> Option<String> {
     maybe_warn_deprecated();

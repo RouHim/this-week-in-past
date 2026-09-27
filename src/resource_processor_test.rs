@@ -422,6 +422,36 @@ async fn unset_home_country_shows_no_suffix() {
     );
 }
 
+#[actix_rt::test]
+async fn given_both_paths_set_when_reading_then_geodata_path_wins() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN both the current and the retired dataset variables are set
+    let prev_geodata = std::env::var("GEODATA_PATH").ok();
+    let prev_cities500 = std::env::var("CITIES500_PATH").ok();
+    std::env::set_var("GEODATA_PATH", "/tmp/geodata.txt");
+    std::env::set_var("CITIES500_PATH", "/tmp/cities500.txt");
+
+    // WHEN reading the configured dataset path
+    // THEN GEODATA_PATH wins and the retired CITIES500_PATH is ignored
+    assert_eq!(geo_location::get_geodata_path(), "/tmp/geodata.txt");
+
+    // WHEN neither variable is set
+    std::env::remove_var("GEODATA_PATH");
+    std::env::remove_var("CITIES500_PATH");
+    // THEN the built-in default is used
+    assert_eq!(geo_location::get_geodata_path(), "/geodata.txt");
+
+    // Restore the previous environment
+    match prev_geodata {
+        Some(value) => std::env::set_var("GEODATA_PATH", value),
+        None => std::env::remove_var("GEODATA_PATH"),
+    }
+    match prev_cities500 {
+        Some(value) => std::env::set_var("CITIES500_PATH", value),
+        None => std::env::remove_var("CITIES500_PATH"),
+    }
+}
+
 #[test]
 fn parse_home_country_validation() {
     // GIVEN/WHEN/THEN pure validation without globals

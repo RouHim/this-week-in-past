@@ -1044,7 +1044,7 @@ mod tests {
     #[test]
     fn given_loaded_dataset_when_querying_berlin_then_district_chain_resolves_to_berlin() {
         // GIVEN the real dataset is available (CI downloads it, locally it is opt-in)
-        let Ok(path) = std::env::var("CITIES500_PATH") else {
+        let Ok(path) = std::env::var("GEODATA_PATH") else {
             return;
         };
         let Some(index) = CityIndex::load(&path) else {
