@@ -262,6 +262,15 @@ async fn ensure_city_index() -> Option<&'static CityIndex> {
     get_city_index()
 }
 
+/// Eagerly loads the place dataset at startup.
+///
+/// Emits the `loaded <n> places from <path>` log line before the first request and keeps the
+/// first photo request from paying for the load. Load failures are handled like any lazy load
+/// (logged, `None` index), so a missing or broken dataset does not abort startup.
+pub async fn warm_up_city_index() {
+    let _ = ensure_city_index().await;
+}
+
 /// Returns the city name for the specified geo location
 /// Resolved offline from the embedded derived place dataset.
 /// Returns `None` for invalid coordinates or when no city is within `MAX_DISTANCE_KM`.
