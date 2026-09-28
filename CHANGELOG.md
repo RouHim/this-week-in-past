@@ -1,3 +1,10 @@
+## [3.0.1](https://github.com/RouHim/this-week-in-past/compare/3.0.0...3.0.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* authenticate and harden the release asset upload ([#222](https://github.com/RouHim/this-week-in-past/issues/222)) ([5798ae5](https://github.com/RouHim/this-week-in-past/commit/5798ae58e589897bd2850ca46fc6dda95577336c))
+
 # [3.0.0](https://github.com/RouHim/this-week-in-past/compare/2.3.6...3.0.0) (2026-09-28)
 
 
