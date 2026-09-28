@@ -104,7 +104,7 @@ SLIDESHOW_INTERVAL=60 \
 
 > Since the binary is compiled [completely statically](https://github.com/rust-cross/rust-musl-cross), there are no dependencies on system libraries like glibc.
 
-> **BREAKING CHANGE:** `BIGDATA_CLOUD_API_KEY` is deprecated and ignored since the offline city-resolution migration. Remove it from `docker run -e` / `compose.yaml` / `.env` at your convenience — offline lookup needs no API key or network. `CITIES500_PATH` is no longer read either (one-time `warn!` if it is still set) — use `GEODATA_PATH`. Native execution now requires the one-time download above; container image already bakes `/geodata.txt` (+~17 MB).
+> **BREAKING CHANGE:** `BIGDATA_CLOUD_API_KEY` is deprecated and ignored since the offline city-resolution migration. Remove it from `docker run -e` / `compose.yaml` / `.env` at your convenience — offline lookup needs no API key or network. `CITIES500_PATH` is no longer read: the app refuses to start while it is set, and the error names the variable and `GEODATA_PATH`. Native execution now requires the one-time download above; container image already bakes `/geodata.txt` (+~17 MB).
 
 ## Configuration
 

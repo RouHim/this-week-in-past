@@ -452,33 +452,79 @@ async fn unset_home_country_shows_no_suffix() {
 }
 
 #[actix_rt::test]
-async fn given_both_paths_set_when_reading_then_geodata_path_wins() {
+async fn given_geodata_path_set_when_reading_then_it_is_used_and_default_applies() {
     let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
-    // GIVEN both the current and the retired dataset variables are set
+    // GIVEN the dataset variable is set
     let prev_geodata = std::env::var("GEODATA_PATH").ok();
-    let prev_cities500 = std::env::var("CITIES500_PATH").ok();
     std::env::set_var("GEODATA_PATH", "/tmp/geodata.txt");
-    std::env::set_var("CITIES500_PATH", "/tmp/cities500.txt");
 
     // WHEN reading the configured dataset path
-    // THEN GEODATA_PATH wins and the retired CITIES500_PATH is ignored
-    assert_eq!(geo_location::get_geodata_path(), "/tmp/geodata.txt");
+    let configured = geo_location::get_geodata_path();
 
-    // WHEN neither variable is set
+    // WHEN the variable is unset
     std::env::remove_var("GEODATA_PATH");
-    std::env::remove_var("CITIES500_PATH");
-    // THEN the built-in default is used
-    assert_eq!(geo_location::get_geodata_path(), "/geodata.txt");
+    let default_path = geo_location::get_geodata_path();
 
-    // Restore the previous environment
+    // Restore the previous environment before asserting so a failure cannot leak it
     match prev_geodata {
         Some(value) => std::env::set_var("GEODATA_PATH", value),
         None => std::env::remove_var("GEODATA_PATH"),
     }
+
+    // THEN the variable wins and the built-in default is used otherwise
+    assert_eq!(configured, "/tmp/geodata.txt");
+    assert_eq!(default_path, "/geodata.txt");
+}
+
+#[actix_rt::test]
+async fn given_retired_cities500_path_when_checking_then_error_names_variable_and_replacement() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN the retired dataset variable is still set
+    let prev_cities500 = std::env::var("CITIES500_PATH").ok();
+    std::env::set_var("CITIES500_PATH", "/tmp/cities500.txt");
+
+    // WHEN checking the environment for the retired variable
+    let result = geo_location::check_retired_env();
+
+    // Restore the previous environment before asserting so a failure cannot leak it
     match prev_cities500 {
         Some(value) => std::env::set_var("CITIES500_PATH", value),
         None => std::env::remove_var("CITIES500_PATH"),
     }
+
+    // THEN the check fails with a message naming the variable, its value and the replacement
+    let error = result.expect_err("a set CITIES500_PATH must abort startup");
+    assert!(
+        error.contains("CITIES500_PATH"),
+        "error should name the variable: {error}"
+    );
+    assert!(
+        error.contains("/tmp/cities500.txt"),
+        "error should name the offending value: {error}"
+    );
+    assert!(
+        error.contains("GEODATA_PATH"),
+        "error should name the replacement: {error}"
+    );
+}
+
+#[actix_rt::test]
+async fn given_no_retired_variable_when_checking_then_ok() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN the retired variable is not set
+    let prev_cities500 = std::env::var("CITIES500_PATH").ok();
+    std::env::remove_var("CITIES500_PATH");
+
+    // WHEN checking the environment
+    let result = geo_location::check_retired_env();
+
+    // Restore the previous environment before asserting so a failure cannot leak it
+    if let Some(value) = prev_cities500 {
+        std::env::set_var("CITIES500_PATH", value);
+    }
+
+    // THEN the check passes
+    assert!(result.is_ok(), "unexpected error: {result:?}");
 }
 
 #[test]

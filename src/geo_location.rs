@@ -180,6 +180,27 @@ pub fn init_home_country() {
     }
 }
 
+/// Rejects the retired `CITIES500_PATH` variable.
+///
+/// Returns an error naming the variable, its value and the replacement so
+/// startup fails fast instead of resolving against a dataset the operator did
+/// not configure.
+pub fn check_retired_env() -> Result<(), String> {
+    match env::var("CITIES500_PATH") {
+        Ok(value) => Err(format!(
+            "CITIES500_PATH=\"{value}\" is no longer used; set GEODATA_PATH to a dataset built by .container/build-geodata.sh (see README)"
+        )),
+        Err(_) => Ok(()),
+    }
+}
+
+/// Reads the retired geodata variable once at startup; panics when it is still set.
+pub fn init_geodata_env() {
+    if let Err(e) = check_retired_env() {
+        panic!("{e}");
+    }
+}
+
 fn home_country() -> Option<String> {
     HOME_COUNTRY.read().clone()
 }
@@ -210,16 +231,11 @@ fn apply_home_country(display: &str, photo_country: &str) -> String {
 }
 
 fn maybe_warn_deprecated() {
-    // Both deprecation warnings fire at most once per process.
+    // Fires at most once per process.
     DEPRECATION_ONCE.get_or_init(|| {
         if env::var("BIGDATA_CLOUD_API_KEY").is_ok() {
             log::warn!(
                 "BIGDATA_CLOUD_API_KEY is deprecated and ignored; offline city resolution via the derived place dataset is used. Remove it from compose/env."
-            );
-        }
-        if env::var("CITIES500_PATH").is_ok() {
-            log::warn!(
-                "CITIES500_PATH is no longer used; set GEODATA_PATH to a dataset built by .container/build-geodata.sh (see README)"
             );
         }
     });
