@@ -149,20 +149,47 @@ async fn resolve_nan_and_infinite_returns_none() {
 }
 
 #[actix_rt::test]
-async fn resolve_bayenthal_returns_hierarchical() {
+async fn resolve_longerich_hierarchical() {
     let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
-    // GIVEN Bayenthal district coordinate (approx 50.9049, 6.9606) — PPLX near Köln
+    // GIVEN the photo location from issue #217 (Köln-Longerich, 50.996555/6.9155197)
+    let geo_location = GeoLocation {
+        latitude: 50.996555,
+        longitude: 6.9155197,
+    };
+    // WHEN resolving
+    let city_name = geo_location::resolve_city_name(geo_location).await;
+    // THEN the quarter wins over the 2.96 km distant Ossendorf centroid
+    // (with the old cities500.txt dataset this coordinate resolved to "Ossendorf, Köln")
+    assert_eq!(
+        city_name.expect("expected Longerich/Köln to resolve, got None"),
+        "Longerich, Köln"
+    );
+}
+
+#[actix_rt::test]
+async fn resolve_koeln_quarter_hierarchical() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN a Köln quarter coordinate (approx 50.9049, 6.9606) — PPLX near Köln
     let geo_location = GeoLocation {
         latitude: 50.9049,
         longitude: 6.9606,
     };
     let city_name = geo_location::resolve_city_name(geo_location).await;
-    let name = city_name.expect("expected Bayenthal/Köln to resolve, got None");
-    // Dataset-tolerant: accept hierarchical "Bayenthal, Köln"
-    assert!(name.contains("Köln"), "expected Köln in '{}'", name);
+    let name = city_name.expect("expected a Köln quarter to resolve, got None");
+    // THEN the hierarchical "quarter, Köln" form. The exact quarter depends on the
+    // dataset snapshot (measured with the current snapshot: "Raderberg, Köln"), so
+    // only the hierarchy contract is pinned here.
     assert!(
-        name == "Bayenthal, Köln" || name == "Köln",
-        "unexpected Bayenthal fallback '{}'",
+        name.ends_with(", Köln"),
+        "expected hierarchical '<quarter>, Köln', got '{}'",
+        name
+    );
+    let quarter = name
+        .strip_suffix(", Köln")
+        .expect("checked by ends_with above");
+    assert!(
+        !quarter.is_empty(),
+        "expected a non-empty quarter before ', Köln', got '{}'",
         name
     );
 }
@@ -243,20 +270,21 @@ async fn resolve_district_without_parent_falls_back() {
     // Isolated district fallback: PPLX with no parent within 30km → district alone (no comma).
     // Synthetic CityIndex isolation requires private OnceLock, so we cover fallback
     // via two dataset-tolerant assertions:
-    // 1) Bayenthal (50.9049,6.9606) is hierarchical Bayenthal, Köln — verifies
-    //    district→parent path; dataset-tolerant (falls back to Köln alone).
+    // 1) A Köln quarter (50.9049,6.9606) is hierarchical "<quarter>, Köln" — verifies
+    //    the district→parent path. The quarter name itself is dataset-dependent
+    //    (measured with the current snapshot: "Raderberg, Köln").
     let bay = GeoLocation {
         latitude: 50.9049,
         longitude: 6.9606,
     };
     let name = geo_location::resolve_city_name(bay)
         .await
-        .expect("Bayenthal should resolve");
-    // Dataset-tolerant: hierarchical "Bayenthal, Köln" or
+        .expect("Köln quarter should resolve");
+    // Dataset-tolerant: hierarchical "<quarter>, Köln"
     assert!(name.contains("Köln"), "expected Köln in '{}'", name);
     assert!(
-        name == "Bayenthal, Köln" || name == "Köln",
-        "unexpected Bayenthal fallback '{}'",
+        name.ends_with(", Köln") && !name.trim_end_matches(", Köln").is_empty(),
+        "expected hierarchical '<quarter>, Köln', got '{}'",
         name
     );
     // 2) Remote PPLX fallback: Palm Island (-18.73565,146.57788, AU) is a PPLX
@@ -341,7 +369,7 @@ impl Drop for HomeCountryGuard {
 
 #[actix_rt::test]
 async fn home_country_match_hides_country_suffix() {
-    // GIVEN home Germany and a Bayenthal photo
+    // GIVEN home Germany and a Köln quarter photo
     let _home = HomeCountryGuard::set(Some("DE".to_string())).await;
     let geo_location = GeoLocation {
         latitude: 50.9049,
@@ -350,11 +378,12 @@ async fn home_country_match_hides_country_suffix() {
     // WHEN resolving
     let name = geo_location::resolve_city_name(geo_location)
         .await
-        .expect("Bayenthal should resolve");
-    // THEN hierarchical display with no country suffix (dataset-tolerant)
+        .expect("Köln quarter should resolve");
+    // THEN hierarchical display with no country suffix. The quarter name itself is
+    // dataset-dependent (measured with the current snapshot: "Raderberg, Köln").
     assert!(
-        name == "Bayenthal, Köln" || name == "Köln",
-        "unexpected home display '{}'",
+        name.ends_with(", Köln") && !name.trim_end_matches(", Köln").is_empty(),
+        "expected hierarchical '<quarter>, Köln', got '{}'",
         name
     );
     assert!(!name.contains("Germany"), "home suffix leaked: '{}'", name);
@@ -419,6 +448,112 @@ async fn unset_home_country_shows_no_suffix() {
         name.contains("København") || name.contains("Copenhagen"),
         "expected city without country, got '{}'",
         name
+    );
+}
+
+#[actix_rt::test]
+async fn given_geodata_path_set_when_reading_then_it_is_used_and_default_applies() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN the dataset variable is set
+    let prev_geodata = std::env::var("GEODATA_PATH").ok();
+    std::env::set_var("GEODATA_PATH", "/tmp/geodata.txt");
+
+    // WHEN reading the configured dataset path
+    let configured = geo_location::get_geodata_path();
+
+    // WHEN the variable is unset
+    std::env::remove_var("GEODATA_PATH");
+    let default_path = geo_location::get_geodata_path();
+
+    // Restore the previous environment before asserting so a failure cannot leak it
+    match prev_geodata {
+        Some(value) => std::env::set_var("GEODATA_PATH", value),
+        None => std::env::remove_var("GEODATA_PATH"),
+    }
+
+    // THEN the variable wins and the built-in default is used otherwise
+    assert_eq!(configured, "/tmp/geodata.txt");
+    assert_eq!(default_path, "/geodata.txt");
+}
+
+#[actix_rt::test]
+async fn given_retired_cities500_path_when_checking_then_error_names_variable_and_replacement() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN the retired dataset variable is still set
+    let prev_cities500 = std::env::var("CITIES500_PATH").ok();
+    std::env::set_var("CITIES500_PATH", "/tmp/cities500.txt");
+
+    // WHEN checking the environment for the retired variable
+    let result = geo_location::check_retired_env();
+
+    // Restore the previous environment before asserting so a failure cannot leak it
+    match prev_cities500 {
+        Some(value) => std::env::set_var("CITIES500_PATH", value),
+        None => std::env::remove_var("CITIES500_PATH"),
+    }
+
+    // THEN the check fails with a message naming the variable, its value and the replacement
+    let error = result.expect_err("a set CITIES500_PATH must abort startup");
+    assert!(
+        error.contains("CITIES500_PATH"),
+        "error should name the variable: {error}"
+    );
+    assert!(
+        error.contains("/tmp/cities500.txt"),
+        "error should name the offending value: {error}"
+    );
+    assert!(
+        error.contains("GEODATA_PATH"),
+        "error should name the replacement: {error}"
+    );
+}
+
+#[actix_rt::test]
+async fn given_no_retired_variable_when_checking_then_ok() {
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN the retired variable is not set
+    let prev_cities500 = std::env::var_os("CITIES500_PATH");
+    std::env::remove_var("CITIES500_PATH");
+
+    // WHEN checking the environment
+    let result = geo_location::check_retired_env();
+
+    // Restore the previous environment before asserting so a failure cannot leak it
+    if let Some(value) = prev_cities500 {
+        std::env::set_var("CITIES500_PATH", value);
+    }
+
+    // THEN the check passes
+    assert!(result.is_ok(), "unexpected error: {result:?}");
+}
+
+#[cfg(unix)]
+#[actix_rt::test]
+async fn given_non_unicode_cities500_path_when_checking_then_error() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN the retired variable is set to a value that is not valid UTF-8
+    let prev_cities500 = std::env::var_os("CITIES500_PATH");
+    std::env::set_var(
+        "CITIES500_PATH",
+        std::ffi::OsStr::from_bytes(b"\xff/cities500.txt"),
+    );
+
+    // WHEN checking the environment
+    let result = geo_location::check_retired_env();
+
+    // Restore the previous environment before asserting so a failure cannot leak it
+    match prev_cities500 {
+        Some(value) => std::env::set_var("CITIES500_PATH", value),
+        None => std::env::remove_var("CITIES500_PATH"),
+    }
+
+    // THEN the check still fails and names the variable
+    let error = result.expect_err("any set CITIES500_PATH must abort startup");
+    assert!(
+        error.contains("CITIES500_PATH"),
+        "error should name the variable: {error}"
     );
 }
 

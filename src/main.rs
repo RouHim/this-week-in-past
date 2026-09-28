@@ -55,8 +55,13 @@ async fn main() -> std::io::Result<()> {
         .filter(Some("actix_web::middleware::logger"), LevelFilter::Error)
         .init();
 
+    // Retired geodata variable fails fast here, naming GEODATA_PATH as the replacement.
+    geo_location::init_geodata_env();
     // Home-country display config; invalid HOME_COUNTRY fails fast here.
     geo_location::init_home_country();
+    // Load the place dataset eagerly so the startup log reports it and the first photo
+    // request does not pay for the load.
+    geo_location::warm_up_city_index().await;
     info!(
         "👋 Welcome to this-week-in-past version {}",
         env!("CARGO_PKG_VERSION")

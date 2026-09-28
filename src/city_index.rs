@@ -1,7 +1,9 @@
-//! Compact in-memory city index over the GeoNames `cities500` dataset.
+//! Compact in-memory city index over the derived place dataset.
 //!
-//! The dataset holds ~236k rows and is kept for the whole process lifetime, so the
-//! representation is chosen for footprint rather than convenience:
+//! The dataset is built by `.container/build-geodata.sh` — every GeoNames `cities500` row
+//! plus the `allCountries` PPLX rows, projected to the seven columns this parser reads
+//! behind a `#twip-places-v1` header (~396k rows, ~17 MB). It is held for the whole
+//! process lifetime, so the representation is chosen for footprint rather than convenience:
 //!
 //! * every row is a 24-byte [`Entry`] — coordinates as `f32`, feature class/code reduced
 //!   to a [`kind`](KIND_PARENT), country as two ASCII bytes, and the name kept as an
@@ -10,8 +12,8 @@
 //!   instead of a tree, because the grid is a flat `u32` array per cell: no per-node
 //!   slack and no string allocations per row.
 //!
-//! The whole index is ~24 bytes per city plus the name arena and one `u32` per grid
-//! cell, i.e. ~15 MB for `cities500` (measured: 310 MB before this module existed).
+//! The whole index is ~24 bytes per row plus the name arena and one `u32` per grid
+//! cell, i.e. ~20 MB for the derived dataset (measured: 310 MB before this module existed).
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -41,14 +43,27 @@ const KM_PER_DEG_LAT: f64 = EARTH_RADIUS_KM * std::f64::consts::PI / 180.0;
 /// both, and shifts the scanned range by at most one cell row/column.
 const BOX_SLACK_DEG: f64 = 1e-4;
 
-/// Number of leading tab-separated columns the parser keeps (population is column 14).
-const KEPT_COLUMNS: usize = 15;
+/// Number of tab-separated columns in one derived dataset row.
+const COLUMNS: usize = 7;
 
-/// Observed average row size of `cities500` (columns beyond the ones we read dominate it);
-/// used only to pre-size parser buffers so a 40 MB file does not reallocate repeatedly.
-const BYTES_PER_ROW_ESTIMATE: usize = 176;
+/// Column indices of the derived dataset, as written by `.container/build-geodata.sh`.
+const NAME_COLUMN: usize = 0;
+const LATITUDE_COLUMN: usize = 1;
+const LONGITUDE_COLUMN: usize = 2;
+const FEATURE_CLASS_COLUMN: usize = 3;
+const FEATURE_CODE_COLUMN: usize = 4;
+const COUNTRY_COLUMN: usize = 5;
+const POPULATION_COLUMN: usize = 6;
 
-/// Average name length share of a row (column 2 is all the arena stores).
+/// First field of the dataset's header line; files that do not start with it are not the
+/// derived dataset and are refused instead of being parsed column by column.
+const HEADER_PREFIX: &str = "#twip-places-v1";
+
+/// Observed average row size of the derived dataset; used only to pre-size parser buffers
+/// so a 17 MB file does not reallocate repeatedly.
+const BYTES_PER_ROW_ESTIMATE: usize = 44;
+
+/// Average name length share of a row (the name column is all the arena stores).
 const NAME_BYTES_PER_ROW_ESTIMATE: usize = 12;
 
 /// Usable as a parent city: `P` rows with a populated-place code (`PPL`, `PPLA*`, `PPLC`, …).
@@ -125,30 +140,39 @@ impl CityIndex {
         self.entries.len()
     }
 
-    /// Parses dataset text (tab-separated GeoNames rows) into an index.
+    /// Parses dataset text (the derived tab-separated rows, header line included) into an index.
     ///
     /// Production code streams the file via [`CityIndex::load`]; this entry point exists for
     /// tests that need an index from a literal dataset.
     ///
-    /// Tolerates the same malformed input as the previous loader: rows with fewer than six
-    /// columns, empty names, or unparsable or non-finite coordinates are skipped with a
-    /// warning, and a dataset without any valid row yields `None`.
+    /// Requires the same [`HEADER_PREFIX`] line as the loader. Tolerates the same malformed
+    /// input: rows that are not exactly [`COLUMNS`] wide, or have empty names or unparsable
+    /// or non-finite coordinates, are skipped with a warning, and a dataset without any valid
+    /// row yields `None`.
     #[cfg(test)]
     pub fn parse(text: &str) -> Option<CityIndex> {
+        let mut lines = text.lines();
+        match lines.next() {
+            Some(header) if header.starts_with(HEADER_PREFIX) => {}
+            _ => return None,
+        }
         let mut builder = Builder::sized_for(text.len() as u64);
-        for (index, line) in text.lines().enumerate() {
-            builder.push(line, index + 1);
+        for (index, line) in lines.enumerate() {
+            builder.push(line, index + 2);
         }
         builder.finish()
     }
 
-    /// Loads the dataset from `path`, streaming it line by line (the file is ~40 MB).
+    /// Loads the dataset from `path`, streaming it line by line (the file is ~17 MB).
+    ///
+    /// A file whose first line does not start with [`HEADER_PREFIX`] is refused with one
+    /// warning: it is not the derived dataset this module parses.
     pub fn load(path: &str) -> Option<CityIndex> {
         let file = match File::open(path) {
             Ok(file) => file,
             Err(e) => {
                 warn!(
-                    "cities500 data not found at {}; city resolution disabled: {}",
+                    "place dataset not found at {}; city resolution disabled: {}",
                     path, e
                 );
                 return None;
@@ -156,12 +180,35 @@ impl CityIndex {
         };
         let expected_bytes = file.metadata().map(|meta| meta.len()).unwrap_or(0);
 
+        let mut lines = BufReader::new(file).lines();
+        match lines.next() {
+            Some(Ok(header)) if header.starts_with(HEADER_PREFIX) => {}
+            Some(Ok(_)) => {
+                warn!(
+                    "place dataset at {} does not start with {}; city resolution disabled",
+                    path, HEADER_PREFIX
+                );
+                return None;
+            }
+            Some(Err(e)) => {
+                warn!("place dataset read error at line 1: {}", e);
+                return None;
+            }
+            None => {
+                warn!(
+                    "place dataset at {} is empty; city resolution disabled",
+                    path
+                );
+                return None;
+            }
+        }
+
         let mut builder = Builder::sized_for(expected_bytes);
-        for (index, line) in BufReader::new(file).lines().enumerate() {
+        for (index, line) in lines.enumerate() {
             match line {
-                Ok(line) => builder.push(&line, index + 1),
+                Ok(line) => builder.push(&line, index + 2),
                 Err(e) => {
-                    warn!("cities500 read error at line {}: {}", index + 1, e);
+                    warn!("place dataset read error at line {}: {}", index + 2, e);
                     break;
                 }
             }
@@ -171,7 +218,7 @@ impl CityIndex {
             Some(index) => Some(index),
             None => {
                 warn!(
-                    "cities500 data at {} contained no valid entries; city resolution disabled",
+                    "place dataset at {} contained no valid entries; city resolution disabled",
                     path
                 );
                 None
@@ -426,62 +473,65 @@ impl Builder {
             return;
         }
         let (columns, column_count) = split_row(line);
-        if column_count < 6 {
+        if column_count != COLUMNS {
             warn!(
-                "skipping cities500 line {}: expected >=6 cols, got {}",
-                line_number, column_count
+                "skipping place dataset line {}: expected {} cols, got {}",
+                line_number, COLUMNS, column_count
             );
             return;
         }
 
-        let name = columns[1].trim();
+        let name = columns[NAME_COLUMN].trim();
         if name.is_empty() {
-            warn!("skipping cities500 line {}: empty name", line_number);
+            warn!("skipping place dataset line {}: empty name", line_number);
             return;
         }
         if name.len() > u16::MAX as usize {
             warn!(
-                "skipping cities500 line {}: name longer than {} bytes",
+                "skipping place dataset line {}: name longer than {} bytes",
                 line_number,
                 u16::MAX
             );
             return;
         }
 
-        let Ok(latitude) = columns[4].parse::<f64>() else {
+        let Ok(latitude) = columns[LATITUDE_COLUMN].parse::<f64>() else {
             warn!(
-                "skipping cities500 line {}: invalid latitude '{}'",
-                line_number, columns[4]
+                "skipping place dataset line {}: invalid latitude '{}'",
+                line_number, columns[LATITUDE_COLUMN]
             );
             return;
         };
         if !latitude.is_finite() {
             warn!(
-                "skipping cities500 line {}: non-finite latitude '{}'",
-                line_number, columns[4]
+                "skipping place dataset line {}: non-finite latitude '{}'",
+                line_number, columns[LATITUDE_COLUMN]
             );
             return;
         }
-        let Ok(longitude) = columns[5].parse::<f64>() else {
+        let Ok(longitude) = columns[LONGITUDE_COLUMN].parse::<f64>() else {
             warn!(
-                "skipping cities500 line {}: invalid longitude '{}'",
-                line_number, columns[5]
+                "skipping place dataset line {}: invalid longitude '{}'",
+                line_number, columns[LONGITUDE_COLUMN]
             );
             return;
         };
         if !longitude.is_finite() {
             warn!(
-                "skipping cities500 line {}: non-finite longitude '{}'",
-                line_number, columns[5]
+                "skipping place dataset line {}: non-finite longitude '{}'",
+                line_number, columns[LONGITUDE_COLUMN]
             );
             return;
         }
 
         let mut country = [0u8; 2];
-        for (slot, byte) in country.iter_mut().zip(columns[8].trim().bytes()) {
+        for (slot, byte) in country
+            .iter_mut()
+            .zip(columns[COUNTRY_COLUMN].trim().bytes())
+        {
             *slot = byte.to_ascii_uppercase();
         }
-        let population = columns[14]
+        let population = columns[POPULATION_COLUMN]
             .trim()
             .parse::<i64>()
             .map(|value| value.max(0) as u32)
@@ -493,7 +543,10 @@ impl Builder {
             name_start,
             name_len: name.len() as u16,
             country,
-            kind: kind_of(columns[6].trim(), columns[7].trim()),
+            kind: kind_of(
+                columns[FEATURE_CLASS_COLUMN].trim(),
+                columns[FEATURE_CODE_COLUMN].trim(),
+            ),
             lat: latitude as f32,
             lon: longitude as f32,
             population,
@@ -510,13 +563,13 @@ impl Builder {
     }
 }
 
-/// Splits the leading `KEPT_COLUMNS` columns and reports how many the row has in total.
+/// Splits the leading `COLUMNS` columns and reports how many the row has in total.
 /// Avoids one heap allocation per dataset row.
-fn split_row(line: &str) -> ([&str; KEPT_COLUMNS], usize) {
-    let mut columns = [""; KEPT_COLUMNS];
+fn split_row(line: &str) -> ([&str; COLUMNS], usize) {
+    let mut columns = [""; COLUMNS];
     let mut count = 0;
     for column in line.split('\t') {
-        if count < KEPT_COLUMNS {
+        if count < COLUMNS {
             columns[count] = column;
         }
         count += 1;
@@ -549,7 +602,11 @@ fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
 mod tests {
     use super::*;
 
-    /// Builds a dataset row with population at column 14, mirroring the GeoNames layout.
+    /// Header line written by `.container/build-geodata.sh`; [`index_of`] prepends it.
+    const HEADER: &str = "#twip-places-v1\tname\tlatitude\tlongitude\tfeature_class\t\
+                          feature_code\tcountry_code\tpopulation";
+
+    /// Builds one row of the derived dataset: seven tab-separated columns.
     fn row(
         name: &str,
         latitude: &str,
@@ -559,18 +616,16 @@ mod tests {
         country: &str,
         population: &str,
     ) -> String {
-        let mut columns = [""; KEPT_COLUMNS];
-        columns[0] = "1";
-        columns[1] = name;
-        columns[2] = name;
-        columns[3] = name;
-        columns[4] = latitude;
-        columns[5] = longitude;
-        columns[6] = feature_class;
-        columns[7] = feature_code;
-        columns[8] = country;
-        columns[14] = population;
-        columns.join("\t")
+        [
+            name,
+            latitude,
+            longitude,
+            feature_class,
+            feature_code,
+            country,
+            population,
+        ]
+        .join("\t")
     }
 
     fn city(name: &str, latitude: &str, longitude: &str, code: &str, population: &str) -> String {
@@ -578,7 +633,8 @@ mod tests {
     }
 
     fn index_of(rows: &[String]) -> CityIndex {
-        CityIndex::parse(&rows.join("\n")).expect("test dataset should contain valid rows")
+        let text = format!("{HEADER}\n{}", rows.join("\n"));
+        CityIndex::parse(&text).expect("test dataset should contain valid rows")
     }
 
     #[test]
@@ -853,18 +909,66 @@ mod tests {
     }
 
     #[test]
-    fn given_row_without_extended_columns_when_parsing_then_population_defaults_to_zero() {
-        // GIVEN a six-column row (no feature class/code/country/population)
-        let index = index_of(&["1\tTiny\tTiny\tTiny\t50.0\t7.0".to_string()]);
+    fn given_dataset_without_header_when_parsed_then_none() {
+        // GIVEN an upstream GeoNames row without the derived header
+        let upstream = "2950159\tBerlin\tBerlin\t\t52.52437\t13.41053\tP\tPPLC\tDE\t\t\t\t\
+                        \t3645000\t\t\t\t\t3168";
+
+        // WHEN parsing it as the dataset
+        let index = CityIndex::parse(upstream);
+
+        // THEN parsing yields None (a foreign file is not the derived dataset)
+        assert!(index.is_none(), "a headerless file must be rejected");
+    }
+
+    #[test]
+    fn given_utf8_name_when_parsed_then_preserved() {
+        // GIVEN a row named "Ḩiz̧āyib az Zānah"
+        let index = index_of(&[row(
+            "Ḩiz̧āyib az Zānah",
+            "25.0",
+            "55.0",
+            "P",
+            "PPL",
+            "AE",
+            "100",
+        )]);
+
+        // WHEN resolving it
+        let resolved = index
+            .nearest_within(25.0, 55.0, 50.0)
+            .expect("city should resolve");
+
+        // THEN the resolved name is byte-identical
+        assert_eq!(resolved.name().as_bytes(), "Ḩiz̧āyib az Zānah".as_bytes());
+    }
+
+    #[test]
+    fn given_empty_population_when_parsed_then_population_zero() {
+        // GIVEN a PPLX row with an empty population column
+        let index = index_of(&[row("Dorf", "50.0", "7.0", "P", "PPLX", "DE", "")]);
 
         // WHEN resolving it
         let resolved = index
             .nearest_within(50.0, 7.0, 50.0)
-            .expect("city should resolve");
+            .expect("district row should resolve");
 
-        // THEN it is indexed with empty country and population 0
+        // THEN population() == 0 and the row is still indexed
+        assert_eq!(index.len(), 1);
         assert_eq!(resolved.population(), 0);
-        assert_eq!(resolved.country_code(), "");
+    }
+
+    #[test]
+    fn given_row_with_six_columns_when_parsed_then_skipped() {
+        // GIVEN one valid row and one 6-column row far away
+        let index = index_of(&[
+            city("Valid", "50.0", "7.0", "PPL", "1000"),
+            "Extra\t10.0\t7.0\tP\tPPL\tDE".to_string(),
+        ]);
+
+        // THEN only the valid row is indexed
+        assert_eq!(index.len(), 1);
+        assert!(index.nearest_within(10.0, 7.0, 50.0).is_none());
     }
 
     #[test]
@@ -940,7 +1044,7 @@ mod tests {
     #[test]
     fn given_loaded_dataset_when_querying_berlin_then_district_chain_resolves_to_berlin() {
         // GIVEN the real dataset is available (CI downloads it, locally it is opt-in)
-        let Ok(path) = std::env::var("CITIES500_PATH") else {
+        let Ok(path) = std::env::var("GEODATA_PATH") else {
             return;
         };
         let Some(index) = CityIndex::load(&path) else {

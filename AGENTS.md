@@ -12,8 +12,8 @@ Async only at HTTP edge (actix-web); ingest/cache/geo are blocking/parallel insi
 - Query (async handlers, blocking DB): endpoint → `image_cache::get` (fs hit) else `fs::read` + `image_processor::adjust_image` + `image_cache::put`; SQLite reads via `r2d2` pool (sync methods on `ResourceStore { pool }`).
 - Shared state: two `Clone` structs via `web::Data` (`ResourceStore`, `ResourceReader`); no DI framework — constructor fns (`resource_store::initialize`, `resource_reader::new`).
 - Background: `clokwerk` daily job at 00:05 + immediate `thread::spawn` on boot (`src/scheduler.rs`).
-- Geo (offline): GeoNames `cities500.txt` bulk-loaded into `rstar::RTree` behind `OnceLock` + `tokio::Mutex` single-flight, loaded in `web::block`; `k=20` haversine scan ≤50km, PPLX district → most-populous parent ≤30km as `District, City` (`src/geo_location.rs`).
-- Blocking I/O (`ureq` weather, cities500 load) always in `web::block`; CPU scan uses `rayon`, never async tasks.
+- Geo (offline): the merged GeoNames place dataset (built by `.container/build-geodata.sh`, `#twip-places-v1`, ~396k rows) bulk-loaded into the `src/city_index.rs` grid index (0.25° cells, CSR buckets) behind `OnceLock` + `tokio::Mutex` single-flight, loaded in `web::block`; `k=20` haversine scan ≤50km, PPLX district → most-populous parent ≤30km as `District, City` (`src/geo_location.rs`).
+- Blocking I/O (`ureq` weather, place-dataset load) always in `web::block`; CPU scan uses `rayon`, never async tasks.
 - Config is env-vars only (`src/config.rs` pattern: `env::var(..).unwrap_or(default)`); `RESOURCE_PATHS` panics if missing.
 
 ## Key Directories
@@ -30,22 +30,25 @@ Async only at HTTP edge (actix-web); ingest/cache/geo are blocking/parallel insi
 cargo fmt --all -- --check
 cargo clippy --all-targets
 cargo +nightly rustdoc -- -Z unstable-options --check
-CITIES500_PATH=/tmp/cities500.txt cargo test
+GEODATA_PATH=$PWD/geodata.txt cargo test
 cargo test <name_substring>          # e.g. cargo test week_image
 RESOURCE_PATHS=~/Pictures DATA_FOLDER=./data cargo run
-docker build -f Containerfile -t this-week-in-past .
+docker buildx build -f Containerfile -t this-week-in-past .   # BuildKit required (geodata stage pins --platform=$BUILDPLATFORM)
 docker compose up                    # ~/Pictures:/resources:ro, 8080:8080
 ```
 
-One-time native geo setup (container bakes this to `/cities500.txt`):
+One-time native geo setup (container bakes this to `/geodata.txt`, ~17 MB):
 
 ```bash
-curl -o cities500.zip https://download.geonames.org/export/dump/cities500.zip
-unzip -p cities500.zip cities500.txt > cities500.txt
-CITIES500_PATH=$PWD/cities500.txt cargo test
+curl -fL https://github.com/RouHim/this-week-in-past/releases/latest/download/geodata.txt -o geodata.txt
+# or build it from the upstream dumps (downloads cities500.zip + allCountries.zip once):
+bash .container/build-geodata.sh ./geodata.txt
+GEODATA_PATH=$PWD/geodata.txt cargo test
 ```
 
-Key env vars (`README.md` table is source of truth): `RESOURCE_PATHS` (required, comma-separated), `DATA_FOLDER` (default `./data`, legacy `CACHE_DIR` fallback), `PORT` (default `8080`), `CITIES500_PATH` (default `/cities500.txt`), `SLIDESHOW_INTERVAL=30`, `REFRESH_INTERVAL=360`, `WEATHER_UNIT=metric`, `OPEN_WEATHER_MAP_API_KEY` + `WEATHER_LOCATION=Berlin`.
+Place data: GeoNames `cities500.zip` and `allCountries.zip` — © GeoNames (CC BY 4.0, https://www.geonames.org).
+
+Key env vars (`README.md` table is source of truth): `RESOURCE_PATHS` (required, comma-separated), `DATA_FOLDER` (default `./data`, legacy `CACHE_DIR` fallback), `PORT` (default `8080`), `GEODATA_PATH` (default `/geodata.txt`), `SLIDESHOW_INTERVAL=30`, `REFRESH_INTERVAL=360`, `WEATHER_UNIT=metric`, `OPEN_WEATHER_MAP_API_KEY` + `WEATHER_LOCATION=Berlin`.
 
 ## Code Conventions & Common Patterns
 
@@ -109,7 +112,7 @@ If a function has no call site, delete it — no commented-out scaffolds, no `#[
 - Toolchain: `cargo`, no `rust-toolchain*` / `.cargo/config` — CI pins stable (`minimal` + rustfmt/clippy) and nightly (rustdoc/udeps) via `actions-rs/toolchain@v1` + `Swatinem/rust-cache@v2`.
 - Package manager: `cargo`/`crates.io`; npm only for CI `semantic-release` (Node 24, main branch only).
 - Cross-build: `source .github/workflows/scripts/prep-build-env.sh && build-rust-static-bin <x86_64-musl|aarch64-musl|armv7-musleabihf|arm-musleabihf>` (`messense/rust-musl-cross` docker).
-- Runtime: fully static musl on `scratch` (no glibc); `mimalloc` musl-only; release `panic=abort`, `lto=true`, `codegen-units=1`, `strip=true`. Container needs writable `DATA_FOLDER` (`/data` volume) and read-only `/resources` mount; native run needs `CITIES500_PATH` or geo resolves to `None` with warning.
+- Runtime: fully static musl on `scratch` (no glibc); `mimalloc` musl-only; release `panic=abort`, `lto=true`, `codegen-units=1`, `strip=true`. Container needs writable `DATA_FOLDER` (`/data` volume) and read-only `/resources` mount; native run needs `GEODATA_PATH` or geo resolves to `None` with warning.
 
 ## Testing & QA
 

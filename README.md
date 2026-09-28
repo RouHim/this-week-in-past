@@ -61,7 +61,6 @@ services:
       SLIDESHOW_INTERVAL: 10
 ```
 
-
 ### Native execution
 
 Download the latest release for your system from
@@ -90,15 +89,19 @@ SLIDESHOW_INTERVAL=60 \
 ./this-week-in-past
 ```
 
-> **Offline city lookup (since offline cities500):** For native execution download the GeoNames data once:
+> **Offline city lookup:** For native execution download the derived place dataset once:
 > ```shell
-> curl -fL https://download.geonames.org/export/dump/cities500.zip -o cities500.zip && unzip -p cities500.zip > cities500.txt
+> curl -fL https://github.com/RouHim/this-week-in-past/releases/latest/download/geodata.txt -o geodata.txt
 > ```
-> and run with `CITIES500_PATH=$(pwd)/cities500.txt` (defaults to `/cities500.txt` in the container). Without the file city resolution is disabled with a `warn!` log.
+> or build it from the upstream GeoNames dumps (downloads `cities500.zip` and `allCountries.zip` once, result ~17 MB):
+> ```shell
+> bash .container/build-geodata.sh ./geodata.txt
+> ```
+> and run with `GEODATA_PATH=$(pwd)/geodata.txt` (defaults to `/geodata.txt` in the container). Without the file city resolution is disabled with a `warn!` log.
 
 > Since the binary is compiled [completely statically](https://github.com/rust-cross/rust-musl-cross), there are no dependencies on system libraries like glibc.
 
-> **BREAKING CHANGE:** `BIGDATA_CLOUD_API_KEY` is deprecated and ignored since the offline `cities500` migration. Remove it from `docker run -e` / `compose.yaml` / `.env` at your convenience — offline lookup needs no API key or network. Native execution now requires the one-time download above; container image already bakes `/cities500.txt` (+~10 MB).
+> **BREAKING CHANGE:** `BIGDATA_CLOUD_API_KEY` is deprecated and ignored since the offline city-resolution migration. Remove it from `docker run -e` / `compose.yaml` / `.env` at your convenience — offline lookup needs no API key or network. `CITIES500_PATH` is no longer read: the app refuses to start while it is set, and the error names the variable and `GEODATA_PATH`. Native execution now requires the one-time download above; container image already bakes `/geodata.txt` (+~17 MB).
 
 ## Configuration
 
@@ -112,8 +115,8 @@ All configuration is done via environment variables:
 | SLIDESHOW_INTERVAL         | Interval of the slideshow in seconds                                                                       | `30`                          | x                         |
 | REFRESH_INTERVAL           | Interval how often the page should be reloaded in minutes (triggers a new slideshow playlist)              | `360` (6h)                    |                           |
 | DATE_FORMAT                | Date format of the image taken date (https://docs.rs/chrono/0.4.19/chrono/format/strftime/index.html)      | `%d.%m.%Y`                    |                           |
-| BIGDATA_CLOUD_API_KEY      | Deprecated — ignored; offline GeoNames `cities500.zip` (CC BY 4.0, https://www.geonames.org) is used. Remove from env/compose at your convenience. |                               |                           |
-| CITIES500_PATH             | Path to GeoNames `cities500.txt` for offline city lookup (container bakes to `/cities500.txt`). For native execution, download `https://download.geonames.org/export/dump/cities500.zip`, unzip to `cities500.txt` and set this var. | `/cities500.txt`              |                           |
+| BIGDATA_CLOUD_API_KEY      | Deprecated — ignored; the offline GeoNames place dataset (CC BY 4.0, https://www.geonames.org) is used. Remove from env/compose at your convenience. |                               |                           |
+| GEODATA_PATH               | Path to the derived `#twip-places-v1` place dataset (GeoNames `cities500.zip` + `allCountries.zip`) for offline city/district lookup; the container bakes `/geodata.txt`, native installs fetch or build it (see "Offline city lookup"). | `/geodata.txt`                |                           |
 | HOME_COUNTRY               | Home country ([ISO 3166-1 alpha-2 code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2), e.g. `DE`): same-country photos show no country suffix, foreign photos append the English country name. Unset shows no country suffix; invalid codes fail fast at startup. |                               |                           |
 | WEATHER_ENABLED            | Indicates if weather should be shown in the slideshow                                                      | `false`                       | x                         |
 | WEATHER_LOCATION           | Name of a city                                                                                             | `Berlin`                      |                           |
@@ -188,7 +191,7 @@ The slideshow can be controlled by clicking on invisible zones on the screen. Th
 
 * Compiling static Rust binaries - https://github.com/rust-cross/rust-musl-cross
 * Weather API - https://openweathermap.org/api
-* City data: GeoNames `cities500.zip` — © GeoNames (CC BY 4.0 https://creativecommons.org/licenses/by/4.0/, https://www.geonames.org).
+* Place data: GeoNames `cities500.zip` and `allCountries.zip` (filtered to populated places incl. `PPLX` quarters) — © GeoNames (CC BY 4.0 https://creativecommons.org/licenses/by/4.0/, https://www.geonames.org).
 * IntelliJ IDEA - https://www.jetbrains.com/idea
 * Serving ML at the speed of Rust - https://shvbsle.in/serving-ml-at-the-speed-of-rust
 * The Rust Performance Book - https://nnethercote.github.io/perf-book/#the-rust-performance-book
