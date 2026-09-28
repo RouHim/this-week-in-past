@@ -186,11 +186,12 @@ pub fn init_home_country() {
 /// startup fails fast instead of resolving against a dataset the operator did
 /// not configure.
 pub fn check_retired_env() -> Result<(), String> {
-    match env::var("CITIES500_PATH") {
-        Ok(value) => Err(format!(
-            "CITIES500_PATH=\"{value}\" is no longer used; set GEODATA_PATH to a dataset built by .container/build-geodata.sh (see README)"
+    match env::var_os("CITIES500_PATH") {
+        Some(value) => Err(format!(
+            "CITIES500_PATH=\"{}\" is no longer used; set GEODATA_PATH to a dataset built by .container/build-geodata.sh (see README)",
+            value.to_string_lossy()
         )),
-        Err(_) => Ok(()),
+        None => Ok(()),
     }
 }
 

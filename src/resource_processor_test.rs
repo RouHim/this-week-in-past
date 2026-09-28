@@ -512,7 +512,7 @@ async fn given_retired_cities500_path_when_checking_then_error_names_variable_an
 async fn given_no_retired_variable_when_checking_then_ok() {
     let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN the retired variable is not set
-    let prev_cities500 = std::env::var("CITIES500_PATH").ok();
+    let prev_cities500 = std::env::var_os("CITIES500_PATH");
     std::env::remove_var("CITIES500_PATH");
 
     // WHEN checking the environment
@@ -525,6 +525,36 @@ async fn given_no_retired_variable_when_checking_then_ok() {
 
     // THEN the check passes
     assert!(result.is_ok(), "unexpected error: {result:?}");
+}
+
+#[cfg(unix)]
+#[actix_rt::test]
+async fn given_non_unicode_cities500_path_when_checking_then_error() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let _serial = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN the retired variable is set to a value that is not valid UTF-8
+    let prev_cities500 = std::env::var_os("CITIES500_PATH");
+    std::env::set_var(
+        "CITIES500_PATH",
+        std::ffi::OsStr::from_bytes(b"\xff/cities500.txt"),
+    );
+
+    // WHEN checking the environment
+    let result = geo_location::check_retired_env();
+
+    // Restore the previous environment before asserting so a failure cannot leak it
+    match prev_cities500 {
+        Some(value) => std::env::set_var("CITIES500_PATH", value),
+        None => std::env::remove_var("CITIES500_PATH"),
+    }
+
+    // THEN the check still fails and names the variable
+    let error = result.expect_err("any set CITIES500_PATH must abort startup");
+    assert!(
+        error.contains("CITIES500_PATH"),
+        "error should name the variable: {error}"
+    );
 }
 
 #[test]
