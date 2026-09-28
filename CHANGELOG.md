@@ -1,3 +1,10 @@
+## [3.0.2](https://github.com/RouHim/this-week-in-past/compare/3.0.1...3.0.2) (2026-09-28)
+
+
+### Bug Fixes
+
+* drop the -f short flag next to --fail-with-body ([#223](https://github.com/RouHim/this-week-in-past/issues/223)) ([bcaf344](https://github.com/RouHim/this-week-in-past/commit/bcaf344db70dba58ce509478bd2eb257ee9c3c93)), closes [#222](https://github.com/RouHim/this-week-in-past/issues/222)
+
 ## [3.0.1](https://github.com/RouHim/this-week-in-past/compare/3.0.0...3.0.1) (2026-09-28)
 
 
