@@ -1,3 +1,13 @@
+# [3.0.0](https://github.com/RouHim/this-week-in-past/compare/2.3.6...3.0.0) (2026-09-28)
+
+
+* feat!: resolve quarters missing from the bundled place dataset ([#221](https://github.com/RouHim/this-week-in-past/issues/221)) ([752a112](https://github.com/RouHim/this-week-in-past/commit/752a11293cf7ff08fcdfdb71627c9f753fb1825b)), closes [#218](https://github.com/RouHim/this-week-in-past/issues/218) [#217](https://github.com/RouHim/this-week-in-past/issues/217)
+
+
+### BREAKING CHANGES
+
+* `CITIES500_PATH` is no longer read — the app refuses to start while it is set. Set `GEODATA_PATH` to the dataset built by `.container/build-geodata.sh` (default `/geodata.txt`, baked into the container image).
+
 ## [2.3.6](https://github.com/RouHim/this-week-in-past/compare/2.3.5...2.3.6) (2026-09-27)
 
 ## [2.3.5](https://github.com/RouHim/this-week-in-past/compare/2.3.4...2.3.5) (2026-09-25)
