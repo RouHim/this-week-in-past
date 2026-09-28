@@ -22,7 +22,7 @@ echo "Uploading ${FILE_PATH} to ${NAME}"
 
 # The lookup must be authenticated: unauthenticated api.github.com calls from
 # shared runner IPs hit the rate limit, which yields no id and a 404 upload.
-RELEASE_ID=$(curl -fsS --fail-with-body -H "Authorization: token ${TOKEN}" \
+RELEASE_ID=$(curl -sS --fail-with-body -H "Authorization: token ${TOKEN}" \
   "https://api.github.com/repos/${REPO}/releases/latest" | jq -r '.id')
 if ! [[ "${RELEASE_ID}" =~ ^[0-9]+$ ]]; then
   echo "could not resolve the latest release id of ${REPO} (got '${RELEASE_ID}')" >&2
@@ -31,15 +31,15 @@ fi
 
 # Replace an asset with the same name so re-runs stay idempotent instead of
 # failing with 422 "already_exists".
-EXISTING_ASSET_ID=$(curl -fsS --fail-with-body -H "Authorization: token ${TOKEN}" \
+EXISTING_ASSET_ID=$(curl -sS --fail-with-body -H "Authorization: token ${TOKEN}" \
   "https://api.github.com/repos/${REPO}/releases/${RELEASE_ID}/assets" |
   jq -r --arg name "${NAME}" '.[] | select(.name == $name) | .id')
 if [[ "${EXISTING_ASSET_ID}" =~ ^[0-9]+$ ]]; then
-  curl -fsS --fail-with-body -X DELETE -H "Authorization: token ${TOKEN}" \
+  curl -sS --fail-with-body -X DELETE -H "Authorization: token ${TOKEN}" \
     "https://api.github.com/repos/${REPO}/releases/assets/${EXISTING_ASSET_ID}"
 fi
 
-curl -fsS --fail-with-body -X POST \
+curl -sS --fail-with-body -X POST \
   -H "Content-Type: $(file -b --mime-type "${FILE_PATH}")" \
   -H "Authorization: token ${TOKEN}" \
   -T "${FILE_PATH}" \
