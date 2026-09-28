@@ -61,9 +61,6 @@ services:
       SLIDESHOW_INTERVAL: 10
 ```
 
-> **Building the image locally requires BuildKit/buildx** (`DOCKER_BUILDKIT=1 docker build …` or `docker buildx build …`): the `geodata` stage pins `--platform=$BUILDPLATFORM` because it merges the GeoNames dumps into the target-independent `/geodata.txt`, which the legacy builder cannot parse.
-
-
 ### Native execution
 
 Download the latest release for your system from

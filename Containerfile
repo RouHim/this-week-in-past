@@ -3,6 +3,8 @@
 # merged and validated by .container/build-geodata.sh into ~17 MB raw (~396,100 rows) at /geodata.txt
 # Header: "#twip-places-v1" + name/lat/lon/feature_class/feature_code/country_code/population
 # Final image +~17 MB; pinned alpine for reproducibility, single layer to minimize cache invalidation
+# Pinned to the build platform: the merged file is target-independent, so buildx generates it once
+# for all target images instead of once per platform (three of them under QEMU).
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 FROM --platform=$BUILDPLATFORM docker.io/alpine:3.24 AS geodata
 RUN apk add --no-cache bash curl unzip
