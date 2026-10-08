@@ -1,3 +1,5 @@
+## [3.0.3](https://github.com/RouHim/this-week-in-past/compare/3.0.2...3.0.3) (2026-10-08)
+
 ## [3.0.2](https://github.com/RouHim/this-week-in-past/compare/3.0.1...3.0.2) (2026-09-28)
 
 
