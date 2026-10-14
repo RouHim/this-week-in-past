@@ -1,3 +1,17 @@
+# [4.0.0](https://github.com/RouHim/this-week-in-past/compare/3.0.4...4.0.0) (2026-10-14)
+
+
+* feat!: derive resource ids from the full file path ([#224](https://github.com/RouHim/this-week-in-past/issues/224)) ([1bd3736](https://github.com/RouHim/this-week-in-past/commit/1bd3736228ed9d16f881b5d51d1fba60895e7900))
+
+
+### BREAKING CHANGES
+
+* resource ids change format. The first index run after upgrade
+recomputes all ids; previously hidden images become visible again (reset once
+via the V5 migration).
+
+Spec: .spec/resource-id-collision-fix.md
+
 ## [3.0.4](https://github.com/RouHim/this-week-in-past/compare/3.0.3...3.0.4) (2026-10-10)
 
 ## [3.0.3](https://github.com/RouHim/this-week-in-past/compare/3.0.2...3.0.3) (2026-10-08)
