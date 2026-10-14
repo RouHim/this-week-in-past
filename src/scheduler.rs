@@ -91,6 +91,9 @@ pub fn index_resources(resource_reader: ResourceReader, resource_store: Resource
     info!("Inserting new resources");
     resource_store.add_resources(map);
 
+    info!("Removing hidden entries of removed resources");
+    resource_store.retain_hidden();
+
     info!("Cleanup database");
     resource_store.vacuum();
 
