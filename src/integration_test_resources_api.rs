@@ -62,6 +62,95 @@ async fn test_get_all_resources() {
 }
 
 #[actix_web::test]
+async fn test_same_file_name_in_two_folders_both_served() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN two folders each containing one image with the same in-week file name
+    let base_test_dir = create_temp_folder().await;
+    let file_name = format!("IMG_{}.jpg", Local::now().date_naive().format("%Y%m%d"));
+    create_test_image(&base_test_dir, "album_a", &file_name, TEST_JPEG_URL).await;
+    create_test_image(&base_test_dir, "album_b", &file_name, TEST_JPEG_URL).await;
+
+    // AND a running this-week-in-past instance
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+
+    // WHEN requesting all resources and the week metadata
+    let all_ids: Vec<String> = test::call_and_read_body_json(
+        &app_server,
+        TestRequest::get().uri("/api/resources").to_request(),
+    )
+    .await;
+    let week: Vec<ImageResource> = test::call_and_read_body_json(
+        &app_server,
+        TestRequest::get()
+            .uri("/api/resources/week/metadata")
+            .to_request(),
+    )
+    .await;
+
+    // THEN both files are indexed with distinct ids and both appear in the week metadata
+    assert_eq!(all_ids.len(), 2);
+    assert_ne!(all_ids[0], all_ids[1]);
+    assert_eq!(week.len(), 2);
+    assert!(week.iter().any(|r| r.path.contains("album_a")));
+    assert!(week.iter().any(|r| r.path.contains("album_b")));
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
+async fn test_reindex_keeps_resource_ids_stable() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN an indexed folder with one image
+    let base_test_dir = create_temp_folder().await;
+    create_test_image(&base_test_dir, "sub1", "test_image_1.jpg", TEST_JPEG_URL).await;
+    let reader = resource_reader::new(base_test_dir.to_str().unwrap());
+    let store = resource_store::initialize(base_test_dir.to_str().unwrap());
+    scheduler::index_resources(reader.clone(), store.clone());
+
+    // WHEN indexing the unchanged folder a second time
+    let mut first: Vec<String> = store.get_all_resource_ids();
+    scheduler::index_resources(reader.clone(), store.clone());
+    let mut second: Vec<String> = store.get_all_resource_ids();
+
+    // THEN the id set is identical
+    first.sort();
+    second.sort();
+    assert_eq!(first, second);
+    assert_eq!(first.len(), 1);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
+async fn test_reindex_keeps_hidden_selection() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN an indexed folder with one image and a hidden selection for it
+    let base_test_dir = create_temp_folder().await;
+    let image_path =
+        create_test_image(&base_test_dir, "sub1", "test_image_1.jpg", TEST_JPEG_URL).await;
+    let reader = resource_reader::new(base_test_dir.to_str().unwrap());
+    let store = resource_store::initialize(base_test_dir.to_str().unwrap());
+    scheduler::index_resources(reader.clone(), store.clone());
+    let id = utils::md5(&image_path);
+    store.add_hidden(&id);
+
+    // WHEN the file is temporarily missing during an index run and returns afterwards
+    let moved_path = format!("{image_path}.bak");
+    fs::rename(&image_path, &moved_path).unwrap();
+    scheduler::index_resources(reader.clone(), store.clone());
+    fs::rename(&moved_path, &image_path).unwrap();
+    scheduler::index_resources(reader.clone(), store.clone());
+
+    // THEN the hidden selection survives the transient absence
+    assert_eq!(store.get_all_hidden(), vec![id]);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
 async fn test_this_week_in_past_resources_end_range() {
     let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is one in week range
@@ -370,7 +459,7 @@ async fn test_get_resource_metadata_by_id() {
     let test_image_1 =
         create_test_image(&base_test_dir, "", "test_image_1.jpg", TEST_JPEG_EXIF_URL).await;
     let test_image_1_id = utils::md5(test_image_1.as_str());
-    let test_image_1_path = format!("{}/{}", base_test_dir.to_str().unwrap(), test_image_1);
+    let test_image_1_path = test_image_1.clone();
 
     // AND a running this-week-in-past instance
     let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
@@ -672,7 +761,7 @@ async fn create_test_image(
         )
     });
 
-    file_name.to_string()
+    test_image_path.to_str().unwrap().to_string()
 }
 
 /// Removes the test folder after test run
@@ -729,7 +818,7 @@ async fn test_image_endpoint_serves_jpeg_and_caches_on_filesystem() {
     let base = create_temp_folder().await;
     env::set_var("DATA_FOLDER", base.to_str().unwrap());
     create_local_image_file(&base, "test_image_fs.jpg");
-    let id = utils::md5("test_image_fs.jpg");
+    let id = utils::md5(base.join("test_image_fs.jpg").to_str().unwrap());
     let app = test::init_service(build_app(base.to_str().unwrap())).await;
 
     // WHEN requesting the image at 100x100 for the first time
@@ -793,7 +882,7 @@ async fn test_three_concurrent_clients_no_pool_timeout() {
         let app = app.clone();
         let idx = n % 20;
         let file_name = format!("concurrent_{}.jpg", idx);
-        let id = utils::md5(&file_name);
+        let id = utils::md5(base.join(&file_name).to_str().unwrap());
         let handle = actix_rt::spawn(async move {
             let req = TestRequest::get()
                 .uri(&format!("/api/resources/{}/10/10", id))
@@ -858,7 +947,7 @@ async fn test_week_image_endpoint_filesystem_cache() {
     let app = test::init_service(build_app(base.to_str().unwrap())).await;
     {
         let store = resource_store::initialize(base.to_str().unwrap());
-        let id = utils::md5("week_image_test.jpg");
+        let id = utils::md5(base.join("week_image_test.jpg").to_str().unwrap());
         if let Some(val) = store.get_resource(&id) {
             let mut v: serde_json::Value = serde_json::from_str(&val).unwrap();
             let now_str = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();

@@ -324,7 +324,9 @@ fn migration_04_drops_geo_cache_in_resource_processor_context() {
     assert!(crate::resource_store::MIGRATIONS.validate().is_ok());
     let mut conn = Connection::open_in_memory().unwrap();
     conn.execute_batch(
-        "CREATE TABLE geo_location_cache (id TEXT PRIMARY KEY, value TEXT); PRAGMA user_version=3;",
+        "CREATE TABLE geo_location_cache (id TEXT PRIMARY KEY, value TEXT);
+         CREATE TABLE hidden (id TEXT PRIMARY KEY);
+         PRAGMA user_version=3;",
     )
     .unwrap();
     crate::resource_store::MIGRATIONS
