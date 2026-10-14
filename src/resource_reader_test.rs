@@ -35,6 +35,37 @@ fn read_dir_recursive() {
 }
 
 #[test]
+fn read_same_file_name_in_different_folders_gets_distinct_ids() {
+    // GIVEN two sibling folders and a nested folder, each containing "Picture 001.jpg"
+    let base_test_dir = create_temp_folder();
+    let path_a = create_test_image(&base_test_dir, "album_a", "Picture 001.jpg", TEST_JPEG_URL);
+    let path_b = create_test_image(&base_test_dir, "album_b", "Picture 001.jpg", TEST_JPEG_URL);
+    let path_c = create_test_image(
+        &base_test_dir,
+        "album_a/nested",
+        "Picture 001.jpg",
+        TEST_JPEG_URL,
+    );
+
+    // WHEN reading resources from a folder
+    let resources_read = filesystem_client::read_files_recursive(&base_test_dir);
+
+    // THEN all three resources exist with ids derived from their full paths
+    let mut actual: Vec<String> = resources_read.iter().map(|r| r.id.clone()).collect();
+    actual.sort();
+    let mut expected = vec![
+        utils::md5(&path_a),
+        utils::md5(&path_b),
+        utils::md5(&path_c),
+    ];
+    expected.sort();
+    assert_eq!(actual, expected);
+
+    // cleanup
+    cleanup(&base_test_dir);
+}
+
+#[test]
 fn read_jpg_image_resource() {
     // GIVEN is a folder with one jpg image
     let base_test_dir = create_temp_folder();
@@ -46,7 +77,7 @@ fn read_jpg_image_resource() {
 
     // THEN the resource info should be correct
     assert_eq!(resources_read.len(), 1);
-    assert_eq!(resources_read[0].id, utils::md5(test_image_name));
+    assert_eq!(resources_read[0].id, utils::md5(&test_image_1_path));
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/jpeg");
     assert_eq!(resources_read[0].name, test_image_name);
@@ -103,7 +134,7 @@ fn read_png_image_resource() {
 
     // THEN the resource info should be correct
     assert_eq!(resources_read.len(), 1);
-    assert_eq!(resources_read[0].id, utils::md5(test_image_name));
+    assert_eq!(resources_read[0].id, utils::md5(&test_image_1_path));
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/png");
     assert_eq!(resources_read[0].name, test_image_name);
@@ -124,7 +155,7 @@ fn read_gif_image_resource() {
 
     // THEN the resource info should be correct
     assert_eq!(resources_read.len(), 1);
-    assert_eq!(resources_read[0].id, utils::md5(test_image_name));
+    assert_eq!(resources_read[0].id, utils::md5(&test_image_1_path));
     assert_eq!(resources_read[0].path, test_image_1_path);
     assert_eq!(resources_read[0].content_type, "image/gif");
     assert_eq!(resources_read[0].name, test_image_name);

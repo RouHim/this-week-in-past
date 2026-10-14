@@ -195,7 +195,7 @@ fn read_resource(file_path: &PathBuf) -> Vec<ImageResource> {
     }
 
     vec![ImageResource {
-        id: utils::md5(file_name),
+        id: utils::md5(absolute_file_path),
         path: absolute_file_path.to_string(),
         content_type: mime_type.to_string(),
         name: file_name.to_string(),
