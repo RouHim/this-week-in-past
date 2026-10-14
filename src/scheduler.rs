@@ -43,20 +43,31 @@ type IdCollisions = Vec<(String, String, String)>;
 /// (`id, first_path, conflicting_path`). An identical path repeated is
 /// deduplicated silently; the last occurrence of an id wins in the map.
 fn collect_resources(resources: &[ImageResource]) -> (HashMap<String, String>, IdCollisions) {
-    let mut map = HashMap::with_capacity(resources.len());
-    let mut paths: HashMap<String, String> = HashMap::new();
-    let mut collisions = Vec::new();
-    for resource in resources {
-        if let Some(seen_path) = paths.insert(resource.id.clone(), resource.path.clone()) {
-            if seen_path != resource.path {
-                collisions.push((resource.id.clone(), seen_path, resource.path.clone()));
-            }
-        }
-        map.insert(
-            resource.id.clone(),
-            serde_json::to_string(resource).unwrap(),
-        );
-    }
+    let map = resources
+        .iter()
+        .map(|resource| {
+            (
+                resource.id.clone(),
+                serde_json::to_string(resource).unwrap(),
+            )
+        })
+        .collect();
+
+    let mut seen_paths: HashMap<&str, &str> = HashMap::new();
+    let collisions = resources
+        .iter()
+        .filter_map(|resource| {
+            let seen_path = seen_paths.insert(resource.id.as_str(), resource.path.as_str())?;
+            (seen_path != resource.path.as_str()).then(|| {
+                (
+                    resource.id.clone(),
+                    seen_path.to_string(),
+                    resource.path.clone(),
+                )
+            })
+        })
+        .collect();
+
     (map, collisions)
 }
 
