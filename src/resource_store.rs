@@ -123,15 +123,6 @@ impl ResourceStore {
         stmt.execute([resource_id]).unwrap();
     }
 
-    /// Removes hidden entries whose id is no longer part of the resource store
-    pub fn retain_hidden(&self) {
-        let connection = self.persistent_file_store_pool.get().unwrap();
-        let mut stmt = connection
-            .prepare("DELETE FROM hidden WHERE id NOT IN (SELECT id FROM resources)")
-            .unwrap();
-        stmt.execute(()).unwrap();
-    }
-
     /// Returns an id list of all resources, including hidden resources
     pub fn get_all_resource_ids(&self) -> Vec<String> {
         let connection = self.persistent_file_store_pool.get().unwrap();
@@ -482,11 +473,11 @@ mod tests {
             })
             .unwrap();
         assert_eq!(taken, Some("2021-03-15T12:00:00".to_string()));
-        // AND user_version advanced to latest (4) — V4 drops geo_location_cache
+        // AND user_version advanced to latest (5) — V4 drops geo_location_cache, V5 resets hidden flags
         let uv: i32 = conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(uv, 4);
+        assert_eq!(uv, 5);
         // AND data_cache dropped by V3 and geo_location_cache dropped by V4
         let cache: i32 = conn
             .query_row(
@@ -520,8 +511,8 @@ mod tests {
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
         assert_eq!(
-            uv, 4,
-            "user_version must equal number of migration files (4)"
+            uv, 5,
+            "user_version must equal number of migration files (5)"
         );
     }
 
@@ -674,15 +665,16 @@ mod tests {
         let uv: i32 = conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(uv, 4);
+        assert_eq!(uv, 5);
         let photo: Option<String> = conn
             .query_row("SELECT value FROM resources WHERE id='photo1'", [], |r| {
                 r.get(0)
             })
             .ok();
         assert!(photo.is_some());
+        // the V5 migration resets hidden selections once (resource ids changed format)
         let hidden: Vec<String> = store.get_all_hidden();
-        assert!(hidden.contains(&"hidden1".to_string()));
+        assert!(hidden.is_empty(), "V5 must reset hidden selections");
         // geo_location_cache is dropped by V4
         let geo_cache: i32 = conn
             .query_row(
@@ -707,24 +699,6 @@ mod tests {
             .unwrap()
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(uv2, 4);
-    }
-
-    #[test]
-    fn retain_hidden_removes_ids_without_resources() {
-        // GIVEN a store with one indexed resource and two hidden ids
-        let dir = tempfile::tempdir().unwrap();
-        let store = crate::resource_store::initialize(dir.path().to_str().unwrap());
-        let mut map = std::collections::HashMap::new();
-        map.insert("current".to_string(), r#"{"id":"current"}"#.to_string());
-        store.add_resources(map);
-        store.add_hidden("current");
-        store.add_hidden("orphan");
-
-        // WHEN retaining hidden ids that still have a resource
-        store.retain_hidden();
-
-        // THEN only the hidden id with a resource remains
-        assert_eq!(store.get_all_hidden(), vec!["current".to_string()]);
+        assert_eq!(uv2, 5);
     }
 }

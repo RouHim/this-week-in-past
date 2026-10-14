@@ -124,6 +124,33 @@ async fn test_reindex_keeps_resource_ids_stable() {
 }
 
 #[actix_web::test]
+async fn test_reindex_keeps_hidden_selection() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN an indexed folder with one image and a hidden selection for it
+    let base_test_dir = create_temp_folder().await;
+    let image_path =
+        create_test_image(&base_test_dir, "sub1", "test_image_1.jpg", TEST_JPEG_URL).await;
+    let reader = resource_reader::new(base_test_dir.to_str().unwrap());
+    let store = resource_store::initialize(base_test_dir.to_str().unwrap());
+    scheduler::index_resources(reader.clone(), store.clone());
+    let id = utils::md5(&image_path);
+    store.add_hidden(&id);
+
+    // WHEN the file is temporarily missing during an index run and returns afterwards
+    let moved_path = format!("{image_path}.bak");
+    fs::rename(&image_path, &moved_path).unwrap();
+    scheduler::index_resources(reader.clone(), store.clone());
+    fs::rename(&moved_path, &image_path).unwrap();
+    scheduler::index_resources(reader.clone(), store.clone());
+
+    // THEN the hidden selection survives the transient absence
+    assert_eq!(store.get_all_hidden(), vec![id]);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
 async fn test_this_week_in_past_resources_end_range() {
     let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is one in week range
