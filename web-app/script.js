@@ -25,6 +25,7 @@ const CONFIG_DEFAULTS = {
     refreshInterval: 360,
     randomSlideshow: false,
     preloadImages: false,
+    debug: false,
 };
 
 let appConfig = {...CONFIG_DEFAULTS};
@@ -58,6 +59,10 @@ async function loadAppConfig() {
 
     appConfig.preloadImages = (await fetchConfigValue('/api/config/preload-images', 'false')) === "true";
 
+    appConfig.debug = urlParams.has('DEBUG')
+        ? urlParams.get('DEBUG') === "true"
+        : (await fetchConfigValue('/api/config/debug', 'false')) === "true";
+
     appConfig.slideshowInterval = urlParams.has('SLIDESHOW_INTERVAL')
         ? parseInt(urlParams.get('SLIDESHOW_INTERVAL'))
         : parseInt(await fetchConfigValue('/api/config/interval/slideshow', '30'));
@@ -77,6 +82,7 @@ window.addEventListener('load', async () => {
     initSlideshow();
     loadWeatherInformation();
     initHideButton();
+    initDebugOverlay();
 
     // Reload page every x minutes
     intervalID = setInterval(() => location.reload(), appConfig.refreshInterval * 60000);
@@ -335,6 +341,12 @@ function setImage(resource_id) {
 
         // At last step, set the current resource id
         current_resource_id = resource_id;
+
+        // A pause during the fade-out above fetched diagnostics for the previous
+        // image; refresh now that the new image is the current one.
+        if (isPaused) {
+            updateDebugOverlay();
+        }
     });
 }
 
@@ -416,6 +428,132 @@ function pauseResumeSlideshow() {
     } else {
         slideshowId = setInterval(slideshowTick, appConfig.slideshowInterval * 1000);
     }
+    updateDebugOverlay();
+}
+
+/**
+ * Shows the diagnostics overlay while paused when DEBUG is enabled.
+ * It captures pointer input so a tap or click anywhere resumes the slideshow.
+ */
+function initDebugOverlay() {
+    document.getElementById("debug-overlay").addEventListener("click", () => {
+        if (isPaused) {
+            pauseResumeSlideshow();
+        }
+    });
+
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && isPaused && appConfig.debug) {
+            pauseResumeSlideshow();
+        }
+    });
+}
+
+/**
+ * Toggles the diagnostics overlay based on the paused state and DEBUG flag.
+ */
+function updateDebugOverlay() {
+    const overlay = document.getElementById("debug-overlay");
+    const shouldShow = appConfig.debug && isPaused;
+
+    document.body.classList.toggle("debug-active", shouldShow);
+    overlay.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+
+    if (shouldShow) {
+        loadDebugInfo(current_resource_id);
+    }
+}
+
+/**
+ * Loads the diagnostics for the specified resource into the overlay.
+ * @param resourceId the id of the currently visible resource
+ */
+async function loadDebugInfo(resourceId) {
+    const relativePathElement = document.getElementById("debug-relative-path");
+    const absolutePathElement = document.getElementById("debug-absolute-path");
+    const fieldsElement = document.getElementById("debug-fields");
+
+    fieldsElement.replaceChildren();
+    absolutePathElement.textContent = "";
+
+    if (!resourceId) {
+        relativePathElement.textContent = "No image loaded";
+        return;
+    }
+
+    relativePathElement.textContent = "Loading diagnostics\u2026";
+
+    try {
+        const response = await fetch(`/api/resources/${resourceId}/debug`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const debug = await response.json();
+        if (!isPaused || current_resource_id !== resourceId) {
+            return;
+        }
+
+        relativePathElement.textContent = debug.relative_path || debug.path;
+        absolutePathElement.textContent = debug.relative_path === debug.path ? "" : debug.path;
+        renderDebugFields(fieldsElement, debug);
+    } catch (error) {
+        if (!isPaused || current_resource_id !== resourceId) {
+            return;
+        }
+        relativePathElement.textContent = "Could not load diagnostics";
+        absolutePathElement.textContent = String(error);
+        console.error("Error loading diagnostics:", error);
+    }
+}
+
+/**
+ * Renders the stored resource metadata as labeled rows.
+ * @param container the definition list element to fill
+ * @param debug the debug response
+ */
+function renderDebugFields(container, debug) {
+    const fields = [
+        ["File name", debug.name],
+        ["Resource ID", debug.id],
+        ["Taken", debug.taken || "not set"],
+        ["Last modified", debug.last_modified || "not set"],
+        ["Size", formatDebugSize(debug.content_length)],
+        ["Content type", debug.content_type],
+        ["Orientation", formatDebugOrientation(debug.orientation)],
+        ["GPS", formatDebugLocation(debug.location)],
+    ];
+
+    fields.forEach(([label, value]) => {
+        const term = document.createElement("dt");
+        term.textContent = label;
+        const description = document.createElement("dd");
+        description.textContent = value;
+        container.append(term, description);
+    });
+}
+
+function formatDebugSize(bytes) {
+    if (typeof bytes !== "number") {
+        return "unknown";
+    }
+    const mebibytes = bytes / (1024 * 1024);
+    return `${mebibytes.toFixed(1)} MiB (${bytes.toLocaleString("en-US")} bytes)`;
+}
+
+function formatDebugOrientation(orientation) {
+    if (!orientation) {
+        return "not set";
+    }
+    const mirrored = orientation.mirror_vertically ? ", mirrored vertically" : "";
+    return `${orientation.rotation}\u00b0 rotation${mirrored}`;
+}
+
+function formatDebugLocation(location) {
+    if (!location) {
+        return "not set";
+    }
+    return `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
 }
 
 /**

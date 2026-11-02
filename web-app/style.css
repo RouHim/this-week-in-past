@@ -101,6 +101,74 @@
 }
 
 /* ========================     */
+/* DEBUG OVERLAY                */
+/* ========================     */
+
+#debug-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    z-index: 10;
+    padding: 5vh 5vw;
+    background: rgba(0, 0, 0, 0.85);
+    color: #FFFFFF;
+    font-family: "Inter", serif;
+    cursor: pointer;
+    user-select: none;
+}
+
+body.debug-active #debug-overlay {
+    display: flex;
+}
+
+body.debug-active #slideshow-metadata,
+body.debug-active .weather,
+body.debug-active #hide-current-image {
+    visibility: hidden !important;
+}
+
+.debug-title {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: clamp(12px, 1.2vw, 18px);
+    letter-spacing: 0.2em;
+    margin-bottom: 2vh;
+}
+
+.debug-relative-path {
+    font-size: clamp(22px, 3vw, 46px);
+    font-weight: 600;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.debug-absolute-path {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: clamp(12px, 1.4vw, 20px);
+    margin-top: 1vh;
+    overflow-wrap: anywhere;
+}
+
+.debug-fields {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.6vh 2vw;
+    font-size: clamp(13px, 1.5vw, 22px);
+    line-height: 1.35;
+    margin-top: auto;
+}
+
+.debug-fields dt {
+    color: rgba(255, 255, 255, 0.65);
+    font-weight: 400;
+}
+
+.debug-fields dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* ========================     */
 /* FADE IN ANIMATION            */
 /* ========================     */
 

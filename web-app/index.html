@@ -29,6 +29,12 @@
         <div id="pause-zone" onclick="pauseResumeSlideshow()"></div>
         <div id="next-zone" onclick="showNextImage()"></div>
     </div>
+    <div id="debug-overlay" role="region" aria-label="Image diagnostics" aria-hidden="true">
+        <div class="debug-title">DEBUG &middot; PAUSED</div>
+        <div id="debug-relative-path" class="debug-relative-path"></div>
+        <div id="debug-absolute-path" class="debug-absolute-path"></div>
+        <dl id="debug-fields" class="debug-fields"></dl>
+    </div>
 </div>
 </body>
 </html>

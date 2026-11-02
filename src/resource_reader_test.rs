@@ -7,7 +7,7 @@ use rand::RngExt;
 
 use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
-use crate::{filesystem_client, utils};
+use crate::{filesystem_client, utils, ResourceReader};
 
 const TEST_JPEG_EXIF_URL: &str =
     "https://raw.githubusercontent.com/ianare/exif-samples/master/jpg/gps/DSCN0010.jpg";
@@ -15,6 +15,35 @@ const TEST_JPEG_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img
 const TEST_PNG_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.png";
 const TEST_GIF_URL: &str = "https://www.w3.org/People/mimasa/test/imgformat/img/w3c_home.gif";
 const TEST_FOLDER_NAME: &str = "resource_reader_test";
+
+#[test]
+fn given_nested_configured_roots_when_resolving_relative_path_then_longest_root_is_stripped() {
+    // GIVEN a reader configured with a parent and a nested resource root
+    let reader = ResourceReader {
+        local_resource_paths: vec!["/photos".to_string(), "/photos/2022".to_string()],
+    };
+
+    // WHEN resolving a path below both roots
+    let relative_path = reader.relative_path("/photos/2022/Weihnachten/IMG_0001.jpg");
+
+    // THEN only the longest matching root is stripped and the file name is kept
+    assert_eq!(relative_path, "Weihnachten/IMG_0001.jpg");
+}
+
+#[test]
+fn given_path_outside_configured_roots_when_resolving_relative_path_then_original_path_is_returned()
+{
+    // GIVEN a reader configured with one resource root
+    let reader = ResourceReader {
+        local_resource_paths: vec!["/photos".to_string()],
+    };
+
+    // WHEN resolving a path that no configured root contains
+    let relative_path = reader.relative_path("/archive/IMG_0001.jpg");
+
+    // THEN the stored path is returned unchanged
+    assert_eq!(relative_path, "/archive/IMG_0001.jpg");
+}
 
 #[test]
 fn read_dir_recursive() {
