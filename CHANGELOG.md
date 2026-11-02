@@ -1,3 +1,10 @@
+# [4.1.0](https://github.com/RouHim/this-week-in-past/compare/4.0.11...4.1.0) (2026-11-02)
+
+
+### Features
+
+* add paused debug overlay for image paths ([#227](https://github.com/RouHim/this-week-in-past/issues/227)) ([ac584e9](https://github.com/RouHim/this-week-in-past/commit/ac584e98d68c3b24825e7690f697d1c3107d6aa3)), closes [#94](https://github.com/RouHim/this-week-in-past/issues/94)
+
 ## [4.0.11](https://github.com/RouHim/this-week-in-past/compare/4.0.10...4.0.11) (2026-10-31)
 
 ## [4.0.10](https://github.com/RouHim/this-week-in-past/compare/4.0.9...4.0.10) (2026-10-30)
