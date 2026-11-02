@@ -121,6 +121,7 @@ async fn main() -> std::io::Result<()> {
                     .service(resource_endpoint::get_this_week_resource_image)
                     .service(resource_endpoint::random_resources)
                     .service(resource_endpoint::get_resource_by_id_and_resolution)
+                    .service(resource_endpoint::get_resource_debug_by_id)
                     .service(resource_endpoint::get_resource_metadata_by_id)
                     .service(resource_endpoint::get_resource_metadata_description_by_id)
                     .service(resource_endpoint::get_all_hidden_resources)
@@ -141,7 +142,8 @@ async fn main() -> std::io::Result<()> {
                     .service(config_endpoint::get_refresh_interval)
                     .service(config_endpoint::get_hide_button_enabled)
                     .service(config_endpoint::get_random_slideshow_enabled)
-                    .service(config_endpoint::get_preload_images_enabled),
+                    .service(config_endpoint::get_preload_images_enabled)
+                    .service(config_endpoint::get_debug_enabled),
             )
             .service(web::resource("/api/version").route(web::get().to(
                 |_: HttpRequest, _: web::Payload| async move {

@@ -530,6 +530,48 @@ async fn test_get_resource_description_by_id() {
 }
 
 #[actix_web::test]
+async fn given_indexed_nested_image_when_requesting_debug_then_relative_path_and_metadata_are_returned(
+) {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN an indexed image inside an event folder
+    let base_test_dir = create_temp_folder().await;
+    let file_name = "test_image_1.jpg";
+    let test_image_path = create_test_image(
+        &base_test_dir,
+        "2022.12 - Weihnachten",
+        file_name,
+        TEST_JPEG_URL,
+    )
+    .await;
+    let test_image_id = utils::md5(test_image_path.as_str());
+
+    // AND a running this-week-in-past instance
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+
+    // WHEN requesting the debug view for that image
+    let response: serde_json::Value = test::call_and_read_body_json(
+        &app_server,
+        TestRequest::get()
+            .uri(format!("/api/resources/{test_image_id}/debug").as_str())
+            .to_request(),
+    )
+    .await;
+
+    // THEN the response contains the path relative to the resource root and stored metadata
+    assert_eq!(
+        response["relative_path"],
+        "2022.12 - Weihnachten/test_image_1.jpg"
+    );
+    assert_eq!(response["id"], test_image_id);
+    assert_eq!(response["path"], test_image_path);
+    assert_eq!(response["name"], file_name);
+    assert_eq!(response["content_type"], "image/jpeg");
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
+#[actix_web::test]
 async fn test_get_unknown_resource_metadata_returns_not_found() {
     let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
     // GIVEN is an empty library
@@ -555,9 +597,27 @@ async fn test_get_unknown_resource_metadata_returns_not_found() {
     )
     .await;
 
-    // THEN both endpoints respond with 404
+    let debug_response = test::call_service(
+        &app_server,
+        TestRequest::get()
+            .uri("/api/resources/unknown-id/debug")
+            .to_request(),
+    )
+    .await;
+
+    let debug_body: serde_json::Value = test::call_and_read_body_json(
+        &app_server,
+        TestRequest::get()
+            .uri("/api/resources/unknown-id/debug")
+            .to_request(),
+    )
+    .await;
+
+    // THEN all endpoints respond with 404 and the debug endpoint explains why
     assert_that!(metadata_response.status().as_u16()).is_equal_to(404);
     assert_that!(description_response.status().as_u16()).is_equal_to(404);
+    assert_that!(debug_response.status().as_u16()).is_equal_to(404);
+    assert_eq!(debug_body["error"], "resource not found");
 
     // cleanup
     cleanup(&base_test_dir).await;
@@ -719,6 +779,7 @@ fn build_app(
                 .service(resource_endpoint::get_this_week_resource_image)
                 .service(resource_endpoint::random_resources)
                 .service(resource_endpoint::get_resource_by_id_and_resolution)
+                .service(resource_endpoint::get_resource_debug_by_id)
                 .service(resource_endpoint::get_resource_metadata_by_id)
                 .service(resource_endpoint::get_resource_metadata_description_by_id)
                 .service(resource_endpoint::get_all_hidden_resources)

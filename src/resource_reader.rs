@@ -10,8 +10,30 @@ use crate::geo_location::GeoLocation;
 use crate::image_processor::ImageOrientation;
 use crate::{exif_reader, filesystem_client, ResourceReader};
 
-/// Returns all available resources
+/// Operations over the configured resource roots.
 impl ResourceReader {
+    /// Returns `resource_path` relative to the longest matching configured resource root.
+    /// Falls back to the stored path when no configured root contains it, e.g. after
+    /// `RESOURCE_PATHS` changed while the index still holds resources from the old root.
+    pub fn relative_path(&self, resource_path: &str) -> String {
+        let path = Path::new(resource_path);
+        let mut longest_root_components = 0;
+        let mut relative_path = path;
+
+        for root in &self.local_resource_paths {
+            let Ok(candidate) = path.strip_prefix(root) else {
+                continue;
+            };
+            let root_components = Path::new(root).components().count();
+            if root_components >= longest_root_components {
+                longest_root_components = root_components;
+                relative_path = candidate;
+            }
+        }
+
+        relative_path.to_string_lossy().into_owned()
+    }
+
     pub fn read_all(&self) -> Vec<ImageResource> {
         self.local_resource_paths
             .par_iter()

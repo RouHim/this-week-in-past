@@ -8,11 +8,20 @@ use std::fs;
 
 use crate::resource_reader::ImageResource;
 use crate::resource_store::ResourceStore;
-use crate::{image_processor, resource_processor};
+use crate::{image_processor, resource_processor, ResourceReader};
 
 const CONTENT_TYPE_APPLICATION_JSON: &str = "application/json";
 const CONTENT_TYPE_TEXT_PLAIN: &str = "text/plain";
 const CONTENT_TYPE_IMAGE_JPEG: &str = "image/jpeg";
+
+/// JSON returned by the debug view: stored metadata plus the path relative to
+/// the configured resource root, which is what the slideshow overlay displays.
+#[derive(serde::Serialize)]
+struct DebugResource {
+    relative_path: String,
+    #[serde(flatten)]
+    resource: ImageResource,
+}
 
 /// Sanitizes a resource id for use as filesystem cache key component.
 /// Replaces any char not in [a-zA-Z0-9_-] with '_' to prevent path traversal
@@ -210,6 +219,54 @@ pub async fn get_resource_by_id_and_resolution(
             .body(resource_data)
     } else {
         HttpResponse::InternalServerError().finish()
+    }
+}
+
+#[get("{resource_id}/debug")]
+pub async fn get_resource_debug_by_id(
+    resource_id: web::Path<String>,
+    resource_store: web::Data<ResourceStore>,
+    resource_reader: web::Data<ResourceReader>,
+) -> HttpResponse {
+    let Some(resource_json) = resource_store.get_resource(resource_id.as_ref()) else {
+        return HttpResponse::NotFound().json(serde_json::json!({
+            "error": "resource not found"
+        }));
+    };
+
+    let resource = match serde_json::from_str::<ImageResource>(&resource_json) {
+        Ok(resource) => resource,
+        Err(error) => {
+            log::error!(
+                "Could not parse resource {} for debug view: {}",
+                resource_id,
+                error
+            );
+            return HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "stored resource metadata could not be parsed"
+            }));
+        }
+    };
+
+    let debug_resource = DebugResource {
+        relative_path: resource_reader.relative_path(resource.path.as_str()),
+        resource,
+    };
+
+    match serde_json::to_string(&debug_resource) {
+        Ok(body) => HttpResponse::Ok()
+            .content_type(CONTENT_TYPE_APPLICATION_JSON)
+            .body(body),
+        Err(error) => {
+            log::error!(
+                "Could not serialize debug view for resource {}: {}",
+                resource_id,
+                error
+            );
+            HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "stored resource metadata could not be serialized"
+            }))
+        }
     }
 }
 

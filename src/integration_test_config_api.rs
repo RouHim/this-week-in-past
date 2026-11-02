@@ -42,6 +42,37 @@ async fn test_get_random_slideshow() {
     cleanup(&base_test_dir).await;
 }
 
+#[actix_web::test]
+async fn given_debug_env_when_requesting_debug_config_then_env_value_is_returned() {
+    let _serial_guard = crate::utils::SERIAL_TEST_MUTEX.lock().await;
+    // GIVEN a running this-week-in-past instance
+    let base_test_dir = create_temp_folder().await;
+    let app_server = test::init_service(build_app(base_test_dir.to_str().unwrap())).await;
+
+    // AND the DEBUG flag is set
+    let debug: String = rand::rng().random::<bool>().to_string();
+    env::set_var("DEBUG", &debug);
+
+    // WHEN requesting the debug config
+    let response: String = String::from_utf8(
+        test::call_and_read_body(
+            &app_server,
+            test::TestRequest::get()
+                .uri("/api/config/debug")
+                .to_request(),
+        )
+        .await
+        .to_vec(),
+    )
+    .unwrap();
+
+    // THEN the response should contain the configured value
+    assert_that!(response).is_equal_to(&debug);
+
+    // cleanup
+    cleanup(&base_test_dir).await;
+}
+
 fn build_app(
     base_test_dir: &str,
 ) -> App<
@@ -60,7 +91,8 @@ fn build_app(
         web::scope("/api/config")
             .service(config_endpoint::get_slideshow_interval)
             .service(config_endpoint::get_refresh_interval)
-            .service(config_endpoint::get_random_slideshow_enabled),
+            .service(config_endpoint::get_random_slideshow_enabled)
+            .service(config_endpoint::get_debug_enabled),
     )
 }
 

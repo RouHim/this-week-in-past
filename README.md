@@ -130,6 +130,9 @@ All configuration is done via environment variables:
 | IGNORE_FOLDER_MARKER_FILES | A list of file names which causes the folder in which the file is located to be ignored. (comma separated) | `.ignore`                     |                           |
 | IGNORE_FOLDER_REGEX        | A regular expression that causes the folder to be ignored if it matches                                    |                               |                           |
 | PRELOAD_IMAGES             | Indicates if images should be preloaded during the slideshow                                               | `false`                       |                           |
+| DEBUG                      | Shows a full-screen diagnostics overlay with the image path and stored metadata while the slideshow is paused | `false`                       | x                         |
+
+> `DEBUG` controls the paused on-screen diagnostics only; log verbosity is configured with `RUST_LOG`.
 
 > Some parameters, as marked in the table, can be overwritten as URL parameter
 > e.g.: http://localhost:8080/?SLIDESHOW_INTERVAL=10&SHOW_HIDE_BUTTON=false
