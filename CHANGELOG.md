@@ -1,3 +1,5 @@
+## [4.1.2](https://github.com/RouHim/this-week-in-past/compare/4.1.1...4.1.2) (2026-11-10)
+
 ## [4.1.1](https://github.com/RouHim/this-week-in-past/compare/4.1.0...4.1.1) (2026-11-07)
 
 # [4.1.0](https://github.com/RouHim/this-week-in-past/compare/4.0.11...4.1.0) (2026-11-02)
